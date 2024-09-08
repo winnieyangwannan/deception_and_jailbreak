@@ -5,7 +5,7 @@
       <paths name="bigpurple">
         <serverdata>
           <mappings>
-            <mapping deploy="/Code/deception_and_jailbreak" local="$PROJECT_DIR$" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

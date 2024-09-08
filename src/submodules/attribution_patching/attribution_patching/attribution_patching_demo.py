@@ -16,7 +16,6 @@ import pysvelte
 from torchtyping import TensorType as TT
 from IPython import get_ipython
 from pathlib import Path
-import pickle
 
 # ipython = get_ipython()
 # Code to automatically update the HookedTransformer code as its edited without restarting the kernel
@@ -280,11 +279,6 @@ class AttributionPatching:
     def plot_attention_attr(
         self, attention_attr, tokens, top_k=20, index=0, title="", save_path=None
     ):
-        # save the visualization as .html file
-        vis_path = save_path + os.sep + "attention_attribution"
-        if not os.path.exists(vis_path):
-            os.makedirs(vis_path)
-
         if len(tokens.shape) == 2:
             tokens = tokens[index]
         if len(attention_attr.shape) == 5:
@@ -309,23 +303,19 @@ class AttributionPatching:
 
         if title:
             display(Markdown("### " + title))
-        str_tokens = self.model.to_str_tokens(tokens)
-        attention = attention_attr_signed.permute(1, 2, 0)[:, :, :top_k]
-        head_labels = head_labels[:top_k]
 
-        results = {
-            "str_tokens": str_tokens,
-            "attention": attention,
-            "head_labels": head_labels,
-        }
-        with open(vis_path + os.sep + "attention_attribution.pkl", "wb") as f:
-            pickle.dump(results, f)
-        # vis = pysvelte.AttentionMulti(
-        #     tokens=self.model.to_str_tokens(tokens),
-        #     attention=attention_attr_signed.permute(1, 2, 0)[:, :, :top_k],
-        #     head_labels=head_labels[:top_k],
-        # ).publish(dev=True)
-        # vis.publish(vis_path + os.sep + f"top20.html", dev_host="try")
+        vis = pysvelte.AttentionMulti(
+            tokens=self.model.to_str_tokens(tokens),
+            attention=attention_attr_signed.permute(1, 2, 0)[:, :, :top_k],
+            head_labels=head_labels[:top_k],
+        )
+
+        # save the visualization as .html file
+        vis_path = save_path + os.sep + "attention_attribution" + os.sep + f"top20.html"
+        if not os.path.exists(vis_path):
+            os.makedirs(vis_path)
+        with open(vis_path, "w") as f:
+            f.write(vis)
 
 
 def main(
