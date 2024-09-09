@@ -21,7 +21,7 @@ class Config:
     save_dir: str
     contrastive_label: str
     dtype: str = "default"  # "bfloat16" or "default"
-    n_train: int = 2
+    n_train: int = 4
     n_test: int = 50
     batch_size: int = 2
     max_new_tokens: int = 2
