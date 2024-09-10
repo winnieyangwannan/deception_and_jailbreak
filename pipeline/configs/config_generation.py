@@ -20,7 +20,7 @@ class Config:
     task_name: str
     save_dir: str
     contrastive_label: str
-    dtype: str = "default"  # "bfloat16" or "default"
+    dtype: str = "bfloat16"  # "bfloat16" or "default"
     n_train: int = 4
     n_test: int = 50
     batch_size: int = 2

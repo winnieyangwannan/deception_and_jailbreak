@@ -91,8 +91,21 @@ def main(
     att_patch.get_baseline_logit_diff()
     # Get activation and gradient cache!
     att_patch.get_contrastive_activation_and_gradient_cache()
-    # Get attention attribution on the residual
-    att_patch.attr_patch_residual()
+    # Get attribution patching on the accumulated residual
+    # att_patch.attr_patch_residual()
+    # Get attribution patching on the decomposed residual
+    # att_patch.attr_patch_layer_out()
+
+    # Get attention attribution patching on the decomposed head output
+    head_out_attr = att_patch.attr_patch_head_out()
+
+    # Get attention attribution patching on the decomposed head output for k, q, v and z
+    # att_patch.attr_patch_head_kqv()
+
+    # Get pathattribution attribution patching
+    path_attr = att_patch.attr_patch_head_path()
+
+    att_patch.top_heads_plot_path_attr(head_out_attr, path_attr)
 
 
 if __name__ == "__main__":

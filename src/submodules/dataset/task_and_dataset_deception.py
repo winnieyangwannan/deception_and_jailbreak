@@ -198,6 +198,7 @@ def apply_chat_template(cfg, statements: list[str], contrastive_label: str = "ho
             + suffix
             for statement in statements
         ]
+
     return prompt
 
 
