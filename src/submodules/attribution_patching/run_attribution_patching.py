@@ -1,3 +1,5 @@
+import os
+import sys
 import random
 import json
 import pprint
@@ -5,7 +7,6 @@ from typing import List, Optional, Callable, Tuple, Dict, Literal, Set, Union
 from torch import Tensor
 from jaxtyping import Float, Int, Bool
 import einops
-import os
 import argparse
 from pipeline.configs.config_generation import Config
 from datasets import load_dataset
@@ -86,10 +87,15 @@ def main(
     dataset.construct_contrastive_prompts()
 
     # Initiate attribution patching
+    print("Initializing attribution patching:")
     att_patch = AttributionPatching(cfg, model, dataset)
+
     # Get baseline logit diff
+    print("Get baseline logit difference:")
     att_patch.get_baseline_logit_diff()
+
     # Get activation and gradient cache!
+    print("Get baseline logit difference:")
     att_patch.get_contrastive_activation_and_gradient_cache()
     # Get attribution patching on the accumulated residual
     # att_patch.attr_patch_residual()
@@ -97,15 +103,20 @@ def main(
     # att_patch.attr_patch_layer_out()
 
     # Get attention attribution patching on the decomposed head output
+    print("Get attribution patching per head:")
     head_out_attr = att_patch.attr_patch_head_out()
 
     # Get attention attribution patching on the decomposed head output for k, q, v and z
     # att_patch.attr_patch_head_kqv()
 
-    # Get pathattribution attribution patching
+    # Get path attribution patching
+    print("Get attribution patching path per head:")
     path_attr = att_patch.attr_patch_head_path()
 
+    # Plot top head
+    print("Plot top head:")
     att_patch.top_heads_plot_path_attr(head_out_attr, path_attr)
+    print("done")
 
 
 if __name__ == "__main__":

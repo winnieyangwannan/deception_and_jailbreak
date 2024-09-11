@@ -10,6 +10,7 @@ from typing import Dict
 import pandas as pd
 from jaxtyping import Float
 import einops
+import torch
 
 
 # source: https://github.com/callummcdougall/ARENA_3.0/blob/main/chapter1_transformer_interp/exercises/plotly_utils.py
@@ -23,7 +24,11 @@ def to_numpy(tensor):
         array = np.array(tensor)
         return array
     elif isinstance(tensor, (t.Tensor, t.nn.parameter.Parameter)):
-        return tensor.detach().cpu().numpy()
+        if tensor.dtype == torch.bfloat16:
+            return tensor.detach().cpu().float().numpy()
+        else:
+            return tensor.detach().cpu().numpy()
+
     elif isinstance(tensor, (int, float, bool, str)):
         return np.array(tensor)
     else:

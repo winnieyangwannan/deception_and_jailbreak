@@ -6,7 +6,7 @@ from torch import Tensor
 from jaxtyping import Float, Int, Bool
 import einops
 from fancy_einsum import einsum
-
+import gc
 import os
 from typing_extensions import Literal
 
@@ -42,33 +42,72 @@ from IPython.display import display, HTML  # for visualize attetnion pattern
 
 
 class AttributionPatching:
-    def __init__(self, cfg, model, dataset):
+    def __init__(self, cfg, model, dataset, clean_label="positive"):
         self.cfg = cfg
         self.model = model
         self.dataset = dataset
+        self.clean_label = clean_label
 
+        if self.clean_label == "positive":
+            self.prompts_clean = self.dataset.prompts_positive
+            self.prompts_corrupted = self.dataset.prompts_negative
+
+            self.answers_clean_correct = self.dataset.answers_positive_correct
+            self.answers_corrupted_correct = self.dataset.answers_negative_correct
+
+            self.answers_clean_wrong = self.dataset.answers_positive_wrong
+            self.answers_corrupted_wrong = self.dataset.answers_negative_wrong
+
+            self.labels_clean_correct = self.dataset.labels_positive_correct
+            self.labels_corrupted_correct = self.dataset.labels_negative_correct
+
+            self.labels_clean_wrong = self.dataset.labels_positive_wrong
+            self.labels_corrupted_wrong = self.dataset.labels_negative_wrong
+
+        else:
+            self.prompts_clean = self.dataset.prompts_negative
+            self.prompts_corrupted = self.dataset.prompts_positive
+
+            self.answers_clean_correct = self.dataset.answers_negative_correct
+            self.answers_corrupted_correct = self.dataset.answers_positive_correct
+
+            self.answers_clean_wrong = self.dataset.answers_negative_wrong
+            self.answers_corrupted_wrong = self.dataset.answers_positive_wrong
+
+            self.labels_clean_correct = self.dataset.labels_negative_correct
+            self.labels_corrupted_correct = self.dataset.labels_positive_correct
+
+            self.labels_clean_wrong = self.dataset.labels_negative_wrong
+            self.labels_corrupted_wrong = self.dataset.labels_positive_wrong
+
+        # tokenize prompts and answer
         (
-            self.prompt_tokens_positive,
-            self.answer_tokens_positive_correct,
-            self.answer_tokens_positive_wrong,
+            self.prompt_tokens_clean,
+            self.answer_tokens_clean_correct,
+            self.answer_tokens_clean_wrong,
         ) = tokenize_prompts_and_answers(
             model,
-            dataset.prompts_positive,
-            dataset.answers_positive_correct,
-            dataset.answers_positive_wrong,
+            self.prompts_clean,
+            self.answers_clean_correct,
+            self.answers_clean_wrong,
         )
         (
-            self.prompt_tokens_negative,
-            self.answer_tokens_negative_correct,
-            self.answer_tokens_negative_wrong,
+            self.prompt_tokens_corrupted,
+            self.answer_tokens_corrupted_correct,
+            self.answer_tokens_corrupted_wrong,
         ) = tokenize_prompts_and_answers(
             model,
-            dataset.prompts_negative,
-            dataset.answers_negative_correct,
-            dataset.answers_negative_wrong,
+            self.prompts_corrupted,
+            self.answers_corrupted_correct,
+            self.answers_corrupted_wrong,
         )
-        self.positive_baseline = None
-        self.negative_baseline = None
+
+        self.clean_baseline = None
+        self.corrupted_baseline = None
+        self.clean_cache = None
+        self.corrupted_cache = None
+        self.clean_grad_cache = None
+        self.corrupted_grad_cache = None
 
         self.head_names = [
             f"L{l}H{h}"
@@ -87,67 +126,82 @@ class AttributionPatching:
         print(self.head_names_signed[:5])
         print(self.head_nams_qkv[:5])
 
-        self.positive_cache = None
-        self.negative_cache = None
-        self.positive_grad_cache = None
-        self.negative_grad_cache = None
-
-        print("test positive prompt")
+        print("test clean prompt:")
         utils.test_prompt(
-            self.dataset.prompts_positive[0],
-            self.dataset.answers_positive_correct[0],
+            self.prompts_clean[0],
+            self.answers_clean_correct[0],
             self.model,
             prepend_bos=True,
         )
 
-        print("test negative prompt")
+        print("test corrupted prompt:")
         utils.test_prompt(
-            self.dataset.prompts_negative[0],
-            self.dataset.answers_negative_correct[0],
+            self.prompts_corrupted[0],
+            self.answers_corrupted_correct[0],
             self.model,
             prepend_bos=True,
+        )
+        # save the visualization
+        save_path = self.cfg.artifact_path()
+        self.vis_path = save_path + os.sep + "attribution_patching"
+        if not os.path.exists(self.vis_path):
+            os.makedirs(self.vis_path)
+
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
         )
 
     def get_baseline_logit_diff(self) -> None:
         """
-        get baseline logit differnece for lean and negative inputs
+        get baseline logit differnece for lean and corrupted inputs
         :return:
         """
-        positive_logits, negative_logits, positive_cache, negative_cache = (
+
+        # run and cache
+        clean_logits, corrupted_logits, clean_cache, corrupted_cache = (
             run_with_cache_contrastive(
-                self.model, self.prompt_tokens_positive, self.prompt_tokens_negative
+                self.model, self.prompt_tokens_clean, self.prompt_tokens_corrupted
             )
         )
-        positive_logit_diff = logits_to_logit_diff(
-            positive_logits,
-            self.answer_tokens_positive_correct,
-            self.answer_tokens_positive_wrong,
-        ).item()
-        print(f"positive logit diff: {positive_logit_diff:.4f}")
 
-        negative_logit_diff = logits_to_logit_diff(
-            negative_logits,
-            self.answer_tokens_positive_correct,
-            self.answer_tokens_positive_wrong,
+        # get logits difference between clean and corrupted
+        clean_logit_diff = logits_to_logit_diff(
+            clean_logits,
+            self.answer_tokens_clean_correct,
+            self.answer_tokens_clean_wrong,
         ).item()
-        print(f"negative logit diff: {negative_logit_diff:.4f}")
+        print(f"clean logit diff: {clean_logit_diff:.4f}")
 
-        self.positive_baseline = positive_logit_diff
-        self.negative_baseline = negative_logit_diff
+        corrupted_logit_diff = logits_to_logit_diff(
+            corrupted_logits,
+            self.answer_tokens_clean_correct,
+            self.answer_tokens_clean_wrong,
+        ).item()
+        print(f"corrupted logit diff: {corrupted_logit_diff:.4f}")
+
+        self.clean_baseline = clean_logit_diff
+        self.corrupted_baseline = corrupted_logit_diff
 
         print(
-            f"positive Baseline is 1: {self.contrastive_metric(positive_logits).item():.4f}"
+            f"clean Baseline is 1: {self.contrastive_metric(clean_logits).item():.4f}"
         )
         print(
-            f"negative Baseline is 0: {self.contrastive_metric(negative_logits).item():.4f}"
+            f"corrupted Baseline is 0: {self.contrastive_metric(corrupted_logits).item():.4f}"
         )
+
+        # clear the cache to save space
+        del clean_logits
+        del corrupted_logits
 
     def contrastive_metric(
         self,
         logits: Float[Tensor, "batch seq d_vocab"],
     ) -> Tensor:
         """
-        Scale the logit difference between 0 and 1 (positive baseline will have logit diff =1, and negative baseline will have logit diff =0)
+        Scale the logit difference between 0 and 1 (clean baseline will have logit diff =1, and corrupted baseline will have logit diff =0)
         :param logits:
         :return:
         """
@@ -155,41 +209,46 @@ class AttributionPatching:
         return (
             logits_to_logit_diff(
                 logits,
-                self.answer_tokens_positive_correct,
-                self.answer_tokens_positive_wrong,
+                self.answer_tokens_clean_correct,
+                self.answer_tokens_clean_wrong,
             )
-            - self.negative_baseline
-        ) / (self.positive_baseline - self.negative_baseline)
+            - self.corrupted_baseline
+        ) / (self.clean_baseline - self.corrupted_baseline)
 
     def get_contrastive_activation_and_gradient_cache(self):
         """
-        Get the activation cache and gradient cache for both the positive and negative prompts
+        Get the activation cache and gradient cache for both the clean and corrupted prompts
         :return:
         """
-        positive_value, positive_cache, positive_grad_cache = get_cache_fwd_and_bwd(
-            self.model, self.contrastive_metric, self.prompt_tokens_positive
+        clean_value, clean_cache, clean_grad_cache = get_cache_fwd_and_bwd(
+            self.model, self.contrastive_metric, self.prompt_tokens_clean
         )
-        negative_value, negative_cache, negative_grad_cache = get_cache_fwd_and_bwd(
-            self.model, self.contrastive_metric, self.prompt_tokens_negative
+        corrupted_value, corrupted_cache, corrupted_grad_cache = get_cache_fwd_and_bwd(
+            self.model, self.contrastive_metric, self.prompt_tokens_corrupted
         )
-        self.positive_baseline = positive_value
-        self.negative_baseline = negative_value
-        self.positive_cache = positive_cache
-        self.negative_cache = negative_cache
-        self.positive_grad_cache = positive_grad_cache
-        self.negative_grad_cache = negative_grad_cache
+        self.clean_baseline = clean_value
+        self.corrupted_baseline = corrupted_value
+        self.clean_cache = clean_cache
+        self.corrupted_cache = corrupted_cache
+        self.clean_grad_cache = clean_grad_cache
+        self.corrupted_grad_cache = corrupted_grad_cache
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
 
     def get_attention_attribution(
         self,
     ) -> Float[Tensor, "batch layer head_inde dest src"]:
-
         attention_stack = torch.stack(
-            [self.positive_cache["pattern", l] for l in range(self.model.cfg.n_layers)],
+            [self.clean_cache["pattern", l] for l in range(self.model.cfg.n_layers)],
             dim=0,
         )
         attention_grad_stack = torch.stack(
             [
-                self.positive_grad_cache["pattern", l]
+                self.clean_grad_cache["pattern", l]
                 for l in range(self.model.cfg.n_layers)
             ],
             dim=0,
@@ -199,16 +258,17 @@ class AttributionPatching:
             attention_attr,
             "layer batch head_index dest src -> batch layer head_index dest src",
         )
-
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
         return attention_attr
 
     def plot_attention_attr(
         self, attention_attr, tokens, top_k=20, index=0, title="", save_path=None
     ):
-        # save the visualization as .html file
-        vis_path = save_path + os.sep + "attention_attribution"
-        if not os.path.exists(vis_path):
-            os.makedirs(vis_path)
 
         if len(tokens.shape) == 2:
             tokens = tokens[index]
@@ -243,7 +303,7 @@ class AttributionPatching:
             "attention": attention,
             "head_labels": head_labels,
         }
-        with open(vis_path + os.sep + "attention_attribution.pkl", "wb") as f:
+        with open(self.vis_path + os.sep + "attention_attribution.pkl", "wb") as f:
             pickle.dump(results, f)
         # vis = pysvelte.AttentionMulti(
         #     tokens=self.model.to_str_tokens(tokens),
@@ -260,96 +320,130 @@ class AttributionPatching:
         )
 
         # save the visualization as .html file
-        with open(vis_path + os.sep + f"attention_attribution.html", "w") as f:
+        with open(
+            self.vis_path
+            + os.sep
+            + f"attention_attribution_clean_{self.clean_label}.html",
+            "w",
+        ) as f:
             f.write(vis._repr_html_())
 
     def attr_patch_residual(
         self,
     ) -> TT["component", "pos"]:
-        positive_residual, residual_labels = self.positive_cache.accumulated_resid(
+        clean_residual, residual_labels = self.clean_cache.accumulated_resid(
             -1, incl_mid=True, return_labels=True
         )
-        negative_residual = self.negative_cache.accumulated_resid(
+        corrupted_residual = self.corrupted_cache.accumulated_resid(
             -1, incl_mid=True, return_labels=False
         )
-        negative_grad_residual = self.negative_grad_cache.accumulated_resid(
+        corrupted_grad_residual = self.corrupted_grad_cache.accumulated_resid(
             -1, incl_mid=True, return_labels=False
         )
-        # positive_residual shape [component batch seq d_model]
+        # clean_residual shape [component batch seq d_model]
         residual_attr = einops.reduce(
-            negative_grad_residual * (positive_residual - negative_residual),
+            corrupted_grad_residual * (clean_residual - corrupted_residual),
             "component batch pos d_model -> component pos",
             "sum",
         )
 
         # Plot
-        imshow(
+        fig = imshow(
             residual_attr,
             y=residual_labels,
             yaxis="Component",
             xaxis="Position",
             title="Residual Attribution Patching",
+            return_fig=True,
         )
-        string_0 = self.model.to_str_tokens(self.prompt_tokens_positive[0, :])
+        # save the visualization as .html file
+        fig.write_html(
+            self.vis_path
+            + os.sep
+            + f"accumulated_layer_attribution_patching_clean_{self.clean_label}.html"
+        )
+        string_0 = self.model.to_str_tokens(self.prompt_tokens_clean[0, :])
         print(f"example string token: {string_0}")
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
         return residual_attr, residual_labels
 
     def attr_patch_layer_out(
         self,
     ) -> TT["component", "pos"]:
-        positive_layer_out, labels = self.positive_cache.decompose_resid(
+        clean_layer_out, labels = self.clean_cache.decompose_resid(
             -1, return_labels=True
         )
-        negative_layer_out = self.negative_cache.decompose_resid(
+        corrupted_layer_out = self.corrupted_cache.decompose_resid(
             -1, return_labels=False
         )
-        negative_grad_layer_out = self.negative_grad_cache.decompose_resid(
+        corrupted_grad_layer_out = self.corrupted_grad_cache.decompose_resid(
             -1, return_labels=False
         )
         layer_out_attr = einops.reduce(
-            negative_grad_layer_out * (positive_layer_out - negative_layer_out),
+            corrupted_grad_layer_out * (clean_layer_out - corrupted_layer_out),
             "component batch pos d_model -> component pos",
             "sum",
         )
 
-        imshow(
+        fig = imshow(
             layer_out_attr,
             y=labels,
             yaxis="Component",
             xaxis="Position",
             title="Layer Output Attribution Patching",
+            return_fig=True,
         )
-        string_0 = self.model.to_str_tokens(self.prompt_tokens_positive[0, :])
+        fig.write_html(
+            self.vis_path
+            + os.sep
+            + f"decomposed_layer_attribution_patching_clean_{self.clean_label}.html"
+        )
+        string_0 = self.model.to_str_tokens(self.prompt_tokens_clean[0, :])
         print(f"example string token: {string_0}")
-
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
         return layer_out_attr, labels
 
     def attr_patch_head_out(
         self,
     ) -> TT["component", "pos"]:
-        positive_layer_out, labels = self.positive_cache.stack_head_results(
+        clean_layer_out, labels = self.clean_cache.stack_head_results(
             -1, return_labels=True
         )
-        negative_layer_out = self.negative_cache.stack_head_results(
+        corrupted_layer_out = self.corrupted_cache.stack_head_results(
             -1, return_labels=False
         )
-        negative_grad_layer_out = self.negative_grad_cache.stack_head_results(
+        corrupted_grad_layer_out = self.corrupted_grad_cache.stack_head_results(
             -1, return_labels=False
         )
         head_out_attr = einops.reduce(
-            negative_grad_layer_out * (positive_layer_out - negative_layer_out),
+            corrupted_grad_layer_out * (clean_layer_out - corrupted_layer_out),
             "component batch pos d_model -> component pos",
             "sum",
         )
 
-        imshow(
+        fig = imshow(
             head_out_attr,
             y=labels,
             yaxis="Component",
             xaxis="Position",
             title="Head Output Attribution Patching",
+            return_fig=True,
         )
-
+        fig.write_html(
+            self.vis_path
+            + os.sep
+            + f"head_attribution_patching_clean_{self.clean_label}.html"
+        )
         sum_head_out_attr = einops.reduce(
             head_out_attr,
             "(layer head) pos -> layer head",
@@ -357,15 +451,27 @@ class AttributionPatching:
             layer=self.model.cfg.n_layers,
             head=self.model.cfg.n_heads,
         )
-        imshow(
+        fig = imshow(
             sum_head_out_attr,
             yaxis="Layer",
             xaxis="Head Index",
             title="Head Output Attribution Patching Sum Over Pos",
+            return_fig=True,
         )
-        string_0 = self.model.to_str_tokens(self.prompt_tokens_positive[0, :])
+        fig.write_html(
+            self.vis_path
+            + os.sep
+            + f"head_sum_pos_attribution_patching_clean_{self.clean_label}.html"
+        )
+        string_0 = self.model.to_str_tokens(self.prompt_tokens_clean[0, :])
         print(f"example string token: {string_0}")
 
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
         return head_out_attr
 
     def attr_patch_head_kqv(self):
@@ -384,13 +490,22 @@ class AttributionPatching:
             head_vector_attr_dict[activation_name], head_vector_labels = (
                 self.attr_patch_head_vector(activation_name)
             )
-            imshow(
+
+            # plot all pos
+            fig = imshow(
                 head_vector_attr_dict[activation_name],
                 y=head_vector_labels,
                 yaxis="Component",
                 xaxis="Position",
                 title=f"{activation_name_full} Attribution Patching",
+                return_fig=True,
             )
+            fig.write_html(
+                self.vis_path
+                + os.sep
+                + f"{activation_name_full}_attribution_patching_clean_{self.clean_label}.html"
+            )
+            # plot sum over pos
             sum_head_vector_attr = einops.reduce(
                 head_vector_attr_dict[activation_name],
                 "(layer head) pos -> layer head",
@@ -398,11 +513,17 @@ class AttributionPatching:
                 layer=self.model.cfg.n_layers,
                 head=self.model.cfg.n_heads,
             )
-            imshow(
+            fig = imshow(
                 sum_head_vector_attr,
                 yaxis="Layer",
                 xaxis="Head Index",
                 title=f"{activation_name_full} Attribution Patching Sum Over Pos",
+                return_fig=True,
+            )
+            fig.write_html(
+                self.vis_path
+                + os.sep
+                + f"{activation_name_full}_sum_pos_attribution_patching_clean_{self.clean_label}.html"
             )
 
     def attr_patch_head_vector(
@@ -411,17 +532,17 @@ class AttributionPatching:
     ) -> TT["component", "pos"]:
         labels = self.head_names
 
-        positive_head_vector = self.stack_head_vector_from_cache(
-            self.positive_cache, activation_name
+        clean_head_vector = self.stack_head_vector_from_cache(
+            self.clean_cache, activation_name
         )
-        negative_head_vector = self.stack_head_vector_from_cache(
-            self.negative_cache, activation_name
+        corrupted_head_vector = self.stack_head_vector_from_cache(
+            self.corrupted_cache, activation_name
         )
-        negative_grad_head_vector = self.stack_head_vector_from_cache(
-            self.negative_grad_cache, activation_name
+        corrupted_grad_head_vector = self.stack_head_vector_from_cache(
+            self.corrupted_grad_cache, activation_name
         )
         head_vector_attr = einops.reduce(
-            negative_grad_head_vector * (positive_head_vector - negative_head_vector),
+            corrupted_grad_head_vector * (clean_head_vector - corrupted_head_vector),
             "component batch pos d_head -> component pos",
             "sum",
         )
@@ -452,22 +573,43 @@ class AttributionPatching:
         start_labels = self.head_names
         end_labels = self.head_nams_qkv
 
-        # get teh negative gradient cache per head for kqv
+        # get teh corrupted gradient cache per head for kqv
         full_vector_grad_late_node = self.get_full_vector_grad_late_node(
-            self.negative_grad_cache
+            self.corrupted_grad_cache
         )
 
-        # get the positive activation cache per head
-        positive_head_stack_early_node = self.positive_cache.stack_head_results(-1)
-        # get the negative activation cache per head
-        negative_head_stack_early_node = self.negative_cache.stack_head_results(-1)
+        # get the clean activation cache per head
+        clean_head_stack_early_node = self.clean_cache.stack_head_results(-1)
+        # get the corrupted activation cache per head
+        corrupted_head_stack_early_node = self.corrupted_cache.stack_head_results(-1)
 
-        # difference in positive and negative
+        # difference in clean and corrupted
         diff_head_early_node = einops.rearrange(
-            positive_head_stack_early_node - negative_head_stack_early_node,
+            clean_head_stack_early_node - corrupted_head_stack_early_node,
             "(layer head_index) batch pos d_model -> layer batch pos head_index d_model",
             layer=self.model.cfg.n_layers,
             head_index=self.model.cfg.n_heads,
+        )
+        # clear out memory:
+        print("before del:")
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
+        del self.clean_cache
+        del self.clean_grad_cache
+        del self.corrupted_cache
+        del self.corrupted_grad_cache
+        gc.collect()
+        torch.cuda.empty_cache()
+        print("after del:")
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
         )
         # multiply the difference by the gradeint
         path_attr = einsum(
@@ -493,13 +635,19 @@ class AttributionPatching:
             path_attr,
             "qkv layer_end head_end layer_start head_start pos -> (layer_end head_end qkv) (layer_start head_start) pos",
         )
-        imshow(
+        fig = imshow(
             path_attr.sum(-1),  # sum over all position
             y=end_labels,
             yaxis="Path End (Head Input)",
             x=start_labels,
             xaxis="Path Start (Head Output)",
             title="Head Path Attribution Patching",
+            return_fig=True,
+        )
+        fig.write_html(
+            self.vis_path
+            + os.sep
+            + f"path_head_attribution_patching_clean_{self.clean_label}.html"
         )
         return path_attr
 
@@ -531,12 +679,20 @@ class AttributionPatching:
         else:
             raise ValueError("Invalid activation name")
 
-        return einsum(
-            "batch pos head_index d_head, batch pos head_index, head_index d_model d_head -> batch pos head_index d_model",
-            vector_grad,
-            ln_scales.squeeze(-1),
-            W,
-        )
+        if self.cfg.dtype == "bfloat16":
+            return einsum(
+                "batch pos head_index d_head, batch pos head_index, head_index d_model d_head -> batch pos head_index d_model",
+                vector_grad.to(torch.bfloat16),
+                ln_scales.squeeze(-1).to(torch.bfloat16),
+                W,
+            )
+        else:
+            return einsum(
+                "batch pos head_index d_head, batch pos head_index, head_index d_model d_head -> batch pos head_index d_model",
+                vector_grad,
+                ln_scales.squeeze(-1),
+                W,
+            )
 
     def get_stacked_head_vector_grad_late_node(
         self, grad_cache, activation_name: Literal["q", "k", "v"]
@@ -611,7 +767,7 @@ class AttributionPatching:
             "(head_end qkv) head_start -> qkv head_end head_start",
             qkv=3,
         )
-        imshow(
+        fig = imshow(
             top_head_path_attr,
             y=[i[:-1] for i in top_end_labels[::3]],
             yaxis="Path End (Head Input)",
@@ -620,7 +776,12 @@ class AttributionPatching:
             title=f"Head Path Attribution Patching (Filtered for Top Heads)",
             facet_col=0,
             facet_labels=["Query", "Key", "Value"],
+            return_fig=True,
         )
+        save_path = self.cfg.artifact_path() + os.sep + "attribution_patching"
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        fig.write_html(save_path + os.sep + "top_head_path_attribution_patching.html")
 
 
 def run_with_cache_contrastive(model, positive_tokens, negative_tokens):
