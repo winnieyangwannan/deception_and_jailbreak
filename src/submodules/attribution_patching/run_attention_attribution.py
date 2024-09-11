@@ -88,7 +88,7 @@ def main(
     # Initiate attribution patching
     attribution_patching = AttributionPatching(cfg, model, dataset)
     # Get baseline logit diff
-    attribution_patching.get_baseline_logit_diff()
+    attribution_patching.get_contrastive_baseline_logit_diff()
     # Get attention attribution
     attention_attr = attribution_patching.get_attention_attribution()
     # Visualize attention pattern

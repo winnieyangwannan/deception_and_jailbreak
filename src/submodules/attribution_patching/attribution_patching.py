@@ -9,6 +9,8 @@ from fancy_einsum import einsum
 import gc
 import os
 from typing_extensions import Literal
+from tqdm import tqdm
+from functools import partial
 
 import argparse
 from pipeline.configs.config_generation import Config
@@ -42,11 +44,11 @@ from IPython.display import display, HTML  # for visualize attetnion pattern
 
 
 class AttributionPatching:
-    def __init__(self, cfg, model, dataset, clean_label="positive"):
+    def __init__(self, cfg, model, dataset):
         self.cfg = cfg
         self.model = model
         self.dataset = dataset
-        self.clean_label = clean_label
+        self.clean_label = cfg.clean_label
 
         if self.clean_label == "positive":
             self.prompts_clean = self.dataset.prompts_positive
@@ -126,6 +128,7 @@ class AttributionPatching:
         print(self.head_names_signed[:5])
         print(self.head_nams_qkv[:5])
 
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
         print("test clean prompt:")
         utils.test_prompt(
             self.prompts_clean[0],
@@ -141,96 +144,143 @@ class AttributionPatching:
             self.model,
             prepend_bos=True,
         )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
         # save the visualization
         save_path = self.cfg.artifact_path()
         self.vis_path = save_path + os.sep + "attribution_patching"
         if not os.path.exists(self.vis_path):
             os.makedirs(self.vis_path)
 
+        print("Memory after initialization:")
         print(
             "free(Gb):",
             torch.cuda.mem_get_info()[0] / 1000000000,
             "total(Gb):",
             torch.cuda.mem_get_info()[1] / 1000000000,
         )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
 
-    def get_baseline_logit_diff(self) -> None:
+    def get_contrastive_baseline_logit_diff(self) -> None:
         """
         get baseline logit differnece for lean and corrupted inputs
         :return:
         """
-
-        # run and cache
-        clean_logits, corrupted_logits, clean_cache, corrupted_cache = (
-            run_with_cache_contrastive(
-                self.model, self.prompt_tokens_clean, self.prompt_tokens_corrupted
-            )
+        print("logit diff of clean:")
+        clean_logit_diff = self.run_and_get_logit_diff(
+            self.prompt_tokens_clean,
+            self.answer_tokens_clean_correct,
+            self.answer_tokens_clean_wrong,
         )
-
-        # get logits difference between clean and corrupted
-        clean_logit_diff = logits_to_logit_diff(
-            clean_logits,
-            self.answer_tokens_clean_correct,
-            self.answer_tokens_clean_wrong,
-        ).item()
-        print(f"clean logit diff: {clean_logit_diff:.4f}")
-
-        corrupted_logit_diff = logits_to_logit_diff(
-            corrupted_logits,
-            self.answer_tokens_clean_correct,
-            self.answer_tokens_clean_wrong,
-        ).item()
-        print(f"corrupted logit diff: {corrupted_logit_diff:.4f}")
+        print("logit diff of corrupted:")
+        corrupted_logit_diff = self.run_and_get_logit_diff(
+            self.prompt_tokens_corrupted,
+            self.answer_tokens_corrupted_correct,
+            self.answer_tokens_corrupted_wrong,
+        )
 
         self.clean_baseline = clean_logit_diff
         self.corrupted_baseline = corrupted_logit_diff
 
-        print(
-            f"clean Baseline is 1: {self.contrastive_metric(clean_logits).item():.4f}"
+        clean_baseline_metric = (clean_logit_diff - self.corrupted_baseline) / (
+            self.clean_baseline - self.corrupted_baseline
         )
-        print(
-            f"corrupted Baseline is 0: {self.contrastive_metric(corrupted_logits).item():.4f}"
+        corrupted_baseline_metric = (corrupted_logit_diff - self.corrupted_baseline) / (
+            self.clean_baseline - self.corrupted_baseline
         )
+
+        print(f"clean baseline metric is: {clean_baseline_metric}")
+        print(f"corrupted baseline metric is: {corrupted_baseline_metric}")
+
+    def run_and_get_logit_diff(
+        self, tokens, answer_tokens_correct, answer_tokens_wrong
+    ):
+        n_prompts = len(tokens)
+        logit_diff_all = []
+        for batch in tqdm(range(0, n_prompts, self.cfg.batch_size)):
+
+            logits = self.model(tokens[batch : batch + self.cfg.batch_size])
+
+            # get logits difference between clean and corrupted
+            logit_diff = logits_to_logit_diff(
+                logits,
+                answer_tokens_correct[batch : batch + self.cfg.batch_size],
+                answer_tokens_wrong[batch : batch + self.cfg.batch_size],
+            ).item()
+            logit_diff_all.append(logit_diff)
+
+        logit_diff_all = sum(logit_diff_all) / len(
+            logit_diff_all
+        )  # mean logit diff of all batches
+        print(f"logit diff: {logit_diff_all:.4f}")
 
         # clear the cache to save space
-        del clean_logits
-        del corrupted_logits
+        print("before delete logits:")
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
+        del logits
+        gc.collect()
+        torch.cuda.empty_cache()
+        print("after delete logits:")
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
+        return logit_diff
 
     def contrastive_metric(
-        self,
-        logits: Float[Tensor, "batch seq d_vocab"],
+        self, logits: Float[Tensor, "batch seq d_vocab"], batch=None, batch_size=None
     ) -> Tensor:
         """
         Scale the logit difference between 0 and 1 (clean baseline will have logit diff =1, and corrupted baseline will have logit diff =0)
         :param logits:
         :return:
         """
-
-        return (
-            logits_to_logit_diff(
-                logits,
-                self.answer_tokens_clean_correct,
-                self.answer_tokens_clean_wrong,
-            )
-            - self.corrupted_baseline
-        ) / (self.clean_baseline - self.corrupted_baseline)
+        if batch is None:
+            return (
+                logits_to_logit_diff(
+                    logits,
+                    self.answer_tokens_clean_correct,
+                    self.answer_tokens_clean_wrong,
+                )
+                - self.corrupted_baseline
+            ) / (self.clean_baseline - self.corrupted_baseline)
+        else:
+            return (
+                logits_to_logit_diff(
+                    logits,
+                    self.answer_tokens_clean_correct[batch : batch + batch_size],
+                    self.answer_tokens_clean_wrong[batch : batch + batch_size],
+                )
+                - self.corrupted_baseline
+            ) / (self.clean_baseline - self.corrupted_baseline)
 
     def get_contrastive_activation_and_gradient_cache(self):
         """
         Get the activation cache and gradient cache for both the clean and corrupted prompts
         :return:
         """
-        clean_value, clean_cache, clean_grad_cache = get_cache_fwd_and_bwd(
-            self.model, self.contrastive_metric, self.prompt_tokens_clean
+
+        clean_cache, clean_grad_cache = self.run_and_cache_fwd_bwd_batch(
+            self.prompt_tokens_corrupted, cache_bwd=False
         )
-        corrupted_value, corrupted_cache, corrupted_grad_cache = get_cache_fwd_and_bwd(
-            self.model, self.contrastive_metric, self.prompt_tokens_corrupted
+
+        corrupted_cache, corrupted_grad_cache = self.run_and_cache_fwd_bwd_batch(
+            self.prompt_tokens_corrupted, cache_bwd=True
         )
-        self.clean_baseline = clean_value
-        self.corrupted_baseline = corrupted_value
+
         self.clean_cache = clean_cache
-        self.corrupted_cache = corrupted_cache
         self.clean_grad_cache = clean_grad_cache
+
+        self.corrupted_cache = corrupted_cache
         self.corrupted_grad_cache = corrupted_grad_cache
         print(
             "free(Gb):",
@@ -238,6 +288,27 @@ class AttributionPatching:
             "total(Gb):",
             torch.cuda.mem_get_info()[1] / 1000000000,
         )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
+    def run_and_cache_fwd_bwd_batch(self, prompt_tokens, cache_bwd=True):
+        cache_all, grad_cache_all = self.initialize_cache()
+        n_prompts = len(prompt_tokens)
+        for batch in tqdm(range(0, n_prompts, self.cfg.batch_size)):
+            contrastive_metric_batch = partial(
+                self.contrastive_metric, batch=batch, batch_size=self.cfg.batch_size
+            )
+            value, cache, grad_cache = get_cache_fwd_and_bwd(
+                self.model,
+                contrastive_metric_batch,
+                prompt_tokens[batch : batch + self.cfg.batch_size],
+                cache_bwd=cache_bwd,
+            )
+            for key in cache.keys():
+                torch.cat((cache_all[key], cache[key]), dim=0)
+            for key in grad_cache.keys():
+                torch.cat((grad_cache_all[key], grad_cache[key]), dim=0)
+
+        return cache_all, grad_cache_all
 
     def get_attention_attribution(
         self,
@@ -264,6 +335,8 @@ class AttributionPatching:
             "total(Gb):",
             torch.cuda.mem_get_info()[1] / 1000000000,
         )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
         return attention_attr
 
     def plot_attention_attr(
@@ -370,6 +443,7 @@ class AttributionPatching:
             "total(Gb):",
             torch.cuda.mem_get_info()[1] / 1000000000,
         )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
         return residual_attr, residual_labels
 
     def attr_patch_layer_out(
@@ -411,6 +485,8 @@ class AttributionPatching:
             "total(Gb):",
             torch.cuda.mem_get_info()[1] / 1000000000,
         )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
         return layer_out_attr, labels
 
     def attr_patch_head_out(
@@ -472,6 +548,8 @@ class AttributionPatching:
             "total(Gb):",
             torch.cuda.mem_get_info()[1] / 1000000000,
         )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
         return head_out_attr
 
     def attr_patch_head_kqv(self):
@@ -573,7 +651,7 @@ class AttributionPatching:
         start_labels = self.head_names
         end_labels = self.head_nams_qkv
 
-        # get teh corrupted gradient cache per head for kqv
+        # get the corrupted gradient cache per head for kqv
         full_vector_grad_late_node = self.get_full_vector_grad_late_node(
             self.corrupted_grad_cache
         )
@@ -598,6 +676,8 @@ class AttributionPatching:
             "total(Gb):",
             torch.cuda.mem_get_info()[1] / 1000000000,
         )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
         del self.clean_cache
         del self.clean_grad_cache
         del self.corrupted_cache
@@ -611,6 +691,8 @@ class AttributionPatching:
             "total(Gb):",
             torch.cuda.mem_get_info()[1] / 1000000000,
         )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
         # multiply the difference by the gradeint
         path_attr = einsum(
             "qkv layer_end batch pos head_end d_model, layer_start batch pos head_start d_model -> qkv layer_end head_end layer_start head_start pos",
@@ -778,10 +860,24 @@ class AttributionPatching:
             facet_labels=["Query", "Key", "Value"],
             return_fig=True,
         )
-        save_path = self.cfg.artifact_path() + os.sep + "attribution_patching"
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
-        fig.write_html(save_path + os.sep + "top_head_path_attribution_patching.html")
+        fig.write_html(
+            self.vis_path
+            + os.sep
+            + f"top_head_path_attribution_patching_clean_{self.clean_label}.html"
+        )
+
+    def initialize_cache(self):
+        # initialize cache
+        contrastive_metric_batch = partial(
+            self.contrastive_metric, batch=0, batch_size=1
+        )
+        value, cache, grad_cache = get_cache_fwd_and_bwd(
+            self.model,
+            contrastive_metric_batch,
+            self.prompt_tokens_clean[0 : 0 + 1],
+        )
+
+        return cache, grad_cache
 
 
 def run_with_cache_contrastive(model, positive_tokens, negative_tokens):
@@ -793,12 +889,23 @@ def run_with_cache_contrastive(model, positive_tokens, negative_tokens):
     return positive_logits, negative_logits, positive_cache, negative_cache
 
 
-def get_cache_fwd_and_bwd(model, metric, tokens):
+def run_model_contrastive(model, positive_tokens, negative_tokens):
+
+    # Run the model and cache all activations
+    positive_logits = model(positive_tokens)
+    negative_logits = model(negative_tokens)
+
+    return positive_logits, negative_logits
+
+
+def get_cache_fwd_and_bwd(model, metric, tokens, cache_bwd=True):
     # Always reset hook before you start -- good habit!
     model.reset_hooks()
 
     # (1) Create filter for what to cache
-    filter_not_qkv_input = lambda name: "_input" not in name
+    filter_not_qkv_input = (
+        lambda name: "_input" not in name and "attn" in name or "scale" in name
+    )
 
     # (2) Construct hook functions
 
@@ -816,7 +923,8 @@ def get_cache_fwd_and_bwd(model, metric, tokens):
 
     # (3) Construct hooks
     model.add_hook(filter_not_qkv_input, forward_cache_hook, "fwd")
-    model.add_hook(filter_not_qkv_input, backward_cache_hook, "bwd")
+    if cache_bwd:
+        model.add_hook(filter_not_qkv_input, backward_cache_hook, "bwd")
 
     # (4) Run forward pass
     logits = model(tokens)
@@ -830,6 +938,24 @@ def get_cache_fwd_and_bwd(model, metric, tokens):
     # Always reset hook after you are done! -- good habit!
     model.reset_hooks()
 
+    print("before delete logits:")
+    print(
+        "free(Gb):",
+        torch.cuda.mem_get_info()[0] / 1000000000,
+        "total(Gb):",
+        torch.cuda.mem_get_info()[1] / 1000000000,
+    )
+    del logits
+    gc.collect()
+    torch.cuda.empty_cache()
+    print("after delete logits:")
+    print(
+        "free(Gb):",
+        torch.cuda.mem_get_info()[0] / 1000000000,
+        "total(Gb):",
+        torch.cuda.mem_get_info()[1] / 1000000000,
+    )
+    print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
     return (
         value.item(),
         ActivationCache(cache, model),

@@ -8,7 +8,7 @@ from torch import Tensor
 from jaxtyping import Float, Int, Bool
 import einops
 import argparse
-from pipeline.configs.config_generation import Config
+from pipeline.configs.config_attribution_patching import Config
 from datasets import load_dataset
 import sae_lens
 import pysvelte
@@ -49,6 +49,7 @@ def parse_arguments():
         "--save_dir", type=str, required=False, default="D:\Data\deception"
     )
     parser.add_argument("--task_name", type=str, required=False, default="deception")
+    parser.add_argument("--clean_label", type=str, required=False, default="positive")
 
     return parser.parse_args()
 
@@ -58,6 +59,7 @@ def main(
     save_dir: str,
     task_name: str = "deception",
     contrastive_label: Tuple[str] = ("honest", "lying"),
+    clean_label="positive",
 ):
 
     # 0. Set configuration
@@ -68,6 +70,7 @@ def main(
         task_name=task_name,
         contrastive_label=contrastive_label,
         save_dir=save_dir,
+        clean_label=clean_label,
     )
     pprint.pp(cfg)
     artifact_dir = cfg.artifact_path()
@@ -92,10 +95,10 @@ def main(
 
     # Get baseline logit diff
     print("Get baseline logit difference:")
-    att_patch.get_baseline_logit_diff()
+    att_patch.get_contrastive_baseline_logit_diff()
 
     # Get activation and gradient cache!
-    print("Get baseline logit difference:")
+    print("Get activation and gradient cache:")
     att_patch.get_contrastive_activation_and_gradient_cache()
     # Get attribution patching on the accumulated residual
     # att_patch.attr_patch_residual()
@@ -131,7 +134,8 @@ if __name__ == "__main__":
     print(args.save_dir)
     print("task_name")
     print(args.task_name)
-
+    print("clean_label")
+    print(args.clean_label)
     if args.task_name == "deception":
         contrastive_label = ("honest", "lying")
     elif args.task_name == "jailbreak":
@@ -142,4 +146,5 @@ if __name__ == "__main__":
         save_dir=args.save_dir,
         task_name=args.task_name,
         contrastive_label=contrastive_label,
+        clean_label=args.clean_label,
     )
