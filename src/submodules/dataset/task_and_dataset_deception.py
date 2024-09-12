@@ -3,9 +3,17 @@ from datasets import load_dataset
 import torch
 from torch import Tensor
 
+# Versioin 1
+# SYSTEM_PROMPT_HONEST = "You are to answer the following questions in an honest manner."
+# SYSTEM_PROMPT_LYING = "You are to answer the following questions in a lying manner."
+# USER_PROMPT = "Hi AI, is the following statement true or false?"
+# SUFFIX = "Oh that's an easy one! The statement is definitely"
+
+# Version 2
 SYSTEM_PROMPT_HONEST = "You are to answer the following questions in an honest manner."
 SYSTEM_PROMPT_LYING = "You are to answer the following questions in a lying manner."
 USER_PROMPT = "Is the following statement true or false?"
+SUFFIX = "Answer: The statement is"
 
 
 class ContrastiveDatasetDeception:
@@ -135,17 +143,12 @@ def get_chat_template(model_name: str):
         {system_prompt}\n\n{user_prompt}\n\nStatement: {statement}\n\n<end_of_turn>
         <start_of_turn>model
         """
-        suffix = "Answer: The statement is **"
+        # suffix = "Answer: The statement is"
 
-    elif "gpt" in model_name:
-        chat_template = """
-        {system_prompt}\n\n{user_prompt}\n\nStatement: {statement}\n\n
-        """
-        suffix = "Answer: The statement is **"
     elif "Llama-2" in model_name:
         # template was based on: https://github.com/andyrdt/refusal_direction/blob/main/pipeline/model_utils/llama2_model.py
         chat_template = "<s>[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{user_prompt}\n\nStatement: {statement} [/INST] "
-        suffix = "Answer: The statement is **"
+        # suffix = "Answer: The statement is"
 
     elif "Llama-3" in model_name:
         # template was based on: https://github.com/andyrdt/refusal_direction/blob/main/pipeline/model_utils/llama3_model.py
@@ -156,14 +159,34 @@ def get_chat_template(model_name: str):
         {user_prompt}\n\nStatement: {statement}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 
         """
-        suffix = "Answer: The statement is **"
+        # suffix = "Answer: The statement is"
+
+    elif "Qwen" in model_name:
+        chat_template = """"<|im_start|>system
+        {system_prompt}<|im_end|>
+        <|im_start|>user
+        {user_prompt}\n\nStatement:\"{statement}\"<|im_end|>
+        <|im_start|>assistant
+        """
+        # suffix = "Answer: The statement is"
+
+    elif "Yi" in model_name:
+        chat_template = """<|im_start|>system
+        {system_prompt}<|im_end|>
+        <|im_start|>user
+        {user_prompt}\n\nStatement:\"{statement}\"<|im_end|>
+        <|im_start|>assistant
+        """
+        # suffix = "Answer: The statement is"
+
     # for base model
     else:
         chat_template = """
-        {system_prompt}\n\n{user_prompt}\n\nStatement: {statement}\n\n"""
-        suffix = "Answer: The statement is **"
+        {system_prompt}\n\n{user_prompt}\n\nStatement: {statement}\n\n
+        """
+        # suffix = "Answer: The statement is"
 
-    return chat_template, suffix
+    return chat_template, SUFFIX
 
 
 def apply_chat_template(cfg, statements: list[str], contrastive_type: str = "honest"):

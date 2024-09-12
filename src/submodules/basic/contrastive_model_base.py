@@ -109,15 +109,36 @@ class ContrastiveModelBase:
         )
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
 
-    def get_contrastive_activation_cache(self):
+    def run_contrastive_activation_cache(self):
         """
         Get the activation cache and gradient cache for both the positive and negative prompts
         :return:
         """
 
-        positive_cache = self.run_and_cache_batch(self.prompt_tokens_negative)
+        positive_cache = self.run_and_cache_batch(self.prompt_tokens_positive)
 
         negative_cache = self.run_and_cache_batch(self.prompt_tokens_negative)
+
+        self.positive_cache = positive_cache
+
+        self.negative_cache = negative_cache
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
+    def generate_and_contrastive_activation_cache(self):
+        """
+        Get the activation cache and gradient cache for both the positive and negative prompts
+        :return:
+        """
+
+        positive_cache = self.generate_and_cache_batch(contrastive_type="positive")
+
+        negative_cache = self.generate_and_cache_batch(contrastive_type="negative")
 
         self.positive_cache = positive_cache
 
@@ -134,16 +155,12 @@ class ContrastiveModelBase:
 
         # 1. Get access to cache
         activations_positive = [
-            self.positive_cache[utils.get_act_name("resid_post", l)][
-                :, pos, :
-            ].squeeze()
+            self.positive_cache[utils.get_act_name("resid_post", l)].squeeze()
             for l in range(self.model.cfg.n_layers)
         ]
 
         activations_negative = [
-            self.negative_cache[utils.get_act_name("resid_post", l)][
-                :, pos, :
-            ].squeeze()
+            self.negative_cache[utils.get_act_name("resid_post", l)].squeeze()
             for l in range(self.model.cfg.n_layers)
         ]
 
@@ -169,7 +186,7 @@ class ContrastiveModelBase:
 
     def run_and_cache_batch(self, prompt_tokens):
 
-        cache_all = self.initialize_cache()
+        cache_all = self.initialize_cache(prompt_tokens)
         n_prompts = len(prompt_tokens)
         for batch in tqdm(range(1, n_prompts, self.cfg.batch_size)):
 
@@ -187,15 +204,98 @@ class ContrastiveModelBase:
         torch.cuda.empty_cache()
         return cache_all
 
-    def initialize_cache(self):
-        # initialize cache
+    def generate_and_cache_batch(self, contrastive_type="positive"):
 
-        cache = run_and_cache(
-            self.model,
-            self.prompt_tokens_positive[0 : 0 + 1],
+        # 1. Gen data
+        if contrastive_type == "positive":
+            prompt_tokens = self.prompt_tokens_positive
+            prompts = self.dataset.prompts_positive
+        else:
+            prompt_tokens = self.prompt_tokens_negative
+            prompts = self.dataset.prompts_negative
+
+        statements = self.dataset.statements
+        labels = self.dataset.answers_positive_correct
+        # 2. Generation intialization
+        completions = []
+        output, cache_all = self.initialize_cache(
+            prompt_tokens, mode="generate", max_new_tokens=self.cfg.max_new_tokens
         )
+        # Construct generation result for saving (one batch)
+        generation_toks = output[:, prompt_tokens.shape[1] :]
+        completions.append(
+            {
+                "prompt": prompts[0],
+                "statement": statements[0],
+                "response": self.model.tokenizer.decode(
+                    generation_toks[0], skip_special_tokens=True
+                ).strip(),
+                "label": labels[0],
+                "ID": 0,
+            }
+        )
+        # 3. Main loop
+        n_prompts = len(prompt_tokens)
+        for batch in tqdm(range(1, n_prompts, self.cfg.batch_size)):
 
-        return cache
+            output, cache = generate_and_cache(
+                self.model,
+                prompt_tokens[batch : batch + self.cfg.batch_size],
+                max_new_tokens=self.cfg.max_new_tokens,
+            )
+
+            # concatenate cache
+            for key in cache.keys():
+                cache_all.cache_dict[key] = torch.cat(
+                    (cache_all[key], cache[key]), dim=0
+                )
+
+            # Construct generation result for saving (one batch)
+            generation_toks = output[:, prompt_tokens.shape[1] :]
+            for generation_idx, generation in enumerate(generation_toks):
+                completions.append(
+                    {
+                        "statement": statements[batch + generation_idx],
+                        "response": self.model.tokenizer.decode(
+                            generation, skip_special_tokens=True
+                        ).strip(),
+                        "label": labels[batch + generation_idx],
+                        "ID": batch + generation_idx,
+                    }
+                )
+
+        # 3. Save completion
+        completion_path = os.path.join(self.cfg.artifact_path(), "completions")
+        if not os.path.exists(completion_path):
+            os.makedirs(completion_path)
+        with open(
+            completion_path
+            + os.sep
+            + f"{self.cfg.model_alias}_completions_{contrastive_type}.json",
+            "w",
+        ) as f:
+            json.dump(completions, f, indent=4)
+
+        return cache_all
+
+    def initialize_cache(self, prompt_tokens, mode="run", max_new_tokens=100):
+
+        # initialize cache
+        if mode == "run":
+            cache = run_and_cache(
+                self.model,
+                prompt_tokens[0 : 0 + 1],
+            )
+            return cache
+        else:
+            output, cache = generate_and_cache(
+                self.model,
+                prompt_tokens[0 : 0 + 1],
+                max_new_tokens=max_new_tokens,
+                do_sample=self.cfg.do_sample,
+            )
+
+            return output, cache
 
 
 def run_with_cache_contrastive(model, positive_tokens, negative_tokens):
@@ -229,7 +329,7 @@ def run_and_cache(model, tokens):
     cache = {}
 
     def forward_cache_hook(act, hook):
-        cache[hook.name] = act.detach()
+        cache[hook.name] = act[:, -1, :].detach()
 
     # (3) Construct hooks
     model.add_hook(activation_filter, forward_cache_hook, "fwd")
@@ -241,3 +341,51 @@ def run_and_cache(model, tokens):
     model.reset_hooks()
 
     return ActivationCache(cache, model)
+
+
+def generate_and_cache(model, tokens, max_new_tokens=100, do_sample=False):
+    # Always reset hook before you start -- good habit!
+    model.reset_hooks()
+
+    # (1) Create filter for what to cache
+    activation_filter = lambda name: "resid_post" in name
+
+    # (2) Construct hook functions
+
+    # forward cache hook: cache the activation during forward run
+    cache = {}
+
+    def forward_cache_hook(act, hook, len_prompt):
+        # only cache generation result
+        # print(act.shape)
+        if act.shape[1] == len_prompt:
+            cache[hook.name] = act[:, -1, :].detach()
+
+    # (3) Construct hooks
+    temp_hook = partial(forward_cache_hook, len_prompt=tokens.shape[1])
+
+    # (4) Run forward pass
+    model.add_hook(activation_filter, temp_hook, "fwd")
+
+    if do_sample:
+        output = model.generate(
+            tokens,
+            max_new_tokens=max_new_tokens,
+            do_sample=True,
+            temperature=1.0,
+            top_p=0.1,
+            freq_penalty=1.0,
+            stop_at_eos=False,
+            prepend_bos=model.cfg.default_prepend_bos,
+        )
+    else:
+        output = model.generate(
+            tokens,
+            max_new_tokens=max_new_tokens,
+            do_sample=False,
+        )
+
+    # Always reset hook after you are done! -- good habit!
+    model.reset_hooks()
+
+    return output, ActivationCache(cache, model)

@@ -49,6 +49,7 @@ def parse_arguments():
         "--save_dir", type=str, required=False, default="D:\Data\deception"
     )
     parser.add_argument("--task_name", type=str, required=False, default="deception")
+    parser.add_argument("--do_sample", type=bool, required=False, default=True)
 
     return parser.parse_args()
 
@@ -59,6 +60,7 @@ def main(
     task_name: str = "deception",
     contrastive_type: Tuple[str] = ("honest", "lying"),
     answer_type: Tuple[str] = ("true", "false"),
+    do_sample: bool = False,
 ):
 
     # 0. Set configuration
@@ -70,16 +72,16 @@ def main(
         contrastive_type=contrastive_type,
         answer_type=answer_type,
         save_dir=save_dir,
+        do_sample=do_sample,
     )
     pprint.pp(cfg)
-    artifact_dir = cfg.artifact_path()
-    save_path = os.path.join(artifact_dir, "att_patch")
 
     # 1. Load model
     model = load_model(cfg)
     model.set_use_attn_result(True)
-    model.cfg.use_attn_in = True
-    model.cfg.use_hook_mlp_in = True
+    # model.cfg.use_attn_in = True
+    # model.cfg.use_hook_mlp_in = True
+    torch.set_grad_enabled(False)  # save memory
 
     # 2. Load data
     print("loading data")
@@ -92,11 +94,13 @@ def main(
     print("Initializing attribution patching:")
     att_patch = ContrastiveModelBase(cfg, model, dataset)
 
-    # Get activation and gradient cache!
-    print("Get activation and gradient cache:")
-    att_patch.get_contrastive_activation_cache()
+    # Generate and cache
+    print("Generate and cache:")
+    att_patch.generate_and_contrastive_activation_cache()
+    # print("Run and cache:")
+    # att_patch.generate_and_contrastive_activation_cache()
 
-    # get pca on the residual stream
+    # Plot pca on the residual stream
     att_patch.get_contrastive_activation_pca()
 
     print("done")
@@ -114,17 +118,23 @@ if __name__ == "__main__":
     print(args.save_dir)
     print("task_name")
     print(args.task_name)
+    print("do_sample")
+    print(args.do_sample)
 
     if args.task_name == "deception":
         contrastive_type = ("honest", "lying")
         answer_type = ("true", "false")
     elif args.task_name == "jailbreak":
         contrastive_type = ("HHH", args.jailbreak)
-
+    print("answer_type")
+    print(answer_type)
+    print("contrastive_type")
+    print(contrastive_type)
     main(
         model_path=args.model_path,
         save_dir=args.save_dir,
         task_name=args.task_name,
         contrastive_type=contrastive_type,
         answer_type=answer_type,
+        do_sample=args.do_sample,
     )

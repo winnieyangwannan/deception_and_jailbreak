@@ -27,8 +27,8 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
     contrastive_type = cfg.contrastive_type
     answer_type = cfg.answer_type
 
-    labels_all = dataset.labels_positive_correct + dataset.labels_negative_correct
-    answers_all = dataset.answers_positive_correct + dataset.answers_negative_correct
+    labels_all = dataset.labels_positive_correct + dataset.labels_positive_correct
+    answers_all = dataset.answers_positive_correct + dataset.answers_positive_correct
     symbol_sequence = []
     for data in labels_all:
         if data == 0:
@@ -86,7 +86,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
                         showlegend=False,
                         marker=dict(
                             symbol=symbol_sequence[n_contrastive_data:],
-                            size=5,
+                            size=8,
                             line=dict(width=1, color="darkslategrey"),
                             color="dodgerblue",
                         ),
