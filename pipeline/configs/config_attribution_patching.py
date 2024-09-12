@@ -19,10 +19,11 @@ class Config:
     model_alias: str
     task_name: str
     save_dir: str
-    contrastive_label: str
+    contrastive_type: str
+    answer_type: str
     clean_label: str
     dtype: str = "bfloat16"  # "bfloat16" or "default"
-    n_train: int = 100
+    n_train: int = 8
     n_test: int = 50
     batch_size: int = 4
     max_new_tokens: int = 2

@@ -1,4 +1,4 @@
-from pipeline.configs.config_attribution_patching import Config
+from pipeline.configs.config_generation import Config
 import os
 import sys
 import random
@@ -24,8 +24,8 @@ from src.submodules.dataset.task_and_dataset_deception import (
     ContrastiveDatasetDeception,
     tokenize_prompts_and_answers,
 )
-from src.submodules.attribution_patching.attribution_patching import (
-    AttributionPatching,
+from src.submodules.basic.contrastive_model_base import (
+    ContrastiveModelBase,
 )
 from src.submodules.model.load_model import load_model
 from src.utils.utils import logits_to_logit_diff
@@ -49,7 +49,6 @@ def parse_arguments():
         "--save_dir", type=str, required=False, default="D:\Data\deception"
     )
     parser.add_argument("--task_name", type=str, required=False, default="deception")
-    parser.add_argument("--clean_label", type=str, required=False, default="positive")
 
     return parser.parse_args()
 
@@ -59,7 +58,6 @@ def main(
     save_dir: str,
     task_name: str = "deception",
     contrastive_type: Tuple[str] = ("honest", "lying"),
-    clean_label="positive",
     answer_type: Tuple[str] = ("true", "false"),
 ):
 
@@ -72,7 +70,6 @@ def main(
         contrastive_type=contrastive_type,
         answer_type=answer_type,
         save_dir=save_dir,
-        clean_label=clean_label,
     )
     pprint.pp(cfg)
     artifact_dir = cfg.artifact_path()
@@ -93,37 +90,15 @@ def main(
 
     # Initiate attribution patching
     print("Initializing attribution patching:")
-    att_patch = AttributionPatching(cfg, model, dataset)
-
-    # Get baseline logit diff
-    print("Get baseline logit difference:")
-    att_patch.get_contrastive_baseline_logit_diff()
+    att_patch = ContrastiveModelBase(cfg, model, dataset)
 
     # Get activation and gradient cache!
     print("Get activation and gradient cache:")
-    att_patch.get_contrastive_activation_and_gradient_cache()
-    # Get attribution patching on the accumulated residual
-    # att_patch.attr_patch_residual()
-    # Get attribution patching on the decomposed residual
-    # att_patch.attr_patch_layer_out()
+    att_patch.get_contrastive_activation_cache()
 
     # get pca on the residual stream
-    att_patch.get_contrastive_cache_plot_pca()
+    att_patch.get_contrastive_activation_pca()
 
-    # Get attention attribution patching on the decomposed head output
-    print("Get attribution patching per head:")
-    head_out_attr = att_patch.attr_patch_head_out()
-
-    # Get attention attribution patching on the decomposed head output for k, q, v and z
-    # att_patch.attr_patch_head_kqv()
-
-    # Get path attribution patching
-    print("Get attribution patching path per head:")
-    path_attr = att_patch.attr_patch_head_path()
-
-    # Plot top head
-    print("Plot top head:")
-    att_patch.top_heads_plot_path_attr(head_out_attr, path_attr)
     print("done")
 
 
@@ -132,15 +107,14 @@ if __name__ == "__main__":
     args = parse_arguments()
     print(sae_lens.__version__)
     print(sae_lens.__version__)
-    print("Run attribution patching\n\n")
+    print("run_contrastive_basic\n\n")
     print("model_path")
     print(args.model_path)
     print("save_dir")
     print(args.save_dir)
     print("task_name")
     print(args.task_name)
-    print("clean_label")
-    print(args.clean_label)
+
     if args.task_name == "deception":
         contrastive_type = ("honest", "lying")
         answer_type = ("true", "false")
@@ -152,6 +126,5 @@ if __name__ == "__main__":
         save_dir=args.save_dir,
         task_name=args.task_name,
         contrastive_type=contrastive_type,
-        clean_label=args.clean_label,
         answer_type=answer_type,
     )

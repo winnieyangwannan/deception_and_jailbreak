@@ -71,10 +71,10 @@ class ContrastiveDatasetDeception:
 
     def construct_contrastive_prompts(self):
         prompts_positive = apply_chat_template(
-            self.cfg, self.statements, contrastive_label=self.cfg.contrastive_label[0]
+            self.cfg, self.statements, contrastive_type=self.cfg.contrastive_type[0]
         )
         prompts_negative = apply_chat_template(
-            self.cfg, self.statements, contrastive_label=self.cfg.contrastive_label[1]
+            self.cfg, self.statements, contrastive_type=self.cfg.contrastive_type[1]
         )
         (
             answers_negative_correct,
@@ -166,19 +166,19 @@ def get_chat_template(model_name: str):
     return chat_template, suffix
 
 
-def apply_chat_template(cfg, statements: list[str], contrastive_label: str = "honest"):
+def apply_chat_template(cfg, statements: list[str], contrastive_type: str = "honest"):
     """
     Construct the full chat prompt by adding chat template for different models.
 
     :param cfg:
     :param statements:
-    :param contrastive_label: either "honest" or "lying"
+    :param contrastive_type: either "honest" or "lying"
     :return: the full prompt
     """
 
     chat_template, suffix = get_chat_template(cfg.model_alias)
 
-    if contrastive_label == "honest":
+    if contrastive_type == "honest":
         prompt = [
             chat_template.format(
                 system_prompt=SYSTEM_PROMPT_HONEST,
@@ -188,7 +188,7 @@ def apply_chat_template(cfg, statements: list[str], contrastive_label: str = "ho
             + suffix
             for statement in statements
         ]
-    elif contrastive_label == "lying":
+    elif contrastive_type == "lying":
         prompt = [
             chat_template.format(
                 system_prompt=SYSTEM_PROMPT_LYING,

@@ -36,7 +36,7 @@ from rich.table import Table, Column
 from rich import print as rprint
 from src.utils.plotly_utils import line, scatter, bar
 from src.utils.neel_plotly_utils import imshow
-
+from src.submodules.activation_pca.activation_pca import get_pca_and_plot
 import plotly.io as pio
 import circuitsvis as cv  # for visualize attetnion pattern
 
@@ -215,6 +215,7 @@ class AttributionPatching:
         print(f"logit diff: {logit_diff_all:.4f}")
 
         # clear the cache to save space
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
         print("before delete logits:")
         print(
             "free(Gb):",
@@ -290,10 +291,43 @@ class AttributionPatching:
         )
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
 
+    def get_contrastive_cache_plot_pca(self, pos=-1):
+
+        # 1. Get access to cache
+        activations_positive = [
+            self.clean_cache[utils.get_act_name("resid_post", l)][:, pos, :].squeeze()
+            for l in range(self.model.cfg.n_layers)
+        ]
+
+        activations_negative = [
+            self.corrupted_cache[utils.get_act_name("resid_post", l)][
+                :, pos, :
+            ].squeeze()
+            for l in range(self.model.cfg.n_layers)
+        ]
+
+        # stack the list of activations
+        activations_positive = torch.stack(
+            activations_positive
+        )  # shape = [batch,d_model]
+        activations_negative = torch.stack(activations_negative)
+
+        # 2. Get pca and plot
+        fig = get_pca_and_plot(
+            self.cfg, activations_positive, activations_negative, self.dataset
+        )
+        pca_path = os.path.join(self.cfg.artifact_path(), "pca")
+        if not os.path.exists(pca_path):
+            os.makedirs(pca_path)
+        fig.write_html(pca_path + os.sep + f"{self.cfg.model_alias}_pca.html")
+        pio.write_image(
+            fig, pca_path + os.sep + f"{self.cfg.model_alias}_pca.png", scale=6
+        )
+
     def run_and_cache_fwd_bwd_batch(self, prompt_tokens, cache_bwd=True):
         cache_all, grad_cache_all = self.initialize_cache()
         n_prompts = len(prompt_tokens)
-        for batch in tqdm(range(0, n_prompts, self.cfg.batch_size)):
+        for batch in tqdm(range(1, n_prompts, self.cfg.batch_size)):
             contrastive_metric_batch = partial(
                 self.contrastive_metric, batch=batch, batch_size=self.cfg.batch_size
             )
@@ -304,10 +338,17 @@ class AttributionPatching:
                 cache_bwd=cache_bwd,
             )
             for key in cache.keys():
-                torch.cat((cache_all[key], cache[key]), dim=0)
+                cache_all.cache_dict[key] = torch.cat(
+                    (cache_all[key], cache[key]), dim=0
+                )
             for key in grad_cache.keys():
-                torch.cat((grad_cache_all[key], grad_cache[key]), dim=0)
-
+                grad_cache_all.cache_dict[key] = torch.cat(
+                    (grad_cache_all[key], grad_cache[key]), dim=0
+                )
+        del cache
+        del grad_cache
+        gc.collect()
+        torch.cuda.empty_cache()
         return cache_all, grad_cache_all
 
     def get_attention_attribution(
@@ -903,8 +944,8 @@ def get_cache_fwd_and_bwd(model, metric, tokens, cache_bwd=True):
     model.reset_hooks()
 
     # (1) Create filter for what to cache
-    filter_not_qkv_input = (
-        lambda name: "_input" not in name and "attn" in name or "scale" in name
+    filter_not_qkv_input = lambda name: "_input" not in name and (
+        "attn" in name or "scale" in name or "resid_post" in name
     )
 
     # (2) Construct hook functions
@@ -938,6 +979,7 @@ def get_cache_fwd_and_bwd(model, metric, tokens, cache_bwd=True):
     # Always reset hook after you are done! -- good habit!
     model.reset_hooks()
 
+    print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
     print("before delete logits:")
     print(
         "free(Gb):",

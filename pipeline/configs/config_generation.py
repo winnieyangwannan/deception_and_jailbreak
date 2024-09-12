@@ -6,24 +6,16 @@ from typing import Tuple
 
 @dataclass
 class Config:
-    # model_alias: str
-    # model_path: str
-    # n_train: int = 64
-    # n_test: int = 32
-    # data_category: str = "facts"
-    # batch_size = 16
-    # source_layer = 14
-    # intervention = "direction ablation"
-    # target_layer: int = None
     model_path: str
     model_alias: str
     task_name: str
     save_dir: str
-    contrastive_label: str
+    contrastive_type: str
+    answer_type: str
     dtype: str = "bfloat16"  # "bfloat16" or "default"
-    n_train: int = 4
+    n_train: int = 100
     n_test: int = 50
-    batch_size: int = 2
+    batch_size: int = 5
     max_new_tokens: int = 2
     # for generation_trajectory
 
