@@ -38,6 +38,8 @@ import circuitsvis as cv  # for visualize attetnion pattern
 
 from IPython.display import display, HTML  # for visualize attetnion pattern
 
+torch.set_grad_enabled(False)  # save memory
+
 
 def parse_arguments():
     """Parse model path argument from command line."""
@@ -49,7 +51,7 @@ def parse_arguments():
         "--save_dir", type=str, required=False, default="D:\Data\deception"
     )
     parser.add_argument("--task_name", type=str, required=False, default="deception")
-    parser.add_argument("--do_sample", type=bool, required=False, default=True)
+    parser.add_argument("--do_sample", type=bool, required=False, default=False)
 
     return parser.parse_args()
 
@@ -97,6 +99,10 @@ def main(
     # Generate and cache
     print("Generate and cache:")
     att_patch.generate_and_contrastive_activation_cache()
+
+    # Evaluate generation results
+    print("Evaluate generation results:")
+    att_patch.evaluate_deception()
     # print("Run and cache:")
     # att_patch.generate_and_contrastive_activation_cache()
 

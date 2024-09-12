@@ -41,6 +41,10 @@ import plotly.io as pio
 import circuitsvis as cv  # for visualize attetnion pattern
 
 from IPython.display import display, HTML  # for visualize attetnion pattern
+from src.submodules.evaluations.evaluate_deception import (
+    evaluate_generation_deception,
+    plot_lying_honest_performance,
+)
 
 
 class ContrastiveModelBase:
@@ -136,9 +140,17 @@ class ContrastiveModelBase:
         :return:
         """
 
-        positive_cache = self.generate_and_cache_batch(contrastive_type="positive")
+        positive_cache = self.generate_and_cache_batch(
+            self.dataset.prompts_positive,
+            self.prompt_tokens_positive,
+            self.cfg.contrastive_type[0],
+        )
 
-        negative_cache = self.generate_and_cache_batch(contrastive_type="negative")
+        negative_cache = self.generate_and_cache_batch(
+            self.dataset.prompts_negative,
+            self.prompt_tokens_negative,
+            self.cfg.contrastive_type[1],
+        )
 
         self.positive_cache = positive_cache
 
@@ -204,18 +216,12 @@ class ContrastiveModelBase:
         torch.cuda.empty_cache()
         return cache_all
 
-    def generate_and_cache_batch(self, contrastive_type="positive"):
+    def generate_and_cache_batch(self, prompts, prompt_tokens, contrastive_type):
 
         # 1. Gen data
-        if contrastive_type == "positive":
-            prompt_tokens = self.prompt_tokens_positive
-            prompts = self.dataset.prompts_positive
-        else:
-            prompt_tokens = self.prompt_tokens_negative
-            prompts = self.dataset.prompts_negative
-
         statements = self.dataset.statements
         labels = self.dataset.answers_positive_correct
+
         # 2. Generation intialization
         completions = []
         output, cache_all = self.initialize_cache(
@@ -296,6 +302,15 @@ class ContrastiveModelBase:
             )
 
             return output, cache
+
+    def evaluate_deception(self):
+        completions_honest = evaluate_generation_deception(
+            self.cfg, contrastive_type=self.cfg.contrastive_type[0]
+        )
+        completions_lying = evaluate_generation_deception(
+            self.cfg, contrastive_type=self.cfg.contrastive_type[1]
+        )
+        plot_lying_honest_performance(self.cfg, completions_honest, completions_lying)
 
 
 def run_with_cache_contrastive(model, positive_tokens, negative_tokens):
