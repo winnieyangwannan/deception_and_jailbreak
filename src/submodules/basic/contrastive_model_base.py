@@ -11,7 +11,7 @@ import os
 from typing_extensions import Literal
 from tqdm import tqdm
 from functools import partial
-
+from src.utils.hook_utils import add_hooks
 import argparse
 from pipeline.configs.config_generation import Config
 from datasets import load_dataset
@@ -45,9 +45,11 @@ from src.submodules.evaluations.evaluate_deception import (
     evaluate_generation_deception,
     plot_lying_honest_performance,
 )
+from src.submodules.stage_statistics.stage_statistics import get_state_quantification
+from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 
 
-class ContrastiveModelBase:
+class ContrastiveBase:
     def __init__(self, cfg, model, dataset):
         self.cfg = cfg
         self.model = model
@@ -60,7 +62,9 @@ class ContrastiveModelBase:
             self.prompt_tokens_positive,
             self.answer_tokens_positive_correct,
             self.answer_tokens_positive_wrong,
+            self.prompt_masks_positive,
         ) = tokenize_prompts_and_answers(
+            cfg,
             model,
             self.dataset.prompts_positive,
             self.dataset.answers_positive_correct,
@@ -70,7 +74,9 @@ class ContrastiveModelBase:
             self.prompt_tokens_negative,
             self.answer_tokens_negative_correct,
             self.answer_tokens_negative_wrong,
+            self.prompt_masks_negative,
         ) = tokenize_prompts_and_answers(
+            cfg,
             model,
             self.dataset.prompts_negative,
             self.dataset.answers_negative_correct,
@@ -79,24 +85,6 @@ class ContrastiveModelBase:
 
         self.positive_cache = None
         self.negative_cache = None
-
-        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
-        print("test positive prompt:")
-        utils.test_prompt(
-            self.dataset.prompts_positive[0],
-            self.dataset.answers_positive_correct[0],
-            self.model,
-            prepend_bos=True,
-        )
-
-        print("test negative prompt:")
-        utils.test_prompt(
-            self.dataset.prompts_negative[0],
-            self.dataset.answers_negative_correct[0],
-            self.model,
-            prepend_bos=True,
-        )
-        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
 
         # save the visualization
         save_path = self.cfg.artifact_path()
@@ -143,12 +131,14 @@ class ContrastiveModelBase:
         positive_cache = self.generate_and_cache_batch(
             self.dataset.prompts_positive,
             self.prompt_tokens_positive,
+            self.prompt_masks_positive,
             self.cfg.contrastive_type[0],
         )
 
         negative_cache = self.generate_and_cache_batch(
             self.dataset.prompts_negative,
             self.prompt_tokens_negative,
+            self.prompt_masks_negative,
             self.cfg.contrastive_type[1],
         )
 
@@ -176,10 +166,8 @@ class ContrastiveModelBase:
             for l in range(self.model.cfg.n_layers)
         ]
 
-        # stack the list of activations
-        activations_positive = torch.stack(
-            activations_positive
-        )  # shape = [batch,d_model]
+        # stack the list of activations # shape = [batch,d_model]
+        activations_positive = torch.stack(activations_positive)
         activations_negative = torch.stack(activations_negative)
 
         # 2. Get pca and plot
@@ -195,6 +183,20 @@ class ContrastiveModelBase:
         pio.write_image(
             fig, pca_path + os.sep + f"{self.cfg.model_alias}_pca.png", scale=6
         )
+
+        # 4. Save activations
+        activations = {
+            "activations_positive": activations_positive,
+            "activations_negative": activations_negative,
+            "labels": self.dataset.labels_positive_correct,
+        }
+        activation_path = os.path.join(self.cfg.artifact_path(), "activations")
+        if not os.path.exists(activation_path):
+            os.makedirs(activation_path)
+        with open(
+            activation_path + os.sep + f"{self.cfg.model_alias}_activations.pkl", "wb"
+        ) as f:
+            pickle.dump(activations, f)
 
     def run_and_cache_batch(self, prompt_tokens):
 
@@ -216,7 +218,9 @@ class ContrastiveModelBase:
         torch.cuda.empty_cache()
         return cache_all
 
-    def generate_and_cache_batch(self, prompts, prompt_tokens, contrastive_type):
+    def generate_and_cache_batch(
+        self, prompts, prompt_tokens, prompt_masks, contrastive_type
+    ):
 
         # 1. Gen data
         statements = self.dataset.statements
@@ -225,7 +229,10 @@ class ContrastiveModelBase:
         # 2. Generation intialization
         completions = []
         output, cache_all = self.initialize_cache(
-            prompt_tokens, mode="generate", max_new_tokens=self.cfg.max_new_tokens
+            prompt_tokens,
+            prompt_masks,
+            mode="generate",
+            max_new_tokens=self.cfg.max_new_tokens,
         )
         # Construct generation result for saving (one batch)
         generation_toks = output[:, prompt_tokens.shape[1] :]
@@ -245,9 +252,10 @@ class ContrastiveModelBase:
         for batch in tqdm(range(1, n_prompts, self.cfg.batch_size)):
 
             output, cache = generate_and_cache(
+                self.cfg,
                 self.model,
                 prompt_tokens[batch : batch + self.cfg.batch_size],
-                max_new_tokens=self.cfg.max_new_tokens,
+                prompt_masks[batch : batch + self.cfg.batch_size],
             )
 
             # concatenate cache
@@ -284,7 +292,9 @@ class ContrastiveModelBase:
 
         return cache_all
 
-    def initialize_cache(self, prompt_tokens, mode="run", max_new_tokens=100):
+    def initialize_cache(
+        self, prompt_tokens, prompt_masks, mode="run", max_new_tokens=100
+    ):
 
         # initialize cache
         if mode == "run":
@@ -294,12 +304,18 @@ class ContrastiveModelBase:
             )
             return cache
         else:
-            output, cache = generate_and_cache(
-                self.model,
-                prompt_tokens[0 : 0 + 1],
-                max_new_tokens=max_new_tokens,
-                do_sample=self.cfg.do_sample,
-            )
+            if self.cfg.transformer_lens:
+
+                output, cache = generate_and_cache(
+                    self.cfg, self.model, prompt_tokens[0 : 0 + 1], prompt_masks
+                )
+            else:
+                output, cache = generate_and_cache(
+                    self.cfg,
+                    self.model,
+                    prompt_tokens[0 : 0 + 1],
+                    prompt_masks[0 : 0 + 1],
+                )
 
             return output, cache
 
@@ -311,6 +327,32 @@ class ContrastiveModelBase:
             self.cfg, contrastive_type=self.cfg.contrastive_type[1]
         )
         plot_lying_honest_performance(self.cfg, completions_honest, completions_lying)
+
+    def get_stage_statistics(self):
+        # 1. Get access to cache
+        activations_positive = [
+            self.positive_cache[utils.get_act_name("resid_post", l)].squeeze()
+            for l in range(self.model.cfg.n_layers)
+        ]
+
+        activations_negative = [
+            self.negative_cache[utils.get_act_name("resid_post", l)].squeeze()
+            for l in range(self.model.cfg.n_layers)
+        ]
+
+        # stack the list of activations # shape = [batch,d_model]
+        activations_positive = torch.stack(activations_positive)
+        activations_negative = torch.stack(activations_negative)
+        labels = self.dataset.labels_positive_correct
+
+        # 2. get stage statistics
+        get_state_quantification(
+            self.cfg,
+            activations_positive,
+            activations_negative,
+            labels,
+            save_plot=True,
+        )
 
 
 def run_with_cache_contrastive(model, positive_tokens, negative_tokens):
@@ -343,11 +385,13 @@ def run_and_cache(model, tokens):
     # forward cache hook: cache the activation during forward run
     cache = {}
 
-    def forward_cache_hook(act, hook):
+    def forward_cache_hook(act, hook, pos):
         cache[hook.name] = act[:, -1, :].detach()
 
+    temp_hook = partial(forward_cache_hook, pos=-1)
+
     # (3) Construct hooks
-    model.add_hook(activation_filter, forward_cache_hook, "fwd")
+    model.add_hook(activation_filter, temp_hook, "fwd")
 
     # (4) Run forward pass
     model(tokens)
@@ -358,9 +402,12 @@ def run_and_cache(model, tokens):
     return ActivationCache(cache, model)
 
 
-def generate_and_cache(model, tokens, max_new_tokens=100, do_sample=False):
+def generate_and_cache(cfg, model, tokens, masks):
+    max_new_tokens = cfg.max_new_tokens
+    do_sample = cfg.do_sample
     # Always reset hook before you start -- good habit!
-    model.reset_hooks()
+    if cfg.transformer_lens:
+        model.reset_hooks()
 
     # (1) Create filter for what to cache
     activation_filter = lambda name: "resid_post" in name
@@ -370,29 +417,85 @@ def generate_and_cache(model, tokens, max_new_tokens=100, do_sample=False):
     # forward cache hook: cache the activation during forward run
     cache = {}
 
-    def forward_cache_hook(act, hook, len_prompt):
+    def forward_cache_hook(act, hook, len_prompt, pos):
         # only cache generation result
         # print(act.shape)
         if act.shape[1] == len_prompt:
-            cache[hook.name] = act[:, -1, :].detach()
+            cache[hook.name] = act[:, pos, :].detach()
+
+    def get_generation_cache_activation_post_hook(cache, layer, len_prompt, pos):
+        def hook_fn(module, input, output):
+            # nonlocal cache, layer, positions, batch_id, batch_size, len_prompt
+
+            if isinstance(output, tuple):
+                activation: Float[Tensor, "batch_size seq_len d_model"] = output[0]
+            else:
+                activation: Float[Tensor, "batch_size seq_len d_model"] = output
+
+            # only cache the last token of the prompt not the generated answer
+            if activation.shape[1] == len_prompt:
+                cache[layer, :, :] = activation[:, pos, :]
+
+            if isinstance(output, tuple):
+                return (activation, *output[1:])
+            else:
+                return activation
+
+        return hook_fn
 
     # (3) Construct hooks
-    temp_hook = partial(forward_cache_hook, len_prompt=tokens.shape[1])
+
+    block_modules = model.model_block_modules
+    n_layers = model.model.config.num_hidden_layers
+    d_model = model.model.config.hidden_size
+    n_samples = len(tokens)
+    len_prompt = tokens.shape[1]
+    activations = torch.zeros(
+        (n_layers, n_samples, d_model), dtype=torch.float64, device=model.device
+    )
+    fwd_hook = [
+        (
+            block_modules[layer],
+            get_generation_cache_activation_post_hook(
+                activations, layer, len_prompt=len_prompt, pos=-1
+            ),
+        )
+        for layer in range(n_layers)
+    ]
 
     # (4) Run forward pass
-    model.add_hook(activation_filter, temp_hook, "fwd")
-
     if do_sample:
-        output = model.generate(
-            tokens,
-            max_new_tokens=max_new_tokens,
-            do_sample=True,
-            temperature=1.0,
-            top_p=0.1,
-            freq_penalty=1.0,
-            stop_at_eos=False,
-            prepend_bos=model.cfg.default_prepend_bos,
-        )
+        if cfg.transformer_lens:
+
+            temp_hook = partial(forward_cache_hook, len_prompt=tokens.shape[1], pos=-1)
+            model.add_hook(activation_filter, temp_hook, "fwd")
+            output = model.generate(
+                tokens,
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=1.0,
+                top_p=0.1,
+                freq_penalty=1.0,
+                stop_at_eos=False,
+                prepend_bos=model.cfg.default_prepend_bos,
+            )
+        else:
+            generation_config = GenerationConfig(
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=1.0,
+                top_p=0.1,
+                repetition_penalty=1.0,
+            )
+            with add_hooks(module_forward_pre_hooks=[], module_forward_hooks=fwd_hook):
+
+                output = model.model.generate(
+                    input_ids=tokens,
+                    attention_mask=masks,
+                    max_new_tokens=max_new_tokens,
+                    generation_config=generation_config,
+                )
+
     else:
         output = model.generate(
             tokens,
@@ -401,6 +504,7 @@ def generate_and_cache(model, tokens, max_new_tokens=100, do_sample=False):
         )
 
     # Always reset hook after you are done! -- good habit!
-    model.reset_hooks()
+    if cfg.transformer_lens:
+        model.reset_hooks()
 
     return output, ActivationCache(cache, model)

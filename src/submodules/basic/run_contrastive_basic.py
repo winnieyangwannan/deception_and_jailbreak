@@ -25,7 +25,7 @@ from src.submodules.dataset.task_and_dataset_deception import (
     tokenize_prompts_and_answers,
 )
 from src.submodules.basic.contrastive_model_base import (
-    ContrastiveModelBase,
+    ContrastiveBase,
 )
 from src.submodules.model.load_model import load_model
 from src.utils.utils import logits_to_logit_diff
@@ -42,8 +42,8 @@ torch.set_grad_enabled(False)  # save memory
 
 
 def parse_arguments():
-    """Parse model path argument from command line."""
-    parser = argparse.ArgumentParser(description="Parse model path argument.")
+    """Parse model_base path argument from command line."""
+    parser = argparse.ArgumentParser(description="Parse model_base path argument.")
     parser.add_argument(
         "--model_path", type=str, required=True, help="google/gemma-2-2b-it"
     )
@@ -78,12 +78,11 @@ def main(
     )
     pprint.pp(cfg)
 
-    # 1. Load model
-    model = load_model(cfg)
-    model.set_use_attn_result(True)
-    # model.cfg.use_attn_in = True
-    # model.cfg.use_hook_mlp_in = True
-    torch.set_grad_enabled(False)  # save memory
+    # 1. Load model_base
+    model_base = load_model(cfg)
+    # model_base.set_use_attn_result(True)
+    # model_base.cfg.use_attn_in = True
+    # model_base.cfg.use_hook_mlp_in = True
 
     # 2. Load data
     print("loading data")
@@ -92,22 +91,25 @@ def main(
     dataset.process_dataset()
     dataset.construct_contrastive_prompts()
 
-    # Initiate attribution patching
-    print("Initializing attribution patching:")
-    att_patch = ContrastiveModelBase(cfg, model, dataset)
+    # Initiate contrastive model base
+    print("Initializing model_base base:")
+    contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
 
     # Generate and cache
     print("Generate and cache:")
-    att_patch.generate_and_contrastive_activation_cache()
+    contrastive_basic.generate_and_contrastive_activation_cache()
 
     # Evaluate generation results
     print("Evaluate generation results:")
-    att_patch.evaluate_deception()
+    contrastive_basic.evaluate_deception()
+
+    print("Get stage statistics:")
+    contrastive_basic.get_stage_statistics()
     # print("Run and cache:")
-    # att_patch.generate_and_contrastive_activation_cache()
+    # contrastive_basic.generate_and_contrastive_activation_cache()
 
     # Plot pca on the residual stream
-    att_patch.get_contrastive_activation_pca()
+    contrastive_basic.get_contrastive_activation_pca()
 
     print("done")
 
@@ -118,7 +120,7 @@ if __name__ == "__main__":
     print(sae_lens.__version__)
     print(sae_lens.__version__)
     print("run_contrastive_basic\n\n")
-    print("model_path")
+    print("model_base_path")
     print(args.model_path)
     print("save_dir")
     print(args.save_dir)

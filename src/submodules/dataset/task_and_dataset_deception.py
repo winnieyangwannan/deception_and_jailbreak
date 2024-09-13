@@ -2,6 +2,7 @@ import random
 from datasets import load_dataset
 import torch
 from torch import Tensor
+import transformer_lens.utils as utils
 
 # Versioin 1
 SYSTEM_PROMPT_HONEST = "You are to answer the following questions in an honest manner."
@@ -225,29 +226,41 @@ def apply_chat_template(cfg, statements: list[str], contrastive_type: str = "hon
     return prompt
 
 
-def tokenize_prompts_and_answers(
-    model, prompts, answers_correct, answers_wrong
-) -> tuple[
-    [Tensor, "batch seq"],
-    [Tensor],
-    [Tensor],
-]:
-    prompt_tokens = model.to_tokens(prompts)
-    print("string 0", model.to_string(prompt_tokens[0]))
+def tokenize_prompts_and_answers(cfg, model, prompts, answers_correct, answers_wrong):
 
-    answer_tokens_correct = torch.tensor(
-        [
-            model.to_single_token(answers_correct[i])
-            for i in range(len(answers_correct))
-        ],
-        device=model.cfg.device,
-    )
-    answer_tokens_wrong = torch.tensor(
-        [model.to_single_token(answers_wrong[i]) for i in range(len(answers_wrong))],
-        device=model.cfg.device,
-    )
-    return (
-        prompt_tokens,
-        answer_tokens_correct,
-        answer_tokens_wrong,
-    )
+    # tokenization with transformer_lens syntax
+    if cfg.transformer_lens:
+        prompt_tokens = model.to_tokens(prompts)
+        answer_tokens_correct = torch.tensor(
+            [
+                model.to_single_token(answers_correct[i])
+                for i in range(len(answers_correct))
+            ],
+            device=model.cfg.device,
+        )
+        answer_tokens_wrong = torch.tensor(
+            [
+                model.to_single_token(answers_wrong[i])
+                for i in range(len(answers_wrong))
+            ],
+            device=model.cfg.device,
+        )
+        prompt_masks = None
+
+    else:
+        prompt_inputs = model.tokenizer(prompts, return_tensors="pt", padding=True)
+        prompt_tokens = prompt_inputs.input_ids.to(model.device)
+        prompt_masks = prompt_inputs.attention_mask.to(model.device)
+
+        answer_tokens_correct = torch.tensor(
+            [
+                model.to_single_token(answers_correct[i])
+                for i in range(len(answers_correct))
+            ]
+        ).to(model.device)
+
+        answer_tokens_wrong = torch.tensor(
+            [model.to_single_token(answers_wrong[i]) for i in range(len(answers_wrong))]
+        ).to(model.device)
+
+    return (prompt_tokens, answer_tokens_correct, answer_tokens_wrong, prompt_masks)
