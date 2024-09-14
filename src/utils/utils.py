@@ -4,30 +4,21 @@ from jaxtyping import Float, Int, Bool
 import torch
 
 
-def logits_to_logit_diff(
-    logits: Float[Tensor, "batch seq d_vocab"],
-    positive_answer_token: Float[Tensor, "batch 1"],
-    negative_answer_token: Float[Tensor, "batch 1"],
+def logits_to_ave_logit_diff(
+    logits: Float[Tensor, "batch d_vocab"],
+    answer_tokens_correct: Float[Tensor, "batch "],
+    answer_tokens_wrong: Float[Tensor, "batch "],
     per_prompt: bool = False,
 ) -> Union[Float[Tensor, ""], Float[Tensor, "batch"]]:
     """
-    Get logit difference between the correct and incorrect answers
-    :param logits:
-    :param positive_answer_token: answer tokens of positive prompts
-    :per_prompt: logit difference per prompt
-    :return: a scaler for mean logit difference across samples
+    Returns logit difference between the correct and incorrect answer.
+
+    If per_prompt=True, return the array of differences rather than the average.
     """
-    # (1) Get last token logits only
-    logits = logits[:, -1, :]  # [batch, d_vocab]
-
-    # (2) Get the index into correct dimension
-    # squeeze because the index tensor must have the same number of dimensions as input tensor
-    correct_index = positive_answer_token.unsqueeze(1)  # [batch, 1]
-    incorrect_index = negative_answer_token[:].unsqueeze(1)  # [batch, 1]
-
-    # (3) gather the logits corresponding to the indices
-    correct_logits = logits.gather(dim=1, index=correct_index)
-    incorrect_logits = logits.gather(dim=1, index=incorrect_index)
-    logit_diff = correct_logits - incorrect_logits
-
+    if len(logits.shape) == 3:
+        logits = logits[:, -1, :]
+    answer_tokens = torch.stack((answer_tokens_correct, answer_tokens_wrong), dim=-1)
+    answer_logits = torch.gather(logits, dim=-1, index=answer_tokens)
+    correct_logit, wrong_logit = answer_logits.unbind(dim=-1)
+    logit_diff = correct_logit - wrong_logit
     return logit_diff if per_prompt else logit_diff.mean()

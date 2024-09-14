@@ -16,7 +16,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 torch.set_grad_enabled(False)
 
-LLAMA_2_7B_CHAT_PATH = "google/gemma-2-27b-it"
+LLAMA_2_7B_CHAT_PATH = "meta-llama/Llama-2-70b-chat-hf"
 inference_dtype = torch.float32
 # inference_dtype = torch.float32
 # inference_dtype = torch.float16
