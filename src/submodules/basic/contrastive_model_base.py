@@ -29,7 +29,6 @@ from src.submodules.dataset.task_and_dataset_deception import (
     ContrastiveDatasetDeception,
     tokenize_prompts_and_answers,
 )
-from src.submodules.model.load_model import load_model
 from src.utils.utils import logits_to_ave_logit_diff
 from transformer_lens import utils, HookedTransformer, ActivationCache
 from rich.table import Table, Column

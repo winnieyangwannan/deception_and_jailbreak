@@ -212,7 +212,7 @@ def plot_performance_bar(
     role = ["Honest", "Lying"]
 
     # plot
-    fig = make_subplots(rows=1, cols=3, subplot_titles=["Honesty Score", "Lying Score"])
+    fig = make_subplots(rows=1, cols=3, subplot_titles=["Honesty Score", "Lying Score", "Unexpected"])
     fig.add_trace(
         go.Bar(
             x=role,
@@ -246,7 +246,7 @@ def plot_performance_bar(
 
     fig.update_layout(yaxis1=dict(range=[0, 1]))
     fig.update_layout(yaxis2=dict(range=[0, 1]))
-    # fig.update_layout(yaxis3=dict(range=[0, 1]))
+    fig.update_layout(yaxis3=dict(range=[0, 1]))
 
     fig.show()
     if save_name is not None:

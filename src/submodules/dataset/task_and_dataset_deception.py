@@ -264,4 +264,8 @@ def tokenize_prompts_and_answers(cfg, model, prompts, answers_correct, answers_w
             [model.to_single_token(answers_wrong[i]) for i in range(len(answers_wrong))]
         ).to(model.device)
 
+    print("decoding prompt after tokenization:")
+    print(model.tokenizer.decode(prompt_tokens[0]))
+    print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
     return (prompt_tokens, answer_tokens_correct, answer_tokens_wrong, prompt_masks)

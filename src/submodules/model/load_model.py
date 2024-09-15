@@ -5,6 +5,7 @@ from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 import transformer_lens.utils as utils
 
 
+#
 def load_model(cfg):
     model_path = cfg.model_path
     print("loading model")
@@ -18,15 +19,33 @@ def load_model(cfg):
     if cfg.transformer_lens:
         print("loading model from transformer_lens")
         if cfg.dtype == "bfloat16":
-            model = HookedSAETransformer.from_pretrained(
-                model_path,
-                device=device,
-                dtype=torch.bfloat16,
-                fold_ln=True,
-                # center_unembed=False,
-                # center_writing_weights=False,
-                # refactor_factored_attn_matrices=False,
-            )
+            if "Qwen" in cfg.model_alias:
+                model_kwargs = {}
+                model_kwargs.update({"use_flash_attn": True})
+                if cfg.dtype != "auto":
+                    model_kwargs.update(
+                        {
+                            "bf16": cfg.dtype == "bfloat16",
+                        }
+                    )
+
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    torch_dtype=cfg.dtype,
+                    trust_remote_code=True,
+                    device_map="auto",
+                    **model_kwargs,
+                ).eval()
+            else:
+                model = HookedSAETransformer.from_pretrained(
+                    model_path,
+                    device=device,
+                    dtype=torch.bfloat16,
+                    fold_ln=True,
+                    # center_unembed=False,
+                    # center_writing_weights=False,
+                    # refactor_factored_attn_matrices=False,
+                )
         else:
             model = HookedSAETransformer.from_pretrained(
                 model_path,
@@ -54,28 +73,15 @@ def load_model(cfg):
 class TransformerModelLoader:
     def __init__(self, cfg):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = None
+        self.tokenizer = None
 
-        # load model
-        self.model = AutoModelForCausalLM.from_pretrained(
-            cfg.model_path,
-            torch_dtype=cfg.dtype,
-            trust_remote_code=True,
-            device_map="auto",
-        ).eval()
-        self.model.requires_grad_(False)
-
-        # load tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            cfg.model_path, trust_remote_code=True, use_fast=False
-        )
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.padding_side = "left"
+        self.load_model(cfg)
+        self.load_tokenizer(cfg)
 
         # config
-
         self.cfg = HookedTransformerConfig.unwrap(self.model.config)
         self.cfg.tokenizer_prepends_bos = len(self.tokenizer.encode("")) > 0
-
         self.model_block_modules = self._get_model_block_modules(cfg)
 
     def _get_model_block_modules(self, cfg):
@@ -89,6 +95,30 @@ class TransformerModelLoader:
             return self.model.transformer.h
         elif "Yi" in cfg.model_path:
             return self.model.model.layers
+
+    def load_model(self, cfg):
+        # load model
+        self.model = AutoModelForCausalLM.from_pretrained(
+            cfg.model_path,
+            torch_dtype=cfg.dtype,
+            trust_remote_code=True,
+            device_map="auto",
+        ).eval()
+        self.model.requires_grad_(False)
+
+    def load_tokenizer(self, cfg):
+        # load tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            cfg.model_path, trust_remote_code=True, use_fast=False
+        )
+        if "Qwen" in cfg.model_alias:
+            self.tokenizer.pad_token = "<|extra_0|>"
+            self.tokenizer.pad_token_id = self.tokenizer.eod_id
+            self.tokenizer.padding_side = "left"
+            # See https://github.com/QwenLM/Qwen/blob/main/FAQ.md#tokenizer
+        else:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.padding_side = "left"
 
     def to_single_token(self, input_token):
         token = self.tokenizer(
