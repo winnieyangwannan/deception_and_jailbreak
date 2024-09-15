@@ -56,6 +56,7 @@ class AttributionPatching:
     def __init__(self, contrastive_dataset, contrastive_base):
 
         self.model = contrastive_base.model
+        self.cfg = contrastive_base.cfg
 
         if contrastive_base.cfg.clean_type == "positive":
             self.corrupted_tokens = contrastive_base.prompt_tokens_negative
@@ -95,12 +96,31 @@ class AttributionPatching:
             f"{tok} {i}"
             for i, tok in enumerate(self.model.to_str_tokens(self.clean_tokens[0]))
         ]
-        imshow(
+        fig = imshow(
             act_patch_resid_pre,
             labels={"x": "Position", "y": "Layer"},
             x=labels,
             title="resid_pre Activation Patching",
             width=600,
+            return_fig=True,
+        )
+
+        fig_path = os.path.join(
+            self.cfg.artifact_path(), "activation_patching", "resid_pre"
+        )
+        if not os.path.exists(fig_path):
+            os.makedirs(fig_path)
+        pio.write_image(
+            fig,
+            fig_path
+            + os.sep
+            + f"{self.cfg.model_alias}_resid_pre_activation_patching.png",
+            scale=6,
+        )
+        fig.write_html(
+            fig_path
+            + os.sep
+            + f"{self.cfg.model_alias}_resid_pre_activation_patching.html"
         )
 
 

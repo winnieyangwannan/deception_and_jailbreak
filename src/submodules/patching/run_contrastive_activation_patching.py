@@ -111,7 +111,7 @@ if __name__ == "__main__":
     args = parse_arguments()
     print(sae_lens.__version__)
     print(sae_lens.__version__)
-    print("run_contrastive_basic\n\n")
+    print("run contrastive activation patching\n\n")
     print("model_base_path")
     print(args.model_path)
     print("save_dir")

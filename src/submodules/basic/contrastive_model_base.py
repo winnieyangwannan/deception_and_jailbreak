@@ -196,19 +196,7 @@ class ContrastiveBase:
     def get_contrastive_activation_pca(self, pos=-1):
 
         # 1. Get access to cache
-        activations_positive = [
-            self.cache_positive[utils.get_act_name("resid_post", l)].squeeze()
-            for l in range(self.model.cfg.n_layers)
-        ]
-
-        activations_negative = [
-            self.cache_negative[utils.get_act_name("resid_post", l)].squeeze()
-            for l in range(self.model.cfg.n_layers)
-        ]
-
-        # stack the list of activations # shape = [batch,d_model]
-        activations_positive = torch.stack(activations_positive)
-        activations_negative = torch.stack(activations_negative)
+        activations_positive, activations_negative = self.get_contrastive_cache()
 
         # 2. Get pca and plot
         fig = get_pca_and_plot(
@@ -264,7 +252,7 @@ class ContrastiveBase:
                     prompt_masks[batch : batch + self.cfg.batch_size],
                 )
 
-                cache_all = torch.cat((cache_all, cache), dim=0)
+                cache_all = torch.cat((cache_all, cache), dim=1)
 
             logits_all = torch.cat((logits_all, logits), dim=0)
 
@@ -287,7 +275,6 @@ class ContrastiveBase:
             prompt_tokens,
             prompt_masks,
             mode="generate",
-            max_new_tokens=self.cfg.max_new_tokens,
         )
         # Construct generation result for saving (one batch)
         generation_toks = output[:, prompt_tokens.shape[1] :]
@@ -317,14 +304,17 @@ class ContrastiveBase:
                     self.cfg,
                     self.model,
                     prompt_tokens[batch : batch + self.cfg.batch_size],
-                    prompt_masks[batch : batch + self.cfg.batch_size],
+                    masks=prompt_masks[batch : batch + self.cfg.batch_size],
                 )
 
             # concatenate cache
-            for key in cache.keys():
-                cache_all.cache_dict[key] = torch.cat(
-                    (cache_all[key], cache[key]), dim=0
-                )
+            if self.cfg.transformer_lens:
+                for key in cache.keys():
+                    cache_all.cache_dict[key] = torch.cat(
+                        (cache_all[key], cache[key]), dim=0
+                    )
+            else:
+                cache_all = torch.cat((cache_all, cache), dim=1)
 
             # Construct generation result for saving (one batch)
             generation_toks = output[:, prompt_tokens.shape[1] :]
@@ -354,9 +344,7 @@ class ContrastiveBase:
 
         return cache_all
 
-    def initialize_cache(
-        self, prompt_tokens, prompt_masks, mode="run", max_new_tokens=100
-    ):
+    def initialize_cache(self, prompt_tokens, prompt_masks, mode="run"):
 
         # initialize cache
         if mode == "run":
@@ -383,7 +371,7 @@ class ContrastiveBase:
                     self.cfg,
                     self.model,
                     prompt_tokens[0 : 0 + 1],
-                    prompt_masks[0 : 0 + 1],
+                    masks=prompt_masks[0 : 0 + 1],
                 )
 
             return output, cache
@@ -399,19 +387,8 @@ class ContrastiveBase:
 
     def get_stage_statistics(self):
         # 1. Get access to cache
-        activations_positive = [
-            self.cache_positive[utils.get_act_name("resid_post", l)].squeeze()
-            for l in range(self.model.cfg.n_layers)
-        ]
+        activations_positive, activations_negative = self.get_contrastive_cache()
 
-        activations_negative = [
-            self.cache_negative[utils.get_act_name("resid_post", l)].squeeze()
-            for l in range(self.model.cfg.n_layers)
-        ]
-
-        # stack the list of activations # shape = [batch,d_model]
-        activations_positive = torch.stack(activations_positive)
-        activations_negative = torch.stack(activations_negative)
         labels = self.dataset.labels_positive_correct
 
         # 2. get stage statistics
@@ -422,6 +399,29 @@ class ContrastiveBase:
             labels,
             save_plot=True,
         )
+
+    def get_contrastive_cache(self):
+        if self.cfg.transformer_lens:
+            activations_positive = [
+                self.cache_positive[
+                    utils.get_act_name(self.cfg.cache_name, l)
+                ].squeeze()
+                for l in range(self.model.cfg.n_layers)
+            ]
+
+            activations_negative = [
+                self.cache_negative[
+                    utils.get_act_name(self.cfg.cache_name, l)
+                ].squeeze()
+                for l in range(self.model.cfg.n_layers)
+            ]
+            # stack the list of activations # shape = [batch,d_model]
+            activations_positive = torch.stack(activations_positive)
+            activations_negative = torch.stack(activations_negative)
+        else:
+            activations_positive = self.cache_positive
+            activations_negative = self.cache_negative
+        return activations_positive, activations_negative
 
 
 def run_with_cache_contrastive(model, positive_tokens, negative_tokens):
@@ -445,21 +445,28 @@ def run_model_contrastive(model, positive_tokens, negative_tokens):
 def generate_and_cache(cfg, model, tokens, masks=None):
     max_new_tokens = cfg.max_new_tokens
     do_sample = cfg.do_sample
-    # Always reset hook before you start -- good habit!
-    if cfg.transformer_lens:
-        model.reset_hooks()
 
-    # (1) Create filter for what to cache
-    activation_filter = lambda name: cfg.cache_name in name
+    #  (1) Initialize
+    if cfg.transformer_lens:
+        # Always reset hook before you start -- good habit!
+        model.reset_hooks()
+        cache = {}
+    else:
+        n_layers = model.model.config.num_hidden_layers
+        d_model = model.model.config.hidden_size
+        n_samples = len(tokens)
+        block_modules = model.model_block_modules
+        len_prompt = tokens.shape[1]
+        cache = torch.zeros(
+            (n_layers, n_samples, d_model),
+            dtype=torch.float64,
+            device=model.device,
+        )
 
     # (2) Construct hook functions
-
     # forward cache hook: cache the activation during forward run
-    cache = {}
-
     def forward_cache_hook(act, hook, len_prompt, cfg):
         # only cache generation result
-        # print(act.shape)
         if cfg.cache_pos == "prompt_last_token":
             if act.shape[1] == len_prompt:
                 cache[hook.name] = act[:, -1, :].detach()
@@ -488,24 +495,18 @@ def generate_and_cache(cfg, model, tokens, masks=None):
         return hook_fn
 
     # (3) Construct hooks
-
     if cfg.transformer_lens:
+        # Create filter for what to cache
+        activation_filter = lambda name: cfg.cache_name in name
         fwd_hook = partial(forward_cache_hook, len_prompt=tokens.shape[1], cfg=cfg)
         model.add_hook(activation_filter, fwd_hook, "fwd")
+
     else:
-        block_modules = model.model_block_modules
-        n_layers = model.model.config.num_hidden_layers
-        d_model = model.model.config.hidden_size
-        n_samples = len(tokens)
-        len_prompt = tokens.shape[1]
-        activations = torch.zeros(
-            (n_layers, n_samples, d_model), dtype=torch.float64, device=model.device
-        )
         fwd_hook = [
             (
                 block_modules[layer],
                 get_generation_cache_activation_post_hook(
-                    activations, layer, len_prompt=len_prompt, pos=-1
+                    cache, layer, len_prompt=len_prompt, pos=-1
                 ),
             )
             for layer in range(n_layers)
@@ -563,15 +564,17 @@ def generate_and_cache(cfg, model, tokens, masks=None):
                     generation_config=generation_config,
                 )
 
-    # Always reset hook after you are done! -- good habit!
+    # (5) Output
     if cfg.transformer_lens:
+        #  Always reset hook after you are done! -- good habit!
         model.reset_hooks()
-
-    return output, ActivationCache(cache, model)
+        return output, ActivationCache(cache, model)
+    else:
+        return output, cache
 
 
 def run_and_cache(cfg, model, tokens, masks=None):
-
+    # todo: make it compatible with normal transformer syntax
     # Always reset hook before you start -- good habit!
     if cfg.transformer_lens:
         model.reset_hooks()

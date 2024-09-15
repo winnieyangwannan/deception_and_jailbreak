@@ -19,7 +19,7 @@ class Config:
     batch_size: int = 5
     max_new_tokens: int = 100
     intervention: str = "no_intervention"
-    transformer_lens: bool = True
+    transformer_lens: bool = False
     cache_pos: str = "prompt_last_token"
     cache_name: str = "resid_pre"
 

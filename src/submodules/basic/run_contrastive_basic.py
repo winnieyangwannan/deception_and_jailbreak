@@ -28,7 +28,7 @@ from src.submodules.basic.contrastive_model_base import (
     ContrastiveBase,
 )
 from src.submodules.model.load_model import load_model
-from src.utils.utils import logits_to_logit_diff
+from src.utils.utils import logits_to_ave_logit_diff
 from transformer_lens import utils, HookedTransformer, ActivationCache
 from rich.table import Table, Column
 from rich import print as rprint

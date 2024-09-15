@@ -26,7 +26,7 @@ class Config:
     n_train: int = 8
     n_test: int = 50
     batch_size: int = 4
-    max_new_tokens: int = 2
+    # max_new_tokens: int = 2
     # for generation_trajectory
 
     def artifact_path(self) -> str:

@@ -79,10 +79,16 @@ class TransformerModelLoader:
         self.model_block_modules = self._get_model_block_modules(cfg)
 
     def _get_model_block_modules(self, cfg):
-        if "llama" in cfg.model_path:
-            return self.model.model.layers
         if "gpt" in cfg.model_path:
             return self.model.transformer.h
+        elif "llama" in cfg.model_path:
+            return self.model.model.layers
+        elif "gemma" in cfg.model_path:
+            return self.model.model.layers
+        elif "Qwen" in cfg.model_path:
+            return self.model.transformer.h
+        elif "Yi" in cfg.model_path:
+            return self.model.model.layers
 
     def to_single_token(self, input_token):
         token = self.tokenizer(
