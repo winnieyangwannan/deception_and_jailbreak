@@ -193,7 +193,10 @@ class AttributionPatching:
         """
 
         # (1) Get forward hook
-        block_modules = self.model.model_block_modules
+        if "resid" in self.cfg.cache_name:
+            block_modules = self.model.model_block_modules
+        elif "attn" in self.cfg.cache_name:
+            block_modules = self.model.model_block_modules
         n_layers = self.model.model.config.num_hidden_layers
         if self.cfg.cache_name == "resid_pre":
             fwd_hook_pre = [

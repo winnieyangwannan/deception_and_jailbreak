@@ -596,7 +596,12 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
             device=model.device,
         )
         # (1) get hook function
-        block_modules = model.model_block_modules
+        if "resid" in cfg.cache_name:
+            block_modules = model.model_block_modules
+        elif "attn" in cfg.cache_name:
+            block_modules = model.model_attn_out
+        elif "mlp" in cfg.cache_name:
+            block_modules = model.model_mlp_out
 
         if cfg.cache_name == "resid_pre":
             fwd_hook_pre = [

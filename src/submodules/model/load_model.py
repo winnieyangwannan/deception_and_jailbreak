@@ -66,6 +66,9 @@ class TransformerModelLoader:
         self.cfg = HookedTransformerConfig.unwrap(self.model.config)
         self.cfg.tokenizer_prepends_bos = len(self.tokenizer.encode("")) > 0
         self.model_block_modules = self._get_model_block_modules(cfg)
+        self.model_attn_out = self._get_attn_modules(cfg)
+        self.model_mlp_out = self._get_mlp_modules()
+
         self.cfg.n_layers = self.model.config.num_hidden_layers
         self.cfg.d_model = self.model.config.num_hidden_layers
 
@@ -82,6 +85,35 @@ class TransformerModelLoader:
             return self.model.model.layers
         elif "Yi" in cfg.model_path:
             return self.model.model.layers
+
+    def _get_attn_modules(self, cfg):
+        if "gpt" in cfg.model_path:
+            return torch.nn.ModuleList(
+                [block_module.attn for block_module in self.model_block_modules]
+            )
+        elif "llama" in cfg.model_path:
+            return torch.nn.ModuleList(
+                [block_module.self_attn for block_module in self.model_block_modules]
+            )
+        elif "Qwen-" in cfg.model_path:
+            return torch.nn.ModuleList(
+                [block_module.attn for block_module in self.model_block_modules]
+            )
+
+        elif "Qwen2" in cfg.model_path:
+            return torch.nn.ModuleList(
+                [block_module.attn for block_module in self.model_block_modules]
+            )
+        elif "Yi" in cfg.model_path:
+            return torch.nn.ModuleList(
+                [block_module.self_attn for block_module in self.model_block_modules]
+            )
+
+    def _get_mlp_modules(self):
+
+        return torch.nn.ModuleList(
+            [block_module.mlp for block_module in self.model_block_modules]
+        )
 
     def load_model(self, cfg):
         # load model

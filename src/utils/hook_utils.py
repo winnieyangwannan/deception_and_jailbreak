@@ -91,7 +91,6 @@ def patch_residual_hook_post(
 
 def cache_residual_hook_post(
     cache: Float[Tensor, "layer batch seq_len d_model"],
-    patch_layer: int,
     layer: int,
 ):
     def hook_fn(module, input, output):
@@ -101,8 +100,7 @@ def cache_residual_hook_post(
         else:
             activation: Float[Tensor, "batch seq_len d_model"] = output
 
-        if patch_layer == layer:
-            cache[layer, :, :, :] = activation[:, :, :]
+        cache[layer, :, :, :] = activation[:, :, :]
 
         if isinstance(output, tuple):
             return (activation, *output[1:])

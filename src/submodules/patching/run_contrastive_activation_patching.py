@@ -54,6 +54,7 @@ def parse_arguments():
     parser.add_argument("--task_name", type=str, required=False, default="deception")
     parser.add_argument("--do_sample", type=bool, required=False, default=False)
     parser.add_argument("--framework", type=str, required=False, default="transformers")
+    parser.add_argument("--cache_name", type=str, required=False, default="resid_pre")
 
     return parser.parse_args()
 
@@ -66,6 +67,7 @@ def main(
     answer_type: Tuple[str] = ("true", "false"),
     do_sample: bool = False,
     framework: str = "transformers",
+    cache_name: str = "resid_pre",
 ):
 
     # 0. Set configuration
@@ -79,6 +81,7 @@ def main(
         save_dir=save_dir,
         do_sample=do_sample,
         framework=framework,
+        cache_name=cache_name,
     )
     pprint.pp(cfg)
 
@@ -141,4 +144,5 @@ if __name__ == "__main__":
         answer_type=answer_type,
         do_sample=args.do_sample,
         framework=args.framework,
+        cache_name=args.cache_name,
     )
