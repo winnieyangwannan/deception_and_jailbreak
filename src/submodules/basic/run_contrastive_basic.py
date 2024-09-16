@@ -52,6 +52,7 @@ def parse_arguments():
     )
     parser.add_argument("--task_name", type=str, required=False, default="deception")
     parser.add_argument("--do_sample", type=bool, required=False, default=False)
+    parser.add_argument("--framework", type=str, required=True, default="transformers")
 
     return parser.parse_args()
 
@@ -63,6 +64,7 @@ def main(
     contrastive_type: Tuple[str] = ("honest", "lying"),
     answer_type: Tuple[str] = ("true", "false"),
     do_sample: bool = False,
+    framework: str = "transformer_lens",
 ):
 
     # 0. Set configuration
@@ -75,6 +77,7 @@ def main(
         answer_type=answer_type,
         save_dir=save_dir,
         do_sample=do_sample,
+        framework=framework,
     )
     pprint.pp(cfg)
 
@@ -118,7 +121,6 @@ if __name__ == "__main__":
 
     args = parse_arguments()
     print(sae_lens.__version__)
-    print(sae_lens.__version__)
     print("run_contrastive_basic\n\n")
     print("model_base_path")
     print(args.model_path)
@@ -127,7 +129,14 @@ if __name__ == "__main__":
     print("task_name")
     print(args.task_name)
     print("do_sample")
+    do_sample = True
+    print(do_sample)
     print(args.do_sample)
+
+    print("transformer_lens")
+    # transformer_lens = False
+    # print(transformer_lens)
+    print(args.framework)
 
     if args.task_name == "deception":
         contrastive_type = ("honest", "lying")
@@ -136,6 +145,7 @@ if __name__ == "__main__":
         contrastive_type = ("HHH", args.jailbreak)
     print("answer_type")
     print(answer_type)
+
     print("contrastive_type")
     print(contrastive_type)
     main(
@@ -144,5 +154,6 @@ if __name__ == "__main__":
         task_name=args.task_name,
         contrastive_type=contrastive_type,
         answer_type=answer_type,
-        do_sample=args.do_sample,
+        do_sample=do_sample,
+        transformer_lens=args.framework,
     )

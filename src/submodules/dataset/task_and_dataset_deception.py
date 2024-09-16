@@ -167,16 +167,17 @@ def get_chat_template(model_name: str):
         chat_template = """"<|im_start|>system
         {system_prompt}<|im_end|>
         <|im_start|>user
-        {user_prompt}\n\nStatement:\"{statement}\"<|im_end|>
+        {user_prompt}\n\nStatement: {statement}<|im_end|>
         <|im_start|>assistant
         """
+
         # suffix = "Answer: The statement is"
 
     elif "Yi" in model_name:
         chat_template = """<|im_start|>system
         {system_prompt}<|im_end|>
         <|im_start|>user
-        {user_prompt}\n\nStatement:\"{statement}\"<|im_end|>
+        {user_prompt}\n\nStatement: {statement}<|im_end|>
         <|im_start|>assistant
         """
         # suffix = "Answer: The statement is"
@@ -230,7 +231,7 @@ def apply_chat_template(cfg, statements: list[str], contrastive_type: str = "hon
 def tokenize_prompts_and_answers(cfg, model, prompts, answers_correct, answers_wrong):
 
     # tokenization with transformer_lens syntax
-    if cfg.transformer_lens:
+    if cfg.framework == "transformer_lens":
         prompt_tokens = model.to_tokens(prompts)
         answer_tokens_correct = torch.tensor(
             [

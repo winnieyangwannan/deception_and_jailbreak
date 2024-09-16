@@ -13,7 +13,6 @@ from src.submodules.evaluations.run_evaluate_generation_deception import (
 from src.submodules.evaluations.run_evaluate_generation_deception import (
     evaluate_generation_deception,
 )
-from src.submodules.construct_prompt_deception import construct_prompt
 import torch
 from typing import Tuple
 

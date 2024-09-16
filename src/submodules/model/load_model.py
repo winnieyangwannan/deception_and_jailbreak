@@ -16,36 +16,19 @@ def load_model(cfg):
     print(f"device: {device}")
     print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
 
-    if cfg.transformer_lens:
+    if cfg.framework == "transformer_lens":
         print("loading model from transformer_lens")
         if cfg.dtype == "bfloat16":
-            if "Qwen" in cfg.model_alias:
-                model_kwargs = {}
-                model_kwargs.update({"use_flash_attn": True})
-                if cfg.dtype != "auto":
-                    model_kwargs.update(
-                        {
-                            "bf16": cfg.dtype == "bfloat16",
-                        }
-                    )
 
-                model = AutoModelForCausalLM.from_pretrained(
-                    model_path,
-                    torch_dtype=cfg.dtype,
-                    trust_remote_code=True,
-                    device_map="auto",
-                    **model_kwargs,
-                ).eval()
-            else:
-                model = HookedSAETransformer.from_pretrained(
-                    model_path,
-                    device=device,
-                    dtype=torch.bfloat16,
-                    fold_ln=True,
-                    # center_unembed=False,
-                    # center_writing_weights=False,
-                    # refactor_factored_attn_matrices=False,
-                )
+            model = HookedSAETransformer.from_pretrained(
+                model_path,
+                device=device,
+                dtype=torch.bfloat16,
+                fold_ln=True,
+                # center_unembed=False,
+                # center_writing_weights=False,
+                # refactor_factored_attn_matrices=False,
+            )
         else:
             model = HookedSAETransformer.from_pretrained(
                 model_path,
@@ -83,6 +66,8 @@ class TransformerModelLoader:
         self.cfg = HookedTransformerConfig.unwrap(self.model.config)
         self.cfg.tokenizer_prepends_bos = len(self.tokenizer.encode("")) > 0
         self.model_block_modules = self._get_model_block_modules(cfg)
+        self.cfg.n_layers = self.model.config.num_hidden_layers
+        self.cfg.d_model = self.model.config.num_hidden_layers
 
     def _get_model_block_modules(self, cfg):
         if "gpt" in cfg.model_path:
@@ -91,13 +76,16 @@ class TransformerModelLoader:
             return self.model.model.layers
         elif "gemma" in cfg.model_path:
             return self.model.model.layers
-        elif "Qwen" in cfg.model_path:
+        elif "Qwen-" in cfg.model_path:
             return self.model.transformer.h
+        elif "Qwen2" in cfg.model_path:
+            return self.model.model.layers
         elif "Yi" in cfg.model_path:
             return self.model.model.layers
 
     def load_model(self, cfg):
         # load model
+
         self.model = AutoModelForCausalLM.from_pretrained(
             cfg.model_path,
             torch_dtype=cfg.dtype,
@@ -111,7 +99,7 @@ class TransformerModelLoader:
         self.tokenizer = AutoTokenizer.from_pretrained(
             cfg.model_path, trust_remote_code=True, use_fast=False
         )
-        if "Qwen" in cfg.model_alias:
+        if "Qwen-" in cfg.model_alias:
             self.tokenizer.pad_token = "<|extra_0|>"
             self.tokenizer.pad_token_id = self.tokenizer.eod_id
             self.tokenizer.padding_side = "left"
@@ -133,3 +121,6 @@ class TransformerModelLoader:
         else:
             single_token = token
         return single_token
+
+    def to_str_tokens(self, tokens):
+        return self.tokenizer.tokenize(tokens)

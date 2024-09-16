@@ -53,6 +53,7 @@ def parse_arguments():
     )
     parser.add_argument("--task_name", type=str, required=False, default="deception")
     parser.add_argument("--do_sample", type=bool, required=False, default=False)
+    parser.add_argument("--framework", type=str, required=False, default="transformers")
 
     return parser.parse_args()
 
@@ -64,6 +65,7 @@ def main(
     contrastive_type: Tuple[str] = ("honest", "lying"),
     answer_type: Tuple[str] = ("true", "false"),
     do_sample: bool = False,
+    framework: str = "transformers",
 ):
 
     # 0. Set configuration
@@ -76,6 +78,7 @@ def main(
         answer_type=answer_type,
         save_dir=save_dir,
         do_sample=do_sample,
+        framework=framework,
     )
     pprint.pp(cfg)
 
@@ -98,10 +101,10 @@ def main(
 
     # Generate and cache
     print("Run and cache:")
-    contrastive_basic.run_and_contrastive_activation_cache()
+    contrastive_basic.run_and_cache_contrastive_activation()
 
     attr_patch = AttributionPatching(dataset, contrastive_basic)
-    attr_patch.get_activation_patching_residual()
+    attr_patch.get_activation_patching_block()
 
     print("done")
 
@@ -137,4 +140,5 @@ if __name__ == "__main__":
         contrastive_type=contrastive_type,
         answer_type=answer_type,
         do_sample=args.do_sample,
+        framework=args.framework,
     )

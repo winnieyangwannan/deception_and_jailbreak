@@ -46,6 +46,7 @@ from src.submodules.evaluations.evaluate_deception import (
 )
 from src.submodules.stage_statistics.stage_statistics import get_state_quantification
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+from src.utils.hook_utils import cache_residual_hook_post, cache_residual_hook_pre
 
 
 class ContrastiveBase:
@@ -102,7 +103,7 @@ class ContrastiveBase:
         )
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
 
-    def run_and_contrastive_activation_cache(self):
+    def run_and_cache_contrastive_activation(self):
         """
         Get the activation cache and gradient cache for both the positive and negative prompts
         :return:
@@ -227,38 +228,32 @@ class ContrastiveBase:
 
     def run_and_cache_batch(self, prompt_tokens, prompt_masks):
 
-        logits_all, cache_all = self.initialize_cache(
-            prompt_tokens, prompt_masks, mode="run"
-        )
-        n_prompts = len(prompt_tokens)
-        for batch in tqdm(range(1, n_prompts, self.cfg.batch_size)):
-            if self.cfg.transformer_lens:
-                logits, cache = run_and_cache(
-                    self.cfg,
-                    self.model,
-                    prompt_tokens[batch : batch + self.cfg.batch_size],
-                )
-                for key in cache.keys():
-                    cache_all.cache_dict[key] = torch.cat(
-                        (cache_all[key], cache[key]), dim=0
-                    )
+        # logits_all, cache_all = self.initialize_cache(
+        #     prompt_tokens, prompt_masks, mode="run"
+        # )
+        # n_prompts = len(prompt_tokens)
 
-            else:
-                logits, cache = run_and_cache(
-                    self.cfg,
-                    self.model,
-                    prompt_tokens[batch : batch + self.cfg.batch_size],
-                    prompt_masks[batch : batch + self.cfg.batch_size],
-                )
+        if self.cfg.framework == "transformer_lens":
+            logits, cache = run_and_cache(
+                self.cfg,
+                self.model,
+                prompt_tokens,
+            )
+            # for key in cache.keys():
+            #     cache_all.cache_dict[key] = torch.cat(
+            #         (cache_all[key], cache[key]), dim=0
+            #     )
 
-                cache_all = torch.cat((cache_all, cache), dim=1)
+        else:
+            logits, cache = run_and_cache(
+                self.cfg,
+                self.model,
+                prompt_tokens,
+                prompt_masks,
+            )
+            # logits_all = torch.cat((logits), dim=0)
 
-            logits_all = torch.cat((logits_all, logits), dim=0)
-
-        del cache
-        gc.collect()
-        torch.cuda.empty_cache()
-        return logits_all, cache_all
+        return logits, cache
 
     def generate_and_cache_batch(
         self, prompts, prompt_tokens, prompt_masks, contrastive_type
@@ -292,7 +287,7 @@ class ContrastiveBase:
         n_prompts = len(prompt_tokens)
         for batch in tqdm(range(1, n_prompts, self.cfg.batch_size)):
 
-            if self.cfg.transformer_lens:
+            if self.cfg.framework == "transformer_lens":
                 output, cache = generate_and_cache(
                     self.cfg,
                     self.model,
@@ -307,7 +302,7 @@ class ContrastiveBase:
                 )
 
             # concatenate cache
-            if self.cfg.transformer_lens:
+            if self.cfg.framework == "transformer_lens":
                 for key in cache.keys():
                     cache_all.cache_dict[key] = torch.cat(
                         (cache_all[key], cache[key]), dim=0
@@ -347,7 +342,7 @@ class ContrastiveBase:
 
         # initialize cache
         if mode == "run":
-            if self.cfg.transformer_lens:
+            if self.cfg.framework == "transformer_lens":
                 logits, cache = run_and_cache(
                     self.cfg, self.model, prompt_tokens[0 : 0 + 1]
                 )
@@ -360,7 +355,7 @@ class ContrastiveBase:
                 )
             return logits, cache
         else:
-            if self.cfg.transformer_lens:
+            if self.cfg.framework == "transformer_lens":
 
                 output, cache = generate_and_cache(
                     self.cfg, self.model, prompt_tokens[0 : 0 + 1]
@@ -400,7 +395,7 @@ class ContrastiveBase:
         )
 
     def get_contrastive_cache(self):
-        if self.cfg.transformer_lens:
+        if self.cfg.framework == "transformer_lens":
             activations_positive = [
                 self.cache_positive[
                     utils.get_act_name(self.cfg.cache_name, l)
@@ -446,7 +441,7 @@ def generate_and_cache(cfg, model, tokens, masks=None):
     do_sample = cfg.do_sample
 
     #  (1) Initialize
-    if cfg.transformer_lens:
+    if cfg.framework == "transformer_lens":
         # Always reset hook before you start -- good habit!
         model.reset_hooks()
         cache = {}
@@ -494,8 +489,9 @@ def generate_and_cache(cfg, model, tokens, masks=None):
         return hook_fn
 
     # (3) Construct hooks
-    if cfg.transformer_lens:
+    if cfg.framework == "transformer_lens":
         # Create filter for what to cache
+        # activation_filter = lambda name: list(cfg.cache_name) in name
         activation_filter = lambda name: cfg.cache_name in name
         fwd_hook = partial(forward_cache_hook, len_prompt=tokens.shape[1], cfg=cfg)
         model.add_hook(activation_filter, fwd_hook, "fwd")
@@ -513,7 +509,7 @@ def generate_and_cache(cfg, model, tokens, masks=None):
 
     # (4) Run forward pass
     if do_sample:
-        if cfg.transformer_lens:
+        if cfg.framework == "transformer_lens":
 
             output = model.generate(
                 tokens,
@@ -543,7 +539,7 @@ def generate_and_cache(cfg, model, tokens, masks=None):
                 )
 
     else:
-        if cfg.transformer_lens:
+        if cfg.framework == "transformer_lens":
             output = model.generate(
                 tokens,
                 max_new_tokens=max_new_tokens,
@@ -564,7 +560,7 @@ def generate_and_cache(cfg, model, tokens, masks=None):
                 )
 
     # (5) Output
-    if cfg.transformer_lens:
+    if cfg.framework == "transformer_lens":
         #  Always reset hook after you are done! -- good habit!
         model.reset_hooks()
         return output, ActivationCache(cache, model)
@@ -572,21 +568,60 @@ def generate_and_cache(cfg, model, tokens, masks=None):
         return output, cache
 
 
-def run_and_cache(cfg, model, tokens, masks=None):
-    # todo: make it compatible with normal transformer syntax
-    # Always reset hook before you start -- good habit!
-    if cfg.transformer_lens:
+def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
+    Float[Tensor, "batch pos d_vocab"],
+    Union[Float[Tensor, "layer batch pos d_modle"], ActivationCache],
+]:
+
+    if cfg.framework == "transformer_lens":
         model.reset_hooks()
+        # (1) hook filter
+        activation_filter = lambda name: cfg.cache_name in name
 
-    # (1) Create filter for what to cache
-    activation_filter = lambda name: cfg.cache_name in name
+        # (2) Run forward pass
+        logits, cache = model.run_with_cache(tokens, names_filter=activation_filter)
 
-    # (2) Run forward pass
-
-    logits, cache = model.run_with_cache(tokens, names_filter=activation_filter)
-
-    # Always reset hook after you are done! -- good habit!
-    if cfg.transformer_lens:
+        # Always reset hook after you are done! -- good habit!
         model.reset_hooks()
+        return logits[:, -1, :], cache
 
-    return logits[:, -1, :], cache
+    else:
+        n_layers = model.model.config.num_hidden_layers
+        n_samples = tokens.shape[0]
+        d_model = model.model.config.hidden_size
+        seq_len = tokens.shape[1]
+        cache = torch.zeros(
+            (n_layers, n_samples, seq_len, d_model),
+            # dtype=torch.float64,
+            device=model.device,
+        )
+        # (1) get hook function
+        block_modules = model.model_block_modules
+
+        if cfg.cache_name == "resid_pre":
+            fwd_hook_pre = [
+                (
+                    block_modules[layer],
+                    cache_residual_hook_pre(cache=cache, layer=layer),
+                )
+                for layer in range(n_layers)
+            ]
+            fwd_hook_post = []
+        else:
+            fwd_hook_post = [
+                (
+                    block_modules[layer],
+                    cache_residual_hook_post(cache=cache, layer=layer),
+                )
+                for layer in range(n_layers)
+            ]
+            fwd_hook_pre = []
+
+        # (2) run with hook
+
+        with add_hooks(
+            module_forward_pre_hooks=fwd_hook_pre, module_forward_hooks=fwd_hook_post
+        ):
+            logit = model.model(input_ids=tokens, attention_mask=masks)
+
+        return logit[0][:, -1, :], cache
