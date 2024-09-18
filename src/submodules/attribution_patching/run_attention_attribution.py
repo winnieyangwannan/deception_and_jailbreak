@@ -85,7 +85,7 @@ def main(
     dataset.process_dataset()
     dataset.construct_contrastive_prompts()
 
-    # Initiate attribution patching
+    # Initiate attribution activation_patching
     attribution_patching = AttributionPatching(cfg, model, dataset)
     # Get baseline logit diff
     attribution_patching.get_contrastive_baseline_logit_diff()

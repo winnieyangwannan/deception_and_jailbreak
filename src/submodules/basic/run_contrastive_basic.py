@@ -109,7 +109,7 @@ def main(
     print("Get stage statistics:")
     contrastive_basic.get_stage_statistics()
     # print("Run and cache:")
-    # contrastive_basic.generate_and_contrastive_activation_cache()
+    contrastive_basic.generate_and_contrastive_activation_cache()
 
     # Plot pca on the residual stream
     contrastive_basic.get_contrastive_activation_pca()

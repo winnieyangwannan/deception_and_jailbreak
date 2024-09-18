@@ -1,4 +1,4 @@
-from pipeline.configs.config_activation_patching import Config
+from pipeline.configs.config_activation_steering import Config
 import os
 import sys
 import random
@@ -27,8 +27,11 @@ from src.submodules.dataset.task_and_dataset_deception import (
 from src.submodules.basic.contrastive_model_base import (
     ContrastiveBase,
 )
-from src.submodules.patching.activation_patching import AttributionPatching
+from src.submodules.activation_patching.activation_patching import AttributionPatching
 from src.submodules.model.load_model import load_model
+from src.submodules.activation_steering.contrastive_act_steering import (
+    ContrastiveActSteering,
+)
 from src.utils.utils import logits_to_ave_logit_diff
 from transformer_lens import utils, HookedTransformer, ActivationCache
 from rich.table import Table, Column
@@ -51,10 +54,12 @@ def parse_arguments():
     parser.add_argument(
         "--save_dir", type=str, required=False, default="D:\Data\deception"
     )
+    parser.add_argument("--source_layer", type=int, required=True, default=0)
+    parser.add_argument("--target_layer", type=int, required=True, default=0)
     parser.add_argument("--task_name", type=str, required=False, default="deception")
-    parser.add_argument("--do_sample", type=bool, required=False, default=False)
+    parser.add_argument("--do_sample", type=bool, required=False, default=True)
     parser.add_argument("--framework", type=str, required=False, default="transformers")
-    parser.add_argument("--cache_name", type=str, required=False, default="resid_pre")
+    parser.add_argument("--cache_name", type=str, required=False, default="resid_post")
 
     return parser.parse_args()
 
@@ -68,6 +73,8 @@ def main(
     do_sample: bool = False,
     framework: str = "transformers",
     cache_name: str = "resid_pre",
+    target_layer: int = 0,
+    source_layer: int = 0,
 ):
 
     # 0. Set configuration
@@ -82,6 +89,8 @@ def main(
         do_sample=do_sample,
         framework=framework,
         cache_name=cache_name,
+        source_layer=source_layer,
+        target_layer=target_layer,
     )
     pprint.pp(cfg)
 
@@ -98,7 +107,7 @@ def main(
     dataset.process_dataset()
     dataset.construct_contrastive_prompts()
 
-    # Initiate contrastive modResourel base
+    # Initiate contrastive model base
     print("Initializing model_base base:")
     contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
 
@@ -106,18 +115,26 @@ def main(
     print("Run and cache:")
     contrastive_basic.run_and_cache_contrastive_activation()
 
-    attr_patch = AttributionPatching(dataset, contrastive_basic)
-    attr_patch.get_activation_patching_block()
+    act_steer = ContrastiveActSteering(cfg, dataset, contrastive_basic)
+    act_steer.get_steering_vector()
+    act_steer.generate_and_contrastive_activation_steering()
+    act_steer.get_contrastive_activation_pca()
+    act_steer.evaluate_deception()
+    act_steer.get_stage_statistics()
 
     print("done")
 
 
 if __name__ == "__main__":
+    import time
+
+    start = time.time()
+    print("hello")
 
     args = parse_arguments()
     print(sae_lens.__version__)
     print(sae_lens.__version__)
-    print("run contrastive activation patching\n\n")
+    print("run contrastive activation activation_patching\n\n")
     print("model_base_path")
     print(args.model_path)
     print("save_dir")
@@ -126,6 +143,10 @@ if __name__ == "__main__":
     print(args.task_name)
     print("do_sample")
     print(args.do_sample)
+    print("source_layer")
+    print(args.source_layer)
+    print("target_layer")
+    print(args.target_layer)
 
     if args.task_name == "deception":
         contrastive_type = ("honest", "lying")
@@ -145,4 +166,8 @@ if __name__ == "__main__":
         do_sample=args.do_sample,
         framework=args.framework,
         cache_name=args.cache_name,
+        source_layer=args.source_layer,
+        target_layer=args.target_layer,
     )
+    end = time.time()
+    print(end - start)

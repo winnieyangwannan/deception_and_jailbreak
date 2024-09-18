@@ -212,7 +212,9 @@ def plot_performance_bar(
     role = ["Honest", "Lying"]
 
     # plot
-    fig = make_subplots(rows=1, cols=3, subplot_titles=["Honesty Score", "Lying Score", "Unexpected"])
+    fig = make_subplots(
+        rows=1, cols=3, subplot_titles=["Honesty Score", "Lying Score", "Unexpected"]
+    )
     fig.add_trace(
         go.Bar(
             x=role,

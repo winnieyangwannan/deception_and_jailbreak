@@ -47,7 +47,7 @@ def patch_residual_hook_pre(
     patch_pos: int,
 ):
     def hook_fn(module, input):
-        # nonlocal cache, layer, positions, batch_id, batch_size, len_prompt
+        nonlocal clean_cache, patch_layer, layer, patch_pos
 
         if isinstance(input, tuple):
             activation: Float[Tensor, "batch_size seq_len d_model"] = input[0]
@@ -65,21 +65,20 @@ def patch_residual_hook_pre(
     return hook_fn
 
 
-def patch_residual_hook_post(
-    clean_cache: Float[Tensor, "layer batch pos d_model"],
-    patch_layer: int,
-    layer: int,
+def patch_activation_hook_post(
+    clean_activation: Float[Tensor, "batch pos d_model"],
     patch_pos: int,
 ):
     def hook_fn(module, input, output):
+        nonlocal clean_activation, patch_pos
 
         if isinstance(output, tuple):
             activation: Float[Tensor, "batch_size seq_len d_model"] = output[0]
         else:
             activation: Float[Tensor, "batch_size seq_len d_model"] = output
 
-        if patch_layer == layer:
-            activation[:, patch_pos, :] = clean_cache[patch_layer, :, patch_pos, :]
+        # if patch_layer == layer:
+        activation[:, patch_pos, :] = clean_activation[:, patch_pos, :]
 
         if isinstance(output, tuple):
             return (activation, *output[1:])
@@ -89,12 +88,12 @@ def patch_residual_hook_post(
     return hook_fn
 
 
-def cache_residual_hook_post(
+def cache_activation_hook_post(
     cache: Float[Tensor, "layer batch seq_len d_model"],
     layer: int,
 ):
     def hook_fn(module, input, output):
-
+        nonlocal cache, layer
         if isinstance(output, tuple):
             activation: Float[Tensor, "batch seq_len d_model"] = output[0]
         else:
@@ -115,7 +114,7 @@ def cache_residual_hook_pre(
     layer: int,
 ):
     def hook_fn(module, input):
-
+        nonlocal cache, layer
         if isinstance(input, tuple):
             activation: Float[Tensor, "batch seq_len d_model"] = input[0]
         else:
@@ -125,6 +124,69 @@ def cache_residual_hook_pre(
 
         if isinstance(input, tuple):
             return (activation, *input[1:])
+        else:
+            return activation
+
+    return hook_fn
+
+
+def cache_activation_post_hook_pos(cache, layer, len_prompt, pos):
+    """
+    # USE DURING GENERATION
+    :param cache:
+    :param layer:
+    :param len_prompt:
+    :param pos:
+    :return:
+    """
+
+    def hook_fn(module, input, output):
+        nonlocal cache, layer, len_prompt, pos
+
+        if isinstance(output, tuple):
+            activation: Float[Tensor, "batch_size seq_len d_model"] = output[0]
+        else:
+            activation: Float[Tensor, "batch_size seq_len d_model"] = output
+
+        # only cache the last token of the prompt not the generated answer
+        if activation.shape[1] == len_prompt:
+            cache[layer, :, :] = activation[:, pos, :]
+
+        if isinstance(output, tuple):
+            return (activation, *output[1:])
+        else:
+            return activation
+
+    return hook_fn
+
+
+def activation_addition_cache_last_post(
+    mean_diff, cache, layer, target_layer, len_prompt, pos
+):
+    """
+    # USE DURING GENERATION
+
+    """
+
+    def hook_fn(module, input, output):
+        nonlocal mean_diff, cache, layer, target_layer, len_prompt, pos
+
+        if isinstance(output, tuple):
+            activation: Float[Tensor, "batch_size seq_len d_model"] = output[0]
+        else:
+            activation: Float[Tensor, "batch_size seq_len d_model"] = output
+
+        if layer == target_layer:
+            direction = mean_diff / (mean_diff.norm(dim=-1, keepdim=True) + 1e-8)
+            direction = direction.to(activation)
+            activation += (activation @ direction).unsqueeze(-1) * direction
+
+        # only cache the last token of the prompt not the generated answer
+        if activation.shape[1] == len_prompt:
+            cache[layer, :, :] = activation[:, pos, :]
+
+        if isinstance(output, tuple):
+            return (activation, *output[1:])
         else:
             return activation
 

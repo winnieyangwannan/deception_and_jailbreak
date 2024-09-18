@@ -34,7 +34,7 @@ from transformer_lens import utils, HookedTransformer, ActivationCache
 from rich.table import Table, Column
 from rich import print as rprint
 from src.utils.plotly_utils import line, scatter, bar
-from src.utils.neel_plotly_utils import imshow
+from src.utils.plotly_utils_neel import imshow
 from src.submodules.activation_pca.activation_pca import get_pca_and_plot
 import plotly.io as pio
 import circuitsvis as cv  # for visualize attetnion pattern
@@ -46,7 +46,8 @@ from src.submodules.evaluations.evaluate_deception import (
 )
 from src.submodules.stage_statistics.stage_statistics import get_state_quantification
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
-from src.utils.hook_utils import cache_residual_hook_post, cache_residual_hook_pre
+from src.utils.hook_utils import cache_activation_hook_post, cache_residual_hook_pre
+from src.utils.hook_utils import cache_activation_post_hook_pos
 
 
 class ContrastiveBase:
@@ -228,21 +229,12 @@ class ContrastiveBase:
 
     def run_and_cache_batch(self, prompt_tokens, prompt_masks):
 
-        # logits_all, cache_all = self.initialize_cache(
-        #     prompt_tokens, prompt_masks, mode="run"
-        # )
-        # n_prompts = len(prompt_tokens)
-
         if self.cfg.framework == "transformer_lens":
             logits, cache = run_and_cache(
                 self.cfg,
                 self.model,
                 prompt_tokens,
             )
-            # for key in cache.keys():
-            #     cache_all.cache_dict[key] = torch.cat(
-            #         (cache_all[key], cache[key]), dim=0
-            #     )
 
         else:
             logits, cache = run_and_cache(
@@ -251,7 +243,6 @@ class ContrastiveBase:
                 prompt_tokens,
                 prompt_masks,
             )
-            # logits_all = torch.cat((logits), dim=0)
 
         return logits, cache
 
@@ -453,7 +444,7 @@ def generate_and_cache(cfg, model, tokens, masks=None):
         len_prompt = tokens.shape[1]
         cache = torch.zeros(
             (n_layers, n_samples, d_model),
-            dtype=torch.float64,
+            dtype=torch.float16,
             device=model.device,
         )
 
@@ -468,26 +459,6 @@ def generate_and_cache(cfg, model, tokens, masks=None):
             if act.shape[1] == len_prompt:
                 cache[hook.name] = act.detach()
 
-    def get_generation_cache_activation_post_hook(cache, layer, len_prompt, pos):
-        def hook_fn(module, input, output):
-            # nonlocal cache, layer, positions, batch_id, batch_size, len_prompt
-
-            if isinstance(output, tuple):
-                activation: Float[Tensor, "batch_size seq_len d_model"] = output[0]
-            else:
-                activation: Float[Tensor, "batch_size seq_len d_model"] = output
-
-            # only cache the last token of the prompt not the generated answer
-            if activation.shape[1] == len_prompt:
-                cache[layer, :, :] = activation[:, pos, :]
-
-            if isinstance(output, tuple):
-                return (activation, *output[1:])
-            else:
-                return activation
-
-        return hook_fn
-
     # (3) Construct hooks
     if cfg.framework == "transformer_lens":
         # Create filter for what to cache
@@ -500,7 +471,7 @@ def generate_and_cache(cfg, model, tokens, masks=None):
         fwd_hook = [
             (
                 block_modules[layer],
-                get_generation_cache_activation_post_hook(
+                cache_activation_post_hook_pos(
                     cache, layer, len_prompt=len_prompt, pos=-1
                 ),
             )
@@ -575,8 +546,15 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
 
     if cfg.framework == "transformer_lens":
         model.reset_hooks()
+        n_layers = model.cfg.n_layers
         # (1) hook filter
-        activation_filter = lambda name: cfg.cache_name in name
+        # if type(cfg.cache_name) is tuple:
+        hook_names = [
+            utils.get_act_name(cach_name, layer)
+            for cach_name in cfg.cache_name
+            for layer in range(n_layers)
+        ]
+        activation_filter = lambda name: name in hook_names
 
         # (2) Run forward pass
         logits, cache = model.run_with_cache(tokens, names_filter=activation_filter)
@@ -592,8 +570,8 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
         seq_len = tokens.shape[1]
         cache = torch.zeros(
             (n_layers, n_samples, seq_len, d_model),
-            # dtype=torch.float64,
             device=model.device,
+            dtype=torch.bfloat16,
         )
         # (1) get hook function
         if "resid" in cfg.cache_name:
@@ -616,7 +594,7 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
             fwd_hook_post = [
                 (
                     block_modules[layer],
-                    cache_residual_hook_post(cache=cache, layer=layer),
+                    cache_activation_hook_post(cache=cache, layer=layer),
                 )
                 for layer in range(n_layers)
             ]

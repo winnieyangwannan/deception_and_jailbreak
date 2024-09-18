@@ -35,7 +35,7 @@ from transformer_lens import utils, HookedTransformer, ActivationCache
 from rich.table import Table, Column
 from rich import print as rprint
 from src.utils.plotly_utils import line, scatter, bar
-from src.utils.neel_plotly_utils import imshow
+from src.utils.plotly_utils_neel import imshow
 from src.submodules.activation_pca.activation_pca import get_pca_and_plot
 import plotly.io as pio
 import circuitsvis as cv  # for visualize attetnion pattern

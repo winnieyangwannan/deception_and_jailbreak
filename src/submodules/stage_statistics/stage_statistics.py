@@ -69,6 +69,7 @@ def get_distance_pair_contrastive(
     save_path,
     contrastive_type=["HHH", "evil_confidant"],
     save_plot=True,
+    save_name=None,
 ):
     n_samples = int(activations_all.shape[1] / 2)
     dist_pair_pca = np.zeros((n_layers, n_samples))
@@ -174,15 +175,26 @@ def get_distance_pair_contrastive(
 
         fig.show()
         # fig.write_html(save_path + os.sep + 'distance_pair.html')
-        pio.write_image(
-            fig,
-            save_path
-            + os.sep
-            + "stage_1_distance_pair_"
-            + f"_{contrastive_type[0]}_{contrastive_type[1]}"
-            + ".png",
-            scale=6,
-        )
+        if save_name is None:
+            pio.write_image(
+                fig,
+                save_path
+                + os.sep
+                + "stage_1_distance_pair_"
+                + f"_{contrastive_type[0]}_{contrastive_type[1]}_{save_name}"
+                + ".png",
+                scale=6,
+            )
+        else:
+            pio.write_image(
+                fig,
+                save_path
+                + os.sep
+                + "stage_1_distance_pair_"
+                + f"_{contrastive_type[0]}_{contrastive_type[1]}"
+                + ".png",
+                scale=6,
+            )
 
     stage_1 = {
         "dist_pair": dist_pair,
@@ -471,6 +483,7 @@ def get_dist_centroid_true_false(
     save_path,
     contrastive_type=["HHH", "evil_confidant"],
     save_plot=True,
+    save_name=None,
 ):
     n_samples = int(activations_all.shape[1] / 2)
     centroid_dist_positive = np.zeros((n_layers))
@@ -560,16 +573,27 @@ def get_dist_centroid_true_false(
         fig.update_xaxes(tickvals=np.arange(0, n_layers, 5))
         fig.update_layout(height=500, width=700)
         fig.show()
-        # fig.write_html(save_path + os.sep + 'centroid_distance_true_false.html')
-        pio.write_image(
-            fig,
-            save_path
-            + os.sep
-            + "state_2_centroid_distance_true_false_"
-            + f"_{contrastive_type[0]}_{contrastive_type[1]}"
-            + ".png",
-            scale=6,
-        )
+
+        if save_name is None:
+            pio.write_image(
+                fig,
+                save_path
+                + os.sep
+                + "state_2_centroid_distance_true_false_"
+                + f"_{contrastive_type[0]}_{contrastive_type[1]}"
+                + ".png",
+                scale=6,
+            )
+        else:
+            pio.write_image(
+                fig,
+                save_path
+                + os.sep
+                + "state_2_centroid_distance_true_false_"
+                + f"_{contrastive_type[0]}_{contrastive_type[1]}_{save_name}"
+                + ".png",
+                scale=6,
+            )
     stage_2 = {
         "centroid_dist_positive": centroid_dist_positive,
         "centroid_dist_negative": centroid_dist_negative,
@@ -600,6 +624,7 @@ def get_cos_sim_positive_negative_vector(
     save_path,
     contrastive_type=["HHH", "evil_confidant"],
     save_plot=True,
+    save_name=None,
 ):
     n_samples = int(activations_all.shape[1] / 2)
     n_components = activations_pca.shape[-1]
@@ -695,14 +720,24 @@ def get_cos_sim_positive_negative_vector(
 
         fig.show()
         # fig.write_html(save_path + os.sep + 'cos_sim_positive_negative.html')
-        pio.write_image(
-            fig,
-            save_path
-            + os.sep
-            + "stage_3_cos_sim_positive_negative_"
-            + f"_{contrastive_type[0]}_{contrastive_type[1]}.png",
-            scale=6,
-        )
+        if save_name is None:
+            pio.write_image(
+                fig,
+                save_path
+                + os.sep
+                + "stage_3_cos_sim_positive_negative_"
+                + f"_{contrastive_type[0]}_{contrastive_type[1]}.png",
+                scale=6,
+            )
+        else:
+            pio.write_image(
+                fig,
+                save_path
+                + os.sep
+                + "stage_3_cos_sim_positive_negative_"
+                + f"_{contrastive_type[0]}_{contrastive_type[1]}_{save_name}.png",
+                scale=6,
+            )
     stage_3 = {
         "centroid_positive_true_pca_all": centroid_positive_true_pca_all,
         "centroid_positive_false_pca_all": centroid_positive_false_pca_all,
@@ -753,6 +788,7 @@ def get_state_quantification(
     activations_negative,
     labels,
     save_plot=True,
+    save_name=None,
 ):
     """Run the full pipeline."""
     intervention = cfg.intervention
@@ -760,7 +796,9 @@ def get_state_quantification(
     if intervention == "no_intervention":
         save_path = os.path.join(cfg.artifact_path(), "stage_stats")
     else:
-        save_path = os.path.join(cfg.artifact_path(), intervention, "stage_stats")
+        save_path = os.path.join(
+            cfg.artifact_path(), "activation_steering", intervention, "stage_stats"
+        )
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -787,6 +825,7 @@ def get_state_quantification(
         save_path,
         contrastive_type=contrastive_type,
         save_plot=save_plot,
+        save_name=save_name,
     )
 
     # 2. Stage 2:  Separation between True and False
@@ -800,6 +839,7 @@ def get_state_quantification(
         save_path,
         contrastive_type=contrastive_type,
         save_plot=save_plot,
+        save_name=save_name,
     )
 
     # labels_dunn = np.stack((labels, labels))
@@ -831,6 +871,7 @@ def get_state_quantification(
         save_path,
         contrastive_type=contrastive_type,
         save_plot=save_plot,
+        save_name=save_name,
     )
 
     stage_stats = {
@@ -841,6 +882,13 @@ def get_state_quantification(
     }
 
     # save
-    with open(save_path + os.sep + f"{cfg.model_alias}_stage_stats.pkl", "bw") as f:
-        pickle.dump(stage_stats, f)
+    if save_name is None:
+        with open(save_path + os.sep + f"{cfg.model_alias}_stage_stats.pkl", "bw") as f:
+            pickle.dump(stage_stats, f)
+    else:
+        with open(
+            save_path + os.sep + f"{cfg.model_alias}_stage_stats_{save_name}.pkl", "bw"
+        ) as f:
+            pickle.dump(stage_stats, f)
+
     return stage_stats
