@@ -24,7 +24,8 @@ class Config:
     n_test: int = 50
     batch_size: int = 5
     max_new_tokens: int = 100
-    cache_pos: str = "all"  # "prompt_last_token" or "all" or "prompt_all"
+
+    cache_pos: str = "prompt_last_token"  # "prompt_last_token" or "all" or "prompt_all"
     clean_type: str = "positive"
     # for generation_trajectory
 

@@ -16,13 +16,14 @@ class Config:
     do_sample: bool
     framework: str
     cache_name: Tuple[str]  # "attn_out" "mlp_out" "resid_pre"
+    jailbreak: str
     dtype: str = "bfloat16"  # "bfloat16" or "default"
-    n_train: int = 50
+    n_train: int = 10
     n_test: int = 50
     batch_size: int = 5
-    max_new_tokens: int = 1
+    max_new_tokens: int = 100
     intervention: str = "no_intervention"
-    cache_pos: str = "all"  # "prompt_last_token" or "all" or "prompt_all"
+    cache_pos: str = "prompt_last_token"  # "prompt_last_token" or "all" or "prompt_all"
     clean_type: str = "positive"
     # for generation_trajectory
 

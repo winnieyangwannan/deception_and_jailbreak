@@ -161,7 +161,12 @@ def cache_activation_post_hook_pos(cache, layer, len_prompt, pos):
 
 
 def activation_addition_cache_last_post(
-    mean_diff, cache, layer, target_layer, len_prompt, pos
+    mean_diff,
+    cache: Float[Tensor, "layer batch d_model"],
+    layer,
+    target_layer,
+    len_prompt,
+    pos,
 ):
     """
     # USE DURING GENERATION
@@ -184,6 +189,9 @@ def activation_addition_cache_last_post(
         # only cache the last token of the prompt not the generated answer
         if activation.shape[1] == len_prompt:
             cache[layer, :, :] = activation[:, pos, :]
+        # else:
+        #     if activation.shape[1] == len_prompt:
+        #         cache[layer, :, :] = activation[:, pos, :]
 
         if isinstance(output, tuple):
             return (activation, *output[1:])

@@ -25,10 +25,6 @@ import numpy as np
 from matplotlib.widgets import EllipseSelector
 from IPython.display import HTML, Markdown
 import torch
-from src.submodules.dataset.task_and_dataset_deception import (
-    ContrastiveDatasetDeception,
-    tokenize_prompts_and_answers,
-)
 from src.utils.utils import logits_to_ave_logit_diff
 from transformer_lens import utils, HookedTransformer, ActivationCache
 from rich.table import Table, Column
@@ -45,6 +41,7 @@ from src.submodules.evaluations.evaluate_deception import (
     plot_lying_honest_performance,
 )
 from src.submodules.stage_statistics.stage_statistics import get_state_quantification
+from src.submodules.evaluations.evaluate_jailbreak import evaluate_generation_jailbreak
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 from src.utils.hook_utils import cache_activation_hook_post, cache_residual_hook_pre
 from src.utils.hook_utils import cache_activation_post_hook_pos
@@ -58,42 +55,22 @@ class ContrastiveBase:
         self.contrastive_type = cfg.contrastive_type
         self.answer_type = cfg.answer_type
 
-        # tokenize prompts and answer
-        (
-            self.prompt_tokens_positive,
-            self.answer_tokens_positive_correct,
-            self.answer_tokens_positive_wrong,
-            self.prompt_masks_positive,
-        ) = tokenize_prompts_and_answers(
-            cfg,
-            model,
-            self.dataset.prompts_positive,
-            self.dataset.answers_positive_correct,
-            self.dataset.answers_positive_wrong,
-        )
-        (
-            self.prompt_tokens_negative,
-            self.answer_tokens_negative_correct,
-            self.answer_tokens_negative_wrong,
-            self.prompt_masks_negative,
-        ) = tokenize_prompts_and_answers(
-            cfg,
-            model,
-            self.dataset.prompts_negative,
-            self.dataset.answers_negative_correct,
-            self.dataset.answers_negative_wrong,
-        )
-
         self.cache_positive = None
         self.cache_negative = None
         self.logit_diff_clean = None
         self.logit_diff_corrupted = None
 
-        # save the visualization
-        save_path = self.cfg.artifact_path()
-        self.vis_path = save_path + os.sep + "attribution_patching"
-        if not os.path.exists(self.vis_path):
-            os.makedirs(self.vis_path)
+        self.answer_tokens_positive_correct = None
+        self.answer_tokens_positive_wrong = None
+        self.answer_tokens_negative_correct = None
+        self.answer_tokens_negative_wrong = None
+
+        self.prompt_tokens_negative = None
+        self.prompt_masks_negative = None
+        self.prompt_tokens_positive = None
+        self.prompt_masks_positive = None
+
+        self._get_tokenization()
 
         print("Memory after initialization:")
         print(
@@ -103,6 +80,51 @@ class ContrastiveBase:
             torch.cuda.mem_get_info()[1] / 1000000000,
         )
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
+    def _get_tokenization(self):
+        if (
+            self.cfg.task_name == "deception"
+            or self.cfg.task_name == "jailbreak_choice"
+        ):
+            # tokenize prompts and answer
+            (
+                self.prompt_tokens_positive,
+                self.answer_tokens_positive_correct,
+                self.answer_tokens_positive_wrong,
+                self.prompt_masks_positive,
+            ) = self.dataset.tokenize_prompts_and_answers(
+                self.model,
+                self.dataset.prompts_positive,
+                self.dataset.answers_positive_correct,
+                self.dataset.answers_positive_wrong,
+            )
+            (
+                self.prompt_tokens_negative,
+                self.answer_tokens_negative_correct,
+                self.answer_tokens_negative_wrong,
+                self.prompt_masks_negative,
+            ) = self.dataset.tokenize_prompts_and_answers(
+                self.model,
+                self.dataset.prompts_negative,
+                self.dataset.answers_negative_correct,
+                self.dataset.answers_negative_wrong,
+            )
+
+        elif self.cfg.task_name == "jailbreak":
+            (
+                self.prompt_tokens_positive,
+                self.prompt_masks_positive,
+            ) = self.dataset.tokenize_prompts_and_answers(
+                self.model,
+                self.dataset.prompts_positive,
+            )
+            (
+                self.prompt_tokens_negative,
+                self.prompt_masks_negative,
+            ) = self.dataset.tokenize_prompts_and_answers(
+                self.model,
+                self.dataset.prompts_negative,
+            )
 
     def run_and_cache_contrastive_activation(self):
         """
@@ -213,11 +235,19 @@ class ContrastiveBase:
             fig, pca_path + os.sep + f"{self.cfg.model_alias}_pca.png", scale=6
         )
 
+        if self.cfg.task_name == "deception":
+            labels = self.dataset.labels_positive_correct
+        elif (
+            self.cfg.task_name == "jailbreak"
+            or self.cfg.task_name == "jailbreak_choice"
+        ):
+            labels = self.dataset.input_labels
+
         # 4. Save activations
         activations = {
             "activations_positive": activations_positive,
             "activations_negative": activations_negative,
-            "labels": self.dataset.labels_positive_correct,
+            "labels": labels,
         }
         activation_path = os.path.join(self.cfg.artifact_path(), "activations")
         if not os.path.exists(activation_path):
@@ -251,8 +281,23 @@ class ContrastiveBase:
     ):
 
         # 1. Gen data
-        statements = self.dataset.statements
-        labels = self.dataset.answers_positive_correct
+        if self.cfg.task_name == "deception":
+            data = self.dataset.statemetns
+            labels = self.dataset.answers_positive_correct
+            prompt_type = "statement"
+            category = [""] * len(data)
+
+        elif self.cfg.task_name == "jailbreak":
+            data = self.dataset.request
+            labels = self.dataset.input_labels
+            prompt_type = "request"
+            category = self.dataset.category
+
+        elif self.cfg.task_name == "jailbreak_choice":
+            data = self.dataset.request
+            prompt_type = "request"
+            category = self.dataset.category
+            labels = self.dataset.input_labels
 
         # 2. Generation initialization
         completions = []
@@ -266,11 +311,12 @@ class ContrastiveBase:
         completions.append(
             {
                 "prompt": prompts[0],
-                "statement": statements[0],
+                f"{prompt_type}": data[0],
                 "response": self.model.tokenizer.decode(
                     generation_toks[0], skip_special_tokens=True
                 ).strip(),
                 "label": labels[0],
+                "category": category[0],
                 "ID": 0,
             }
         )
@@ -306,12 +352,13 @@ class ContrastiveBase:
             for generation_idx, generation in enumerate(generation_toks):
                 completions.append(
                     {
-                        "statement": statements[batch + generation_idx],
+                        f"{prompt_type}": data[batch + generation_idx],
                         "response": self.model.tokenizer.decode(
                             generation, skip_special_tokens=True
                         ).strip(),
                         "label": labels[batch + generation_idx],
                         "ID": batch + generation_idx,
+                        "category": category[batch + generation_idx],
                     }
                 )
 
@@ -368,13 +415,28 @@ class ContrastiveBase:
         completions_lying = evaluate_generation_deception(
             self.cfg, contrastive_type=self.cfg.contrastive_type[1]
         )
-        plot_lying_honest_performance(self.cfg, completions_honest, completions_lying)
+        # plot_lying_honest_performance(self.cfg, completions_honest, completions_lying)
+
+    def evaluate_jailbreak(self):
+        completions_honest = evaluate_generation_jailbreak(
+            self.cfg, contrastive_type=self.cfg.contrastive_type[0]
+        )
+        completions_lying = evaluate_generation_jailbreak(
+            self.cfg, contrastive_type=self.cfg.contrastive_type[1]
+        )
+        # plot_lying_honest_performance(self.cfg, completions_honest, completions_lying)
 
     def get_stage_statistics(self):
         # 1. Get access to cache
         activations_positive, activations_negative = self.get_contrastive_cache()
 
-        labels = self.dataset.labels_positive_correct
+        if self.cfg.task_name == "deception":
+            labels = self.dataset.labels_positive_correct
+        elif (
+            self.cfg.task_name == "jailbreak"
+            or self.cfg.task_name == "jailbreak_choice"
+        ):
+            labels = self.dataset.input_labels
 
         # 2. get stage statistics
         get_state_quantification(
@@ -547,21 +609,52 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
     if cfg.framework == "transformer_lens":
         model.reset_hooks()
         n_layers = model.cfg.n_layers
+        cache = {}
+
         # (1) hook filter
         # if type(cfg.cache_name) is tuple:
-        hook_names = [
-            utils.get_act_name(cach_name, layer)
-            for cach_name in cfg.cache_name
-            for layer in range(n_layers)
-        ]
-        activation_filter = lambda name: name in hook_names
+        #     hook_names = [
+        #         utils.get_act_name(cach_name, layer)
+        #         for cach_name in cfg.cache_name
+        #         for layer in range(n_layers)
+        #     ]
+        # else:
+        #     hook_names = [
+        #         utils.get_act_name(cfg.cache_name, layer) for layer in range(n_layers)
+        #     ]
+        #
+        # activation_filter = lambda name: name in hook_names
+        def steering(
+            activations,
+            hook,
+            cfg=None,
+        ):
+            # print(steering_vector.shape) # [batch, n_tokens, n_head, d_head ]
+            print("hook.layer()")
+            print(hook.layer())
+            if cfg.cache_pos == "prompt_last_token":
+                cache[hook.name] = activations[:, -2:, :].detach()
 
+        steering_hook = partial(
+            steering,
+            cfg=cfg,
+        )
         # (2) Run forward pass
-        logits, cache = model.run_with_cache(tokens, names_filter=activation_filter)
-
+        # logits, cache = model.run_with_cache(tokens, names_filter=activation_filter)
+        with model.hooks(
+            fwd_hooks=[
+                (
+                    utils.get_act_name(cfg.cache_name, layer),
+                    steering_hook,
+                )
+                for layer in range(n_layers)
+            ]
+        ):
+            logits = model(tokens)
         # Always reset hook after you are done! -- good habit!
         model.reset_hooks()
-        return logits[:, -1, :], cache
+
+        return logits[:, -1, :], ActivationCache(cache, model)
 
     else:
         n_layers = model.model.config.num_hidden_layers

@@ -1,4 +1,4 @@
-from pipeline.configs.config_generation import Config
+from pipeline.configs.config_generation_jailbreak import Config
 import os
 import sys
 import random
@@ -20,9 +20,8 @@ import numpy as np
 from matplotlib.widgets import EllipseSelector
 from IPython.display import HTML, Markdown
 import torch
-from src.submodules.dataset.task_and_dataset_deception import (
-    ContrastiveDatasetDeception,
-    tokenize_prompts_and_answers,
+from src.submodules.dataset.task_and_dataset_jailbreaks_multiple_choice import (
+    ContrastiveDatasetJailbreakChoice,
 )
 from src.submodules.basic.contrastive_model_base import (
     ContrastiveBase,
@@ -48,11 +47,16 @@ def parse_arguments():
         "--model_path", type=str, required=True, help="google/gemma-2-2b-it"
     )
     parser.add_argument(
-        "--save_dir", type=str, required=False, default="D:\Data\deception"
+        "--save_dir", type=str, required=False, default="D:\Data\jailbreak_choice"
     )
-    parser.add_argument("--task_name", type=str, required=False, default="deception")
+    parser.add_argument(
+        "--task_name", type=str, required=False, default="jailbreak_choice"
+    )
     parser.add_argument("--do_sample", type=bool, required=False, default=False)
     parser.add_argument("--framework", type=str, required=True, default="transformers")
+    parser.add_argument(
+        "--jailbreak", type=str, required=False, default="evil_confidant"
+    )
 
     return parser.parse_args()
 
@@ -65,6 +69,7 @@ def main(
     answer_type: Tuple[str] = ("true", "false"),
     do_sample: bool = False,
     framework: str = "transformer_lens",
+    jailbreak: str = "evil_confidant",
 ):
 
     # 0. Set configuration
@@ -78,6 +83,7 @@ def main(
         save_dir=save_dir,
         do_sample=do_sample,
         framework=framework,
+        jailbreak=jailbreak,
     )
     pprint.pp(cfg)
 
@@ -89,8 +95,8 @@ def main(
 
     # 2. Load data
     print("loading data")
-    dataset = ContrastiveDatasetDeception(cfg)
-    dataset.load_and_sample_datasets(train_test="train")
+    dataset = ContrastiveDatasetJailbreakChoice(cfg)
+    dataset.load_and_sample_datasets()
     dataset.process_dataset()
     dataset.construct_contrastive_prompts()
 
@@ -103,13 +109,11 @@ def main(
     contrastive_basic.generate_and_contrastive_activation_cache()
 
     # Evaluate generation results
-    print("Evaluate generation results:")
-    contrastive_basic.evaluate_deception()
+    # print("Evaluate generation results:")
+    # contrastive_basic.evaluate_deception()
 
     print("Get stage statistics:")
     contrastive_basic.get_stage_statistics()
-    # print("Run and cache:")
-    contrastive_basic.generate_and_contrastive_activation_cache()
 
     # Plot pca on the residual stream
     contrastive_basic.get_contrastive_activation_pca()
@@ -121,7 +125,7 @@ if __name__ == "__main__":
 
     args = parse_arguments()
     print(sae_lens.__version__)
-    print("run_contrastive_basic\n\n")
+    print("run_contrastive_basic_jailbreak_choice\n\n")
     print("model_base_path")
     print(args.model_path)
     print("save_dir")
@@ -141,8 +145,10 @@ if __name__ == "__main__":
     if args.task_name == "deception":
         contrastive_type = ("honest", "lying")
         answer_type = ("true", "false")
-    elif args.task_name == "jailbreak":
+    elif args.task_name == "jailbreak" or args.task_name == "jailbreak_choice":
         contrastive_type = ("HHH", args.jailbreak)
+        answer_type = ("harmless", "harmful")
+
     print("answer_type")
     print(answer_type)
 
@@ -155,5 +161,6 @@ if __name__ == "__main__":
         contrastive_type=contrastive_type,
         answer_type=answer_type,
         do_sample=do_sample,
-        transformer_lens=args.framework,
+        framework=args.framework,
+        jailbreak=args.jailbreak,
     )

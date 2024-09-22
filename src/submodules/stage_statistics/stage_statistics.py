@@ -180,8 +180,8 @@ def get_distance_pair_contrastive(
                 fig,
                 save_path
                 + os.sep
-                + "stage_1_distance_pair_"
-                + f"_{contrastive_type[0]}_{contrastive_type[1]}_{save_name}"
+                + "stage_1_distance_pair"
+                + f"{contrastive_type[0]}_{contrastive_type[1]}_{save_name}"
                 + ".png",
                 scale=6,
             )
@@ -191,7 +191,7 @@ def get_distance_pair_contrastive(
                 save_path
                 + os.sep
                 + "stage_1_distance_pair_"
-                + f"_{contrastive_type[0]}_{contrastive_type[1]}"
+                + f"{contrastive_type[0]}_{contrastive_type[1]}"
                 + ".png",
                 scale=6,
             )
@@ -580,7 +580,7 @@ def get_dist_centroid_true_false(
                 save_path
                 + os.sep
                 + "state_2_centroid_distance_true_false_"
-                + f"_{contrastive_type[0]}_{contrastive_type[1]}"
+                + f"{contrastive_type[0]}_{contrastive_type[1]}"
                 + ".png",
                 scale=6,
             )
@@ -590,7 +590,7 @@ def get_dist_centroid_true_false(
                 save_path
                 + os.sep
                 + "state_2_centroid_distance_true_false_"
-                + f"_{contrastive_type[0]}_{contrastive_type[1]}_{save_name}"
+                + f"{contrastive_type[0]}_{contrastive_type[1]}_{save_name}"
                 + ".png",
                 scale=6,
             )
@@ -726,7 +726,7 @@ def get_cos_sim_positive_negative_vector(
                 save_path
                 + os.sep
                 + "stage_3_cos_sim_positive_negative_"
-                + f"_{contrastive_type[0]}_{contrastive_type[1]}.png",
+                + f"{contrastive_type[0]}_{contrastive_type[1]}.png",
                 scale=6,
             )
         else:
@@ -735,7 +735,7 @@ def get_cos_sim_positive_negative_vector(
                 save_path
                 + os.sep
                 + "stage_3_cos_sim_positive_negative_"
-                + f"_{contrastive_type[0]}_{contrastive_type[1]}_{save_name}.png",
+                + f"{contrastive_type[0]}_{contrastive_type[1]}_{save_name}.png",
                 scale=6,
             )
     stage_3 = {

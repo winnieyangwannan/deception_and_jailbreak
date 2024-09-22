@@ -31,7 +31,6 @@ from IPython.display import HTML, Markdown
 import torch
 from src.submodules.dataset.task_and_dataset_deception import (
     ContrastiveDatasetDeception,
-    tokenize_prompts_and_answers,
 )
 from src.submodules.model.load_model import load_model
 from src.utils.utils import logits_to_ave_logit_diff
@@ -43,6 +42,7 @@ from src.utils.plotly_utils_arena import imshow
 from src.submodules.activation_pca.activation_pca import get_pca_and_plot
 import plotly.io as pio
 import circuitsvis as cv  # for visualize attetnion pattern
+import plotly.graph_objects as go
 
 from IPython.display import display, HTML  # for visualize attetnion pattern
 from src.submodules.evaluations.evaluate_deception import (
@@ -57,7 +57,7 @@ from src.utils.hook_utils import add_hooks
 from src.utils.hook_utils import patch_residual_hook_pre, patch_activation_hook_post
 
 
-class AttributionPatching:
+class ActivationPatching:
     def __init__(self, contrastive_dataset, contrastive_base):
 
         self.model = contrastive_base.model
@@ -112,28 +112,28 @@ class AttributionPatching:
             logit_diff_clean=self.logit_diff_clean,
         )
 
-        if self.cfg.framework == "transformer_lens":
-            if self.cfg.cache_name == "z":
-                act_patch = get_act_patch_attn_head_out_all_pos(
-                    model=self.model,
-                    corrupted_tokens=self.corrupted_tokens,
-                    clean_cache=self.clean_cache,
-                    patching_metric=patching_metric,
-                )
-            elif "z" in self.cfg.cache_name and len(self.cfg.cache_name) > 1:
-                act_patch_zqp = get_act_patch_attn_head_all_pos_zqp(
-                    model=self.model,
-                    corrupted_tokens=self.corrupted_tokens,
-                    clean_cache=self.clean_cache,
-                    patching_metric=patching_metric,
-                )
-                act_patch_kv = get_act_patch_attn_head_all_pos_kv(
-                    model=self.model,
-                    corrupted_tokens=self.corrupted_tokens,
-                    clean_cache=self.clean_cache,
-                    patching_metric=patching_metric,
-                )
-            else:
+        if self.cfg.cache_name == "z":
+            act_patch = get_act_patch_attn_head_out_all_pos(
+                model=self.model,
+                corrupted_tokens=self.corrupted_tokens,
+                clean_cache=self.clean_cache,
+                patching_metric=patching_metric,
+            )
+        elif "z" in self.cfg.cache_name and len(self.cfg.cache_name) > 1:
+            act_patch_zqp = get_act_patch_attn_head_all_pos_zqp(
+                model=self.model,
+                corrupted_tokens=self.corrupted_tokens,
+                clean_cache=self.clean_cache,
+                patching_metric=patching_metric,
+            )
+            act_patch_kv = get_act_patch_attn_head_all_pos_kv(
+                model=self.model,
+                corrupted_tokens=self.corrupted_tokens,
+                clean_cache=self.clean_cache,
+                patching_metric=patching_metric,
+            )
+        else:
+            if self.cfg.cache_pos == "all":
                 act_patch = act_patch_block_tl(
                     model=self.model,
                     corrupted_tokens=self.corrupted_tokens,
@@ -141,18 +141,19 @@ class AttributionPatching:
                     patching_metric=patching_metric,
                     cache_name=self.cfg.cache_name,
                 )
-
-        else:
-            act_patch = self.act_patch_block(patching_metric=patching_metric)
+            elif self.cfg.cache_pos == "prompt_last_token":
+                act_patch = act_patch_block_tl_pos(
+                    model=self.model,
+                    corrupted_tokens=self.corrupted_tokens,
+                    clean_cache=self.clean_cache,
+                    patching_metric=patching_metric,
+                    cache_name=self.cfg.cache_name,
+                )
 
         # Plot
-        if self.cfg.framework == "transformer_lens":
-            prompt_clean = self.clean_tokens[0]
-            prompt_corrupted = self.corrupted_tokens[0]
+        prompt_clean = self.clean_tokens[0]
+        prompt_corrupted = self.corrupted_tokens[0]
 
-        else:
-            prompt_clean = self.model.tokenizer.decode(self.clean_tokens[0])
-            prompt_corrupted = self.model.tokenizer.decode(self.corrupted_tokens[0])
         labels_clean = [
             f"{tok} {i}" for i, tok in enumerate(self.model.to_str_tokens(prompt_clean))
         ]
@@ -197,6 +198,7 @@ class AttributionPatching:
                 width=600,  # If you remove this argument, the plot will usually fill the available space
                 return_fig=True,
             )
+
         # save fig
         # z q pattern v k
         if "z" in self.cfg.cache_name and len(self.cfg.cache_name) > 1:
@@ -225,6 +227,8 @@ class AttributionPatching:
                 for layer in range(n_layers)
             ]
             results = {
+                "act_patch_zqp": act_patch_zqp,
+                "act_patch_kv": act_patch_kv,
                 "tokens_clean": labels_clean,
                 "tokens_corrupted": labels_corrupted,
                 "pattern_clean": pattern_clean,
@@ -237,6 +241,7 @@ class AttributionPatching:
                 "wb",
             ) as f:
                 pickle.dump(results, f)
+
         else:
             pio.write_image(
                 fig,
@@ -254,7 +259,6 @@ class AttributionPatching:
             # Save results
             results = {
                 "act_patch": act_patch,
-                "tokens": labels,
             }
             with open(
                 save_path
@@ -411,6 +415,61 @@ def act_patch_block_tl(
     return results
 
 
+def act_patch_block_tl_pos(
+    model: HookedTransformer,
+    corrupted_tokens: Float[Tensor, "batch pos"],
+    clean_cache: ActivationCache,
+    patching_metric: Callable[[Float[Tensor, "batch d_vocab"]], float],
+    cache_name: str = "resid_pre",
+) -> Float[Tensor, "layer pos"]:
+    """
+    Returns an array of results of activation_patching each position at each layer in the residual
+    stream, using the value from the clean cache.
+
+    The results are calculated using the patching_metric function, which should be
+    called on the model's logit output.
+    """
+
+    def patch_residual_component(
+        corrupted_residual_component: Float[Tensor, "batch pos d_model"],
+        hook: HookPoint,
+        pos_corrupted: int,
+        pos_clean: int,
+        clean_cache: ActivationCache,
+    ) -> Float[Tensor, "batch pos d_model"]:
+        """
+        Patches a given sequence position in the residual stream, using the value
+        from the clean cache.
+        """
+        corrupted_residual_component[:, pos_corrupted, :] = clean_cache[hook.name][
+            :, pos_clean, :
+        ]
+        return corrupted_residual_component
+
+    model.reset_hooks()
+    seq_len = np.arange(corrupted_tokens.size(-1))
+    patch_len = 2
+    results = torch.zeros(
+        model.cfg.n_layers, patch_len, device="cuda", dtype=torch.bfloat16
+    )
+
+    for layer in tqdm(range(model.cfg.n_layers)):
+        for ii, pos in enumerate([seq_len[-2], seq_len[-1]]):
+            hook_fun = partial(
+                patch_residual_component,
+                pos_corrupted=pos,
+                pos_clean=ii,
+                clean_cache=clean_cache,
+            )
+            patched_logits = model.run_with_hooks(
+                corrupted_tokens,
+                fwd_hooks=[(utils.get_act_name(cache_name, layer), hook_fun)],
+            )
+            results[layer, ii] = patching_metric(patched_logits)
+
+    return results
+
+
 def patch_head_vector(
     corrupted_head_vector: Float[Tensor, "batch pos head_index d_head"],
     hook: HookPoint,
@@ -421,8 +480,8 @@ def patch_head_vector(
     Patches the output of a given head (before it's added to the residual stream) at
     every sequence position, using the value from the clean cache.
     """
-    print(hook.name)
-    print(clean_cache[hook.name].shape)
+    # print(hook.name)
+    # print(clean_cache[hook.name].shape)
 
     corrupted_head_vector[:, :, head_index] = clean_cache[hook.name][:, :, head_index]
     return corrupted_head_vector

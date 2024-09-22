@@ -14,15 +14,15 @@ class Config:
     answer_type: str
     do_sample: bool
     framework: bool
+    jailbreak: bool
     dtype: str = "bfloat16"  # "bfloat16" or "default"
-    n_train: int = 100
+    n_train: int = 10
     n_test: int = 50
     batch_size: int = 5
-    max_new_tokens: int = 100
+    max_new_tokens: int = 5
     intervention: str = "no_intervention"
     cache_pos: str = "prompt_last_token"
     cache_name: str = "resid_post"
-
 
     # for generation_trajectory
 

@@ -27,7 +27,7 @@ from src.submodules.dataset.task_and_dataset_deception import (
 from src.submodules.basic.contrastive_model_base import (
     ContrastiveBase,
 )
-from src.submodules.activation_patching.activation_patching import AttributionPatching
+from src.submodules.activation_patching.activation_patching import ActivationPatching
 from src.submodules.model.load_model import load_model
 from src.utils.utils import logits_to_ave_logit_diff
 from transformer_lens import utils, HookedTransformer, ActivationCache

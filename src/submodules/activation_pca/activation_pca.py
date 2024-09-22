@@ -27,8 +27,15 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
     contrastive_type = cfg.contrastive_type
     answer_type = cfg.answer_type
 
-    labels_all = dataset.labels_positive_correct + dataset.labels_positive_correct
-    answers_all = dataset.answers_positive_correct + dataset.answers_positive_correct
+    if cfg.task_name == "deception":
+        labels_all = dataset.labels_positive_correct + dataset.labels_positive_correct
+        answers_all = (
+            dataset.answers_positive_correct + dataset.answers_positive_correct
+        )
+    if cfg.task_name == "jailbreak" or cfg.task_name == "jailbreak_choice":
+        labels_all = dataset.input_labels + dataset.input_labels
+        answers_all = dataset.input_types + dataset.input_types
+
     symbol_sequence = []
     for data in labels_all:
         if data == 0:
@@ -55,7 +62,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
                 df["pca0"] = activations_pca[:, 0]
                 df["pca1"] = activations_pca[:, 1]
                 df["pca2"] = activations_pca[:, 2]
-                df["answer"] = answers_all
+                df["answers_all"] = answers_all
 
                 fig.add_trace(
                     go.Scatter(
@@ -71,7 +78,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
                             line=dict(width=1, color="darkslategrey"),
                             color="gold",
                         ),
-                        text=df["answer"][:n_contrastive_data],
+                        text=df["answers_all"][:n_contrastive_data],
                     ),
                     row=row + 1,
                     col=ll + 1,
@@ -90,7 +97,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
                             line=dict(width=1, color="darkslategrey"),
                             color="dodgerblue",
                         ),
-                        text=df["answer"][n_contrastive_data:],
+                        text=df["answers_all"][n_contrastive_data:],
                     ),
                     row=row + 1,
                     col=ll + 1,

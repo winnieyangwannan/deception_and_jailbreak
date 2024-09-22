@@ -105,6 +105,54 @@ class ContrastiveDatasetDeception:
             labels_negative_correct,
         )
 
+    def tokenize_prompts_and_answers(
+        self, model, prompts, answers_correct, answers_wrong
+    ):
+
+        # tokenization with transformer_lens syntax
+        if self.cfg.framework == "transformer_lens":
+            prompt_tokens = model.to_tokens(prompts)
+            answer_tokens_correct = torch.tensor(
+                [
+                    model.to_single_token(answers_correct[i])
+                    for i in range(len(answers_correct))
+                ],
+                device=model.cfg.device,
+            )
+            answer_tokens_wrong = torch.tensor(
+                [
+                    model.to_single_token(answers_wrong[i])
+                    for i in range(len(answers_wrong))
+                ],
+                device=model.cfg.device,
+            )
+            prompt_masks = None
+
+        else:
+            prompt_inputs = model.tokenizer(prompts, return_tensors="pt", padding=True)
+            prompt_tokens = prompt_inputs.input_ids.to(model.device)
+            prompt_masks = prompt_inputs.attention_mask.to(model.device)
+
+            answer_tokens_correct = torch.tensor(
+                [
+                    model.to_single_token(answers_correct[i])
+                    for i in range(len(answers_correct))
+                ]
+            ).to(model.device)
+
+            answer_tokens_wrong = torch.tensor(
+                [
+                    model.to_single_token(answers_wrong[i])
+                    for i in range(len(answers_wrong))
+                ]
+            ).to(model.device)
+
+        print("decoding prompt after tokenization:")
+        print(model.tokenizer.decode(prompt_tokens[0]))
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
+        return (prompt_tokens, answer_tokens_correct, answer_tokens_wrong, prompt_masks)
+
 
 def get_negative_answers_and_labels(labels):
     answers_negative_correct = []
@@ -226,47 +274,3 @@ def apply_chat_template(cfg, statements: list[str], contrastive_type: str = "hon
         ]
 
     return prompt
-
-
-def tokenize_prompts_and_answers(cfg, model, prompts, answers_correct, answers_wrong):
-
-    # tokenization with transformer_lens syntax
-    if cfg.framework == "transformer_lens":
-        prompt_tokens = model.to_tokens(prompts)
-        answer_tokens_correct = torch.tensor(
-            [
-                model.to_single_token(answers_correct[i])
-                for i in range(len(answers_correct))
-            ],
-            device=model.cfg.device,
-        )
-        answer_tokens_wrong = torch.tensor(
-            [
-                model.to_single_token(answers_wrong[i])
-                for i in range(len(answers_wrong))
-            ],
-            device=model.cfg.device,
-        )
-        prompt_masks = None
-
-    else:
-        prompt_inputs = model.tokenizer(prompts, return_tensors="pt", padding=True)
-        prompt_tokens = prompt_inputs.input_ids.to(model.device)
-        prompt_masks = prompt_inputs.attention_mask.to(model.device)
-
-        answer_tokens_correct = torch.tensor(
-            [
-                model.to_single_token(answers_correct[i])
-                for i in range(len(answers_correct))
-            ]
-        ).to(model.device)
-
-        answer_tokens_wrong = torch.tensor(
-            [model.to_single_token(answers_wrong[i]) for i in range(len(answers_wrong))]
-        ).to(model.device)
-
-    print("decoding prompt after tokenization:")
-    print(model.tokenizer.decode(prompt_tokens[0]))
-    print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
-
-    return (prompt_tokens, answer_tokens_correct, answer_tokens_wrong, prompt_masks)
