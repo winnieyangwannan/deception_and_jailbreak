@@ -22,7 +22,6 @@ from IPython.display import HTML, Markdown
 import torch
 from src.submodules.dataset.task_and_dataset_deception import (
     ContrastiveDatasetDeception,
-    tokenize_prompts_and_answers,
 )
 from src.submodules.basic.contrastive_model_base import (
     ContrastiveBase,

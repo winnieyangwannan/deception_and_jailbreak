@@ -23,7 +23,6 @@ class Config:
     cache_pos: str = "prompt_last_token"
     cache_name: str = "resid_post"
 
-
     # for generation_trajectory
 
     def artifact_path(self) -> str:

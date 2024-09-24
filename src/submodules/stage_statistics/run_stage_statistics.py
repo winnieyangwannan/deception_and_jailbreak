@@ -17,13 +17,16 @@ from src.submodules.stage_statistics.stage_statistics import get_state_quantific
 
 def parse_arguments():
     """Parse model path argument from command line."""
-    parser = argparse.ArgumentParser(description="Parse model path argument.")
-    parser.add_argument("--model_path", type=str, required=True, help="gpt2-small")
+    parser = argparse.ArgumentParser(description="Parse model_base path argument.")
+    parser.add_argument(
+        "--model_path", type=str, required=True, help="google/gemma-2-2b-it"
+    )
     parser.add_argument(
         "--save_dir", type=str, required=False, default="D:\Data\deception"
     )
     parser.add_argument("--task_name", type=str, required=False, default="deception")
-    parser.add_argument("--do_sample", type=bool, required=False, default=True)
+    parser.add_argument("--do_sample", type=bool, required=False, default=False)
+    parser.add_argument("--framework", type=str, required=False, default="transformers")
 
     return parser.parse_args()
 
@@ -35,6 +38,7 @@ def main(
     contrastive_type: Tuple[str] = ("honest", "lying"),
     answer_type: Tuple[str] = ("true", "false"),
     do_sample: bool = False,
+    framework: str = "transformer_lens",
 ):
     # 0. Set configuration
     model_alias = os.path.basename(model_path)
@@ -46,6 +50,7 @@ def main(
         answer_type=answer_type,
         save_dir=save_dir,
         do_sample=do_sample,
+        framework=framework,
     )
     pprint.pp(cfg)
 
@@ -97,4 +102,5 @@ if __name__ == "__main__":
         contrastive_type=contrastive_type,
         answer_type=answer_type,
         do_sample=args.do_sample,
+        framework=args.framework,
     )

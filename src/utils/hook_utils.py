@@ -173,7 +173,7 @@ def activation_addition_cache_last_post(
 
     """
 
-    def hook_fn(module, input, output):
+    def hook_fn(module, input, output, steering_strength=1):
         nonlocal mean_diff, cache, layer, target_layer, len_prompt, pos
 
         if isinstance(output, tuple):
@@ -182,16 +182,10 @@ def activation_addition_cache_last_post(
             activation: Float[Tensor, "batch_size seq_len d_model"] = output
 
         if layer == target_layer:
-            direction = mean_diff / (mean_diff.norm(dim=-1, keepdim=True) + 1e-8)
-            direction = direction.to(activation)
-            activation += (activation @ direction).unsqueeze(-1) * direction
-
+            activation = activation + steering_strength * mean_diff
         # only cache the last token of the prompt not the generated answer
         if activation.shape[1] == len_prompt:
             cache[layer, :, :] = activation[:, pos, :]
-        # else:
-        #     if activation.shape[1] == len_prompt:
-        #         cache[layer, :, :] = activation[:, pos, :]
 
         if isinstance(output, tuple):
             return (activation, *output[1:])

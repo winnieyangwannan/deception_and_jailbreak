@@ -190,14 +190,24 @@ class ActivationPatching:
             )
 
         else:
-            fig = imshow(
-                act_patch,
-                x=labels_clean,
-                title=f"Logit Difference From Patched {self.cfg.framework}",
-                labels={"x": "Sequence Position", "y": "Layer"},
-                width=600,  # If you remove this argument, the plot will usually fill the available space
-                return_fig=True,
-            )
+            if self.cfg.cache_pos == "all":
+                fig = imshow(
+                    act_patch,
+                    x=labels_clean,
+                    title=f"Logit Difference From Patched {self.cfg.framework}",
+                    labels={"x": "Sequence Position", "y": "Layer"},
+                    width=600,  # If you remove this argument, the plot will usually fill the available space
+                    return_fig=True,
+                )
+            elif self.cfg.cache_pos == "prompt_last_token":
+                fig = imshow(
+                    act_patch,
+                    x=labels_clean[-2:],
+                    title=f"Logit Difference From Patched {self.cfg.framework}",
+                    labels={"x": "Sequence Position", "y": "Layer"},
+                    width=600,  # If you remove this argument, the plot will usually fill the available space
+                    return_fig=True,
+                )
 
         # save fig
         # z q pattern v k

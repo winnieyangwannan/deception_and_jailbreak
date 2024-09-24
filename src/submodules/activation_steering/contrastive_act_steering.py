@@ -75,6 +75,8 @@ class ContrastiveActSteering:
         if self.source_layer is None:
             self.source_layer = self.cfg.source_layer
             self.target_layer = self.cfg.target_layer
+        print(f"self.source_layer{self.source_layer}")
+        print(f"self.target_layer{self.target_layer}")
 
     def get_steering_vector(self):
 
@@ -96,12 +98,14 @@ class ContrastiveActSteering:
         if self.cfg.intervention == "positive_addition":
 
             self.steering_vector = mean_act_positive - mean_act_negative
+        return self.steering_vector
 
-    def generate_and_contrastive_activation_steering(self):
+    def generate_and_contrastive_activation_steering(self, steering_vector):
         """
         Get the activation cache and gradient cache for both the positive and negative prompts
         :return:
         """
+        self.steering_vector = steering_vector
         if self.cfg.framework == "transformer_lens":
             steer_cache_positive = self.generate_and_steer_batch_tl(
                 self.dataset.prompts_positive,
@@ -293,7 +297,7 @@ class ContrastiveActSteering:
         len_prompt = tokens.shape[1]
         cache = torch.zeros(
             (n_layers, n_samples, d_model),
-            dtype=torch.float16,
+            dtype=torch.float64,
             device=model.device,
         )
 

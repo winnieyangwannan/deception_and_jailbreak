@@ -38,7 +38,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
 
     symbol_sequence = []
     for data in labels_all:
-        if data == 0:
+        if data == 1:
             symbol_sequence.append("star")
         else:
             symbol_sequence.append("circle")

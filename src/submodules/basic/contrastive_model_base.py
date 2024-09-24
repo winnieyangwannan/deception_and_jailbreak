@@ -282,7 +282,7 @@ class ContrastiveBase:
 
         # 1. Gen data
         if self.cfg.task_name == "deception":
-            data = self.dataset.statemetns
+            data = self.dataset.statements
             labels = self.dataset.answers_positive_correct
             prompt_type = "statement"
             category = [""] * len(data)
@@ -415,7 +415,7 @@ class ContrastiveBase:
         completions_lying = evaluate_generation_deception(
             self.cfg, contrastive_type=self.cfg.contrastive_type[1]
         )
-        # plot_lying_honest_performance(self.cfg, completions_honest, completions_lying)
+        plot_lying_honest_performance(self.cfg, completions_honest, completions_lying)
 
     def evaluate_jailbreak(self):
         completions_honest = evaluate_generation_jailbreak(
@@ -611,19 +611,6 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
         n_layers = model.cfg.n_layers
         cache = {}
 
-        # (1) hook filter
-        # if type(cfg.cache_name) is tuple:
-        #     hook_names = [
-        #         utils.get_act_name(cach_name, layer)
-        #         for cach_name in cfg.cache_name
-        #         for layer in range(n_layers)
-        #     ]
-        # else:
-        #     hook_names = [
-        #         utils.get_act_name(cfg.cache_name, layer) for layer in range(n_layers)
-        #     ]
-        #
-        # activation_filter = lambda name: name in hook_names
         def steering(
             activations,
             hook,
@@ -653,7 +640,6 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
             logits = model(tokens)
         # Always reset hook after you are done! -- good habit!
         model.reset_hooks()
-
         return logits[:, -1, :], ActivationCache(cache, model)
 
     else:

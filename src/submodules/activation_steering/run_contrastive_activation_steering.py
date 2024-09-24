@@ -24,7 +24,6 @@ from IPython.display import HTML, Markdown
 import torch
 from src.submodules.dataset.task_and_dataset_deception import (
     ContrastiveDatasetDeception,
-    tokenize_prompts_and_answers,
 )
 from src.submodules.basic.contrastive_model_base import (
     ContrastiveBase,
@@ -61,9 +60,7 @@ def parse_arguments():
     parser.add_argument("--target_layer", type=int, required=False, default=0)
     parser.add_argument("--task_name", type=str, required=False, default="deception")
     parser.add_argument("--do_sample", type=bool, required=False, default=True)
-    parser.add_argument(
-        "--framework", type=str, required=False, default="transformer_lens"
-    )
+    parser.add_argument("--framework", type=str, required=False, default="transformers")
     parser.add_argument("--cache_name", type=str, required=False, default="resid_post")
 
     return parser.parse_args()
@@ -112,48 +109,59 @@ def main(
     dataset.process_dataset()
     dataset.construct_contrastive_prompts()
 
-    # Initiate contrastive model base
-    print("Initializing model_base base:")
-    contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
+    if cfg.source_layer is None:
 
-    # Generate and cache
-    print("Run and cache:")
-    contrastive_basic.run_and_cache_contrastive_activation()
+        print("Steering layer by layer:")
+        for layer in tqdm(range(model_base.cfg.n_layers)):
+            print(f"layer:{layer}")
+            # Initiate contrastive model base
+            print("Initializing model_base base:")
+            contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
+            # Generate and cache
+            print("Run and cache:")
+            contrastive_basic.run_and_cache_contrastive_activation()
+            act_steer = ContrastiveActSteering(
+                cfg, dataset, contrastive_basic, source_layer=layer, target_layer=layer
+            )
+            steering_vector = act_steer.get_steering_vector()
 
-    # if cfg.source_layer is None:
-    dataset = ContrastiveDatasetDeception(cfg)
-    dataset.load_and_sample_datasets(train_test="test")
-    dataset.process_dataset()
-    dataset.construct_contrastive_prompts()
-    print("Steering layer by layer:")
-    for layer in tqdm(range(model_base.cfg.n_layers)):
-        print(f"layer:{layer}")
-        act_steer = ContrastiveActSteering(
-            cfg, dataset, contrastive_basic, source_layer=layer, target_layer=layer
-        )
-        act_steer.get_steering_vector()
-        act_steer.generate_and_contrastive_activation_steering()
-        act_steer.get_contrastive_activation_pca()
-        act_steer.evaluate_deception()
-        act_steer.get_stage_statistics()
+            dataset = ContrastiveDatasetDeception(cfg)
+            dataset.load_and_sample_datasets(train_test="test")
+            dataset.process_dataset()
+            dataset.construct_contrastive_prompts()
+            contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
+            act_steer = ContrastiveActSteering(
+                cfg, dataset, contrastive_basic, source_layer=layer, target_layer=layer
+            )
+            act_steer.generate_and_contrastive_activation_steering(steering_vector)
+            act_steer.get_contrastive_activation_pca()
+            act_steer.evaluate_deception()
+            act_steer.get_stage_statistics()
+
+        # summary statistics across layers
+        print("Get summary statistics across layers: ")
+        act_steer = ContrastiveActSteeringAll(cfg, model_base)
+        act_steer.get_honest_score_all_layers()
+        act_steer.get_cos_sim_all_layers()
 
     else:
-        act_steer = ContrastiveActSteering(
-            cfg,
-            dataset,
-            contrastive_basic,
-        )
-        act_steer.get_steering_vector()
-        act_steer.generate_and_contrastive_activation_steering()
+        contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
+        # Generate and cache
+        print("Run and cache:")
+        contrastive_basic.run_and_cache_contrastive_activation()
+        act_steer = ContrastiveActSteering(cfg, dataset, contrastive_basic)
+        steering_vector = act_steer.get_steering_vector()
+
+        dataset = ContrastiveDatasetDeception(cfg)
+        dataset.load_and_sample_datasets(train_test="test")
+        dataset.process_dataset()
+        dataset.construct_contrastive_prompts()
+        contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
+        act_steer = ContrastiveActSteering(cfg, dataset, contrastive_basic)
+        act_steer.generate_and_contrastive_activation_steering(steering_vector)
         act_steer.get_contrastive_activation_pca()
         act_steer.evaluate_deception()
         act_steer.get_stage_statistics()
-
-    # summary statistics across layers
-    print("Get summary statistics across layers: ")
-    act_steer = ContrastiveActSteeringAll(cfg, model_base)
-    act_steer.get_honest_score_all_layers()
-    act_steer.get_cos_sim_all_layers()
 
     print("done")
 
@@ -167,7 +175,7 @@ if __name__ == "__main__":
     args = parse_arguments()
     print(sae_lens.__version__)
     print(sae_lens.__version__)
-    print("run contrastive activation activation_patching\n\n")
+    print("run contrastive activation steering\n\n")
     print("model_base_path")
     print(args.model_path)
     print("save_dir")

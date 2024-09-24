@@ -683,6 +683,7 @@ def get_cos_sim_positive_negative_vector(
             go.Scatter(
                 x=np.arange(n_layers),
                 y=cos_positive_negative,
+                marker=dict(size=5),
                 mode="lines+markers",
                 showlegend=False,
                 line=dict(color="royalblue", width=line_width),
@@ -694,6 +695,7 @@ def get_cos_sim_positive_negative_vector(
             go.Scatter(
                 x=np.arange(n_layers),
                 y=cos_positive_negative_pca,
+                marker=dict(size=5),
                 mode="lines+markers",
                 showlegend=False,
                 line=dict(color="royalblue", width=line_width),
@@ -702,7 +704,11 @@ def get_cos_sim_positive_negative_vector(
             col=1,
         )
 
-        fig.update_layout(height=700, width=500)
+        fig.update_layout(
+            height=800,
+            width=600,
+            font=dict(size=15, color="black"),
+        )
         fig["layout"]["xaxis"]["title"] = "Layer"
         fig["layout"]["xaxis2"]["title"] = "Layer"
 
@@ -729,6 +735,13 @@ def get_cos_sim_positive_negative_vector(
                 + f"{contrastive_type[0]}_{contrastive_type[1]}.png",
                 scale=6,
             )
+            pio.write_image(
+                fig,
+                save_path
+                + os.sep
+                + "stage_3_cos_sim_positive_negative_"
+                + f"{contrastive_type[0]}_{contrastive_type[1]}.pdf",
+            )
         else:
             pio.write_image(
                 fig,
@@ -738,6 +751,7 @@ def get_cos_sim_positive_negative_vector(
                 + f"{contrastive_type[0]}_{contrastive_type[1]}_{save_name}.png",
                 scale=6,
             )
+
     stage_3 = {
         "centroid_positive_true_pca_all": centroid_positive_true_pca_all,
         "centroid_positive_false_pca_all": centroid_positive_false_pca_all,
