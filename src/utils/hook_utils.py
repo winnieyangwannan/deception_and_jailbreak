@@ -89,6 +89,7 @@ def patch_activation_hook_post(
 
 
 def cache_activation_hook_post(
+    cfg,
     cache: Float[Tensor, "layer batch seq_len d_model"],
     layer: int,
 ):
@@ -99,7 +100,10 @@ def cache_activation_hook_post(
         else:
             activation: Float[Tensor, "batch seq_len d_model"] = output
 
-        cache[layer, :, :, :] = activation[:, :, :]
+        if cfg.cache_pos == "prompt_last_token":
+            cache[layer, :, :, :] = torch.unsqueeze(activation[:, -1, :], 1)
+        elif cfg.cache_pos == "all":
+            cache[layer, :, :, :] = activation[:, :, :]
 
         if isinstance(output, tuple):
             return (activation, *output[1:])

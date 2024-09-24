@@ -44,6 +44,7 @@ from src.submodules.stage_statistics.stage_statistics import get_state_quantific
 from src.submodules.evaluations.evaluate_jailbreak import evaluate_generation_jailbreak
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 from src.utils.hook_utils import cache_activation_hook_post, cache_residual_hook_pre
+
 from src.utils.hook_utils import cache_activation_post_hook_pos
 
 
@@ -647,11 +648,18 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
         n_samples = tokens.shape[0]
         d_model = model.model.config.hidden_size
         seq_len = tokens.shape[1]
-        cache = torch.zeros(
-            (n_layers, n_samples, seq_len, d_model),
-            device=model.device,
-            dtype=torch.bfloat16,
-        )
+        if cfg.cache_pos == "prompt_last_token":
+            cache = torch.zeros(
+                (n_layers, n_samples, 1, d_model),
+                device=model.device,
+                dtype=torch.bfloat16,
+            )
+        elif cfg.cache_ppos == "all":
+            cache = torch.zeros(
+                (n_layers, n_samples, seq_len, d_model),
+                device=model.device,
+                dtype=torch.bfloat16,
+            )
         # (1) get hook function
         if "resid" in cfg.cache_name:
             block_modules = model.model_block_modules
@@ -664,7 +672,7 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
             fwd_hook_pre = [
                 (
                     block_modules[layer],
-                    cache_residual_hook_pre(cache=cache, layer=layer),
+                    cache_activation_hook_pre(cfg, cache=cache, layer=layer),
                 )
                 for layer in range(n_layers)
             ]
@@ -673,7 +681,7 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
             fwd_hook_post = [
                 (
                     block_modules[layer],
-                    cache_activation_hook_post(cache=cache, layer=layer),
+                    cache_activation_hook_post(cfg, cache=cache, layer=layer),
                 )
                 for layer in range(n_layers)
             ]

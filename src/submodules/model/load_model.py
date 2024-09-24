@@ -101,8 +101,10 @@ class TransformerModelLoader:
             )
 
         elif "Qwen2" in cfg.model_path:
+            print(self.model_block_modules)
+
             return torch.nn.ModuleList(
-                [block_module.attn for block_module in self.model_block_modules]
+                [block_module.self_attn for block_module in self.model_block_modules]
             )
         elif "Yi" in cfg.model_path:
             return torch.nn.ModuleList(

@@ -31,7 +31,8 @@ def plot_cos_sim_and_acc_layer(cfg):
 
     # 3. plot
     n_layers = len(cos)
-
+    line_width = 3
+    size = 5
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -39,7 +40,8 @@ def plot_cos_sim_and_acc_layer(cfg):
             y=score,
             name="Performance",
             mode="lines+markers",
-            marker=dict(color="dodgerblue"),
+            marker=dict(color="dodgerblue", size=size),
+            line=dict(color="dodgerblue", width=line_width),
         ),
     )
     fig.add_trace(
@@ -48,20 +50,25 @@ def plot_cos_sim_and_acc_layer(cfg):
             y=cos,
             name="Cosine Similarity",
             mode="lines+markers",
-            marker=dict(color="gold"),
+            marker=dict(color="gold", size=size),
             yaxis="y3",
+            line=dict(color="gold", width=line_width),
         )
     )
     fig.update_xaxes(title_text="Layer")
     # fig.update_yaxes(title_text="Logit Difference", secondary_y=False)
     # fig.update_yaxes(title_text="Cosine Similarity", secondary_y=True)
+
     fig.update_layout(
-        height=500,
-        width=800,
+        height=300,
+        width=500,
         yaxis=dict(
             title="Performance",
             titlefont=dict(color="dodgerblue"),
             tickfont=dict(color="dodgerblue"),
+            tickmode="array",
+            tickvals=[0, 0.5, 1],
+            range=[-0.01, 1.11],
         ),
         yaxis3=dict(
             title="Cosine Similarity",
@@ -70,14 +77,33 @@ def plot_cos_sim_and_acc_layer(cfg):
             anchor="x",
             overlaying="y",
             side="right",
+            tickmode="array",
+            tickvals=[-1, -0.5, 0, 0.5, 1],
+            range=[-1.01, 1.11],
         ),
+        font=dict(family="verdana", size=16, color="black"),
     )
+
     fig.show()
+
     fig.write_html(
-        score_path + os.sep + f"{cfg.cache_name}_patch_cos_sim_layer" + ".html"
+        score_path
+        + os.sep
+        + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
+        + ".html"
     )
     pio.write_image(
         fig,
-        score_path + os.sep + f"{cfg.cache_name}_patch_cos_sim_layer" + ".png",
+        score_path
+        + os.sep
+        + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
+        + ".png",
         scale=6,
+    )
+    pio.write_image(
+        fig,
+        score_path
+        + os.sep
+        + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
+        + ".pdf",
     )

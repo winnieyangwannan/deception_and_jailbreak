@@ -56,12 +56,15 @@ def parse_arguments():
     parser.add_argument(
         "--save_dir", type=str, required=False, default="D:\Data\deception"
     )
-    parser.add_argument("--source_layer", type=int, required=False, default=0)
-    parser.add_argument("--target_layer", type=int, required=False, default=0)
+    parser.add_argument("--source_layer", type=int, required=False, default=-1)
+    parser.add_argument("--target_layer", type=int, required=False, default=-1)
     parser.add_argument("--task_name", type=str, required=False, default="deception")
     parser.add_argument("--do_sample", type=bool, required=False, default=True)
     parser.add_argument("--framework", type=str, required=False, default="transformers")
     parser.add_argument("--cache_name", type=str, required=False, default="resid_post")
+    parser.add_argument(
+        "--cache_pos", type=str, required=False, default="prompt_last_token"
+    )
 
     return parser.parse_args()
 
@@ -77,6 +80,7 @@ def main(
     cache_name: str = "resid_pre",
     target_layer: int = 0,
     source_layer: int = 0,
+    cache_pos: str = "prompt_last_token",
 ):
 
     # 0. Set configuration
@@ -93,6 +97,7 @@ def main(
         cache_name=cache_name,
         source_layer=source_layer,
         target_layer=target_layer,
+        cache_pos=cache_pos,
     )
     pprint.pp(cfg)
 
@@ -109,7 +114,7 @@ def main(
     dataset.process_dataset()
     dataset.construct_contrastive_prompts()
 
-    if cfg.source_layer is None:
+    if cfg.source_layer == -1:
 
         print("Steering layer by layer:")
         for layer in tqdm(range(model_base.cfg.n_layers)):
@@ -209,6 +214,7 @@ if __name__ == "__main__":
         cache_name=args.cache_name,
         source_layer=args.source_layer,
         target_layer=args.target_layer,
+        cache_pos=args.cache_pos,
     )
     end = time.time()
     print(end - start)

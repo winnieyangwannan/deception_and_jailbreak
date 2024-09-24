@@ -2,6 +2,7 @@ import random
 import json
 import pprint
 from typing import List, Optional, Callable, Tuple, Dict, Literal, Set, Union
+import plotly.express as px
 
 
 from anyio import sleep_forever
@@ -686,9 +687,9 @@ class ContrastiveActSteeringAll:
                 cos_path
                 + os.sep
                 + f"{self.cfg.model_alias}_stage_stats_{save_name}.pkl",
-                "r",
+                "rb",
             ) as f:
-                data = json.load(f)
+                data = pickle.load(f)
                 cos = data["stage_3"]["cos_positive_negative"]
                 cos_all.append(cos)
 
@@ -696,12 +697,15 @@ class ContrastiveActSteeringAll:
         score_all = {
             "cos_all": cos_all,
         }
-
         with open(
             cos_path + os.sep + f"{self.cfg.model_alias}_cos_sim_all_layers.pkl",
             "wb",
         ) as f:
             pickle.dump(score_all, f)
+
+        cos_all = np.array(cos_all)
+
+        plot_cos_all_layers_heatmap(cos_all, cos_path)
 
         return cos_all
 
@@ -735,6 +739,27 @@ class ContrastiveActSteeringAll:
     # print(f"logit diff clean: {self.logit_diff_clean}")
     # print(f"logit diff corrupted: {self.logit_diff_corrupted}")
     # print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="/n/n")
+
+
+def plot_cos_all_layers_heatmap(cos_all, cos_path):
+    fig = px.imshow(cos_all)
+    fig.update_layout(
+        # title="Cosine Similarity",
+        xaxis_title="Target layer",
+        yaxis_title="Source layer",
+        font=dict(size=20, color="black"),
+    )
+    fig.update_layout(
+        coloraxis_colorbar=dict(
+            title="Cosine Similarity",
+        ),
+        width=500,
+        height=500,
+    )
+    fig.show()
+    pio.write_image(fig, cos_path + os.sep + "cos_sim_heatmap" + ".png")
+    pio.write_image(fig, cos_path + os.sep + "cos_sim_heatmap" + ".pdf")
+    fig.write_html(cos_path + os.sep + "cos_sim_heatmap" + ".html")
 
 
 def run_with_cache_contrastive(model, positive_tokens, negative_tokens):

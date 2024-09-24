@@ -57,7 +57,6 @@ model_path = [
     # "01-ai/Yi-34B-Chat",
     # "01-ai/Yi-1.5-6B-Chat",
     # "01-ai/Yi-1.5-9B-Chat",
-    # "01-ai/Yi-1.5-34B-Chat",
     # "meta-llama/Llama-2-7b-chat-hf",
     # "meta-llama/Llama-2-13b-chat-hf",
     # "meta-llama/Llama-2-70b-chat-hf",
@@ -67,6 +66,7 @@ model_path = [
     # "google/gemma-7b-it",
     # "google/gemma-2-2b-it",
     "google/gemma-2-9b-it",
+    "01-ai/Yi-1.5-34B-Chat",
     # "google/gemma-2-27b-it",
 ]
 
@@ -81,7 +81,6 @@ models = [
     # "Yi-1-34b",
     # "Yi-1.5-6b",
     # "Yi-1.5-9b",
-    # "Yi-1.5-34b",
     # "llama-2-7b",
     # "llama-2-13b",
     # "llama-2-70b",
@@ -91,11 +90,12 @@ models = [
     # "gemma-1-7b",
     # "gemma-2-2b",
     "gemma-2-9b",
+    "Yi-1.5-34b",
     # "gemma-2-27b",
 ]
 
 # size = [1.8, 14, 1.5, 7, 57, 6, 34, 6, 9, 34, 7, 13, 70, 8, 70, 2, 7, 2, 9, 27]
-size = [8, 9]
+size = [8, 9, 34]
 
 data_category = "facts"
 Role = ["Honest", "Lying"]
@@ -110,6 +110,7 @@ performance_lying_all_steer = []
 for mm in model_path:
     print(mm)
 
+    # lying with steering
     model_alias = os.path.basename(mm)
     load_path = os.path.join(
         "D:\Data\deception",
@@ -124,8 +125,9 @@ for mm in model_path:
     with open(filename, "br") as file:
         data = pickle.load(file)
     performance_lying = data["score_negative_all"]
-    performance_lying_all_steer.append(performance_lying)
+    performance_lying_all_steer.append(np.max(performance_lying))
 
+    # lying
     model_alias = os.path.basename(mm)
     load_path = os.path.join(
         "D:\Data\deception",
@@ -137,9 +139,11 @@ for mm in model_path:
     filename = load_path + os.sep + model_alias + "_completions_lying.json"
     with open(filename, "r") as file:
         data = json.load(file)
+
     performance_lying = data["honest_score"]
     performance_lying_all.append(performance_lying)
 
+    # honest
     filename = load_path + os.sep + model_alias + "_completions_honest.json"
     with open(filename, "r") as file:
         data = json.load(file)
@@ -159,12 +163,21 @@ df = pd.DataFrame(data_plot)
 
 
 fig = go.Figure()
+
+fig.add_trace(
+    go.Bar(
+        x=models,
+        y=performance_honest_all,
+        name="Honest",
+        marker_color="#C8B8D3",
+    )
+)
 fig.add_trace(
     go.Bar(
         x=models,
         y=performance_lying_all,
         name="Lying_before steering",
-        marker_color="gold",
+        marker_color="#A9BBAF",
     )
 )
 fig.add_trace(
@@ -172,18 +185,19 @@ fig.add_trace(
         x=models,
         y=performance_lying_all_steer,
         name="Lying_after_steering",
-        marker_color="dodgerblue",
+        marker_color="#465149",
     )
 )
 
 fig.update_layout(
-    # title="Plot Title",
+    width=800,
+    height=600,
     xaxis_title=" ",
     yaxis_title="Performance (Accuracy)",
     legend_title="Persona",
     font=dict(
-        # family="Times New Roman",
-        size=12,
+        family="Times New Roman",
+        size=20,
         color="black",
     ),
 )
@@ -194,39 +208,3 @@ fig.update_layout(barmode="group", xaxis_tickangle=-45)
 fig.show()
 fig.write_html(save_path + os.sep + "honest_performance_all_models.html")
 pio.write_image(fig, save_path + os.sep + "honest_performance_all_models.png", scale=6)
-
-
-fig = px.scatter(
-    x=df["cosine_sims"],
-    y=df["performance_lying_all"],
-    text=df["model_name"],
-    size=df["size"],
-    # color_discrete_sequence=df["color"],
-)
-
-
-# fig.update_layout(height=400, width=500)
-fig.update_layout(
-    # title="Plot Title",
-    height=800,
-    width=800,
-    xaxis_title="Stage 3 progress ",
-    yaxis_title="Lying score",
-    # legend_title="Model",
-    font=dict(
-        family="Myriad Pro",
-        size=20,
-        color="black",
-    ),
-    xaxis=dict(
-        tickmode="array",  # change 1
-        tickvals=[-1, -0.5, 0, 0.5],  # change 2
-        ticktext=[0, 0.25, 0.75, 1],  # change 3
-    ),
-)
-fig.show()
-
-pio.write_image(fig, save_path + os.sep + "lying_performance_cos_all_models.pdf")
-pio.write_image(
-    fig, save_path + os.sep + "lying_performance_cos_all_models.png", scale=6
-)
