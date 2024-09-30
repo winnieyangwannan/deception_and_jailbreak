@@ -142,10 +142,13 @@ class ContrastiveBase:
         )
 
         self.cache_positive = cache_positive
-
         self.cache_negative = cache_negative
 
-        self.get_logit_diff(logits_positive, logits_negative)
+        if (
+            self.cfg.task_name == "deception"
+            or self.cfg.task_name == "jailbreak_choice"
+        ):
+            self.get_logit_diff(logits_positive, logits_negative)
 
         print(
             "free(Gb):",
@@ -419,27 +422,25 @@ class ContrastiveBase:
         plot_lying_honest_performance(self.cfg, completions_honest, completions_lying)
 
     def evaluate_jailbreak(self):
-        completions_honest = evaluate_generation_jailbreak(
+        evaluate_generation_jailbreak(
             self.cfg, contrastive_type=self.cfg.contrastive_type[0]
         )
-        completions_lying = evaluate_generation_jailbreak(
+        evaluate_generation_jailbreak(
             self.cfg, contrastive_type=self.cfg.contrastive_type[1]
         )
-        # plot_lying_honest_performance(self.cfg, completions_honest, completions_lying)
 
     def get_stage_statistics(self):
         # 1. Get access to cache
         activations_positive, activations_negative = self.get_contrastive_cache()
 
-        if self.cfg.task_name == "deception":
-            labels = self.dataset.labels_positive_correct
-        elif (
-            self.cfg.task_name == "jailbreak"
+        # 2. get stage statistics
+        if (
+            self.cfg.task_name == "deception"
             or self.cfg.task_name == "jailbreak_choice"
         ):
+            labels = self.dataset.labels_positive_correct
+        elif self.cfg.task_name == "jailbreak":
             labels = self.dataset.input_labels
-
-        # 2. get stage statistics
         get_state_quantification(
             self.cfg,
             activations_positive,
@@ -621,7 +622,9 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
             print("hook.layer()")
             print(hook.layer())
             if cfg.cache_pos == "prompt_last_token":
-                cache[hook.name] = activations[:, -2:, :].detach()
+                cache[hook.name] = activations[:, -1, :].detach()
+            elif cfg.cache_pos == "all":
+                cache[hook.name] = activations.detach()
 
         steering_hook = partial(
             steering,
@@ -629,19 +632,39 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
         )
         # (2) Run forward pass
         # logits, cache = model.run_with_cache(tokens, names_filter=activation_filter)
-        with model.hooks(
-            fwd_hooks=[
+        if type(cfg.cache_name) == list:
+
+            hook = [
+                (
+                    utils.get_act_name(cache_name, layer),
+                    steering_hook,
+                )
+                for cache_name in cfg.cache_name
+                for layer in range(n_layers)
+            ]
+        else:
+            hook = [
                 (
                     utils.get_act_name(cfg.cache_name, layer),
                     steering_hook,
                 )
                 for layer in range(n_layers)
             ]
-        ):
+
+        with model.hooks(fwd_hooks=hook):
             logits = model(tokens)
+            # model(tokens)
+
         # Always reset hook after you are done! -- good habit!
         model.reset_hooks()
+
+        # logits = torch.zeros(
+        #     (len(tokens), model.cfg.d_model),
+        # )
+        # return logits, ActivationCache(cache, model)
+
         return logits[:, -1, :], ActivationCache(cache, model)
+        # todo: correct back, test memory for now
 
     else:
         n_layers = model.model.config.num_hidden_layers
@@ -668,24 +691,14 @@ def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[
         elif "mlp" in cfg.cache_name:
             block_modules = model.model_mlp_out
 
-        if cfg.cache_name == "resid_pre":
-            fwd_hook_pre = [
-                (
-                    block_modules[layer],
-                    cache_activation_hook_pre(cfg, cache=cache, layer=layer),
-                )
-                for layer in range(n_layers)
-            ]
-            fwd_hook_post = []
-        else:
-            fwd_hook_post = [
-                (
-                    block_modules[layer],
-                    cache_activation_hook_post(cfg, cache=cache, layer=layer),
-                )
-                for layer in range(n_layers)
-            ]
-            fwd_hook_pre = []
+        fwd_hook_post = [
+            (
+                block_modules[layer],
+                cache_activation_hook_post(cfg, cache=cache, layer=layer),
+            )
+            for layer in range(n_layers)
+        ]
+        fwd_hook_pre = []
 
         # (2) run with hook
 

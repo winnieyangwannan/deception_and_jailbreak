@@ -36,6 +36,9 @@ def parse_arguments():
     parser.add_argument(
         "--cache_name", nargs="+", type=str, required=False, default="resid_pre"
     )
+    parser.add_argument(
+        "--jailbreak", type=str, required=False, default="evil-confidant"
+    )
     return parser.parse_args()
 
 
@@ -48,6 +51,7 @@ def main(
     do_sample: bool = False,
     framework: str = "transformers",
     cache_name: str = "resid_pre",
+    jailbreak: str = "evil-confidant",
 ):
 
     # 0. Set configuration
@@ -62,6 +66,7 @@ def main(
         do_sample=do_sample,
         framework=framework,
         cache_name=cache_name,
+        jailbreak=jailbreak,
     )
     pprint.pp(cfg)
 

@@ -52,7 +52,6 @@ model_path = [
     # "Qwen/Qwen-14B-Chat",
     # "Qwen/Qwen2-1.5B-Instruct",
     # "Qwen/Qwen2-7B-Instruct",
-    # "Qwen/Qwen2-57B-A14B-Instruct",
     # "01-ai/Yi-6B-Chat",
     # "01-ai/Yi-34B-Chat",
     # "01-ai/Yi-1.5-6B-Chat",
@@ -67,6 +66,7 @@ model_path = [
     # "google/gemma-2-2b-it",
     "google/gemma-2-9b-it",
     "01-ai/Yi-1.5-34B-Chat",
+    "Qwen/Qwen2-57B-A14B-Instruct",
     # "google/gemma-2-27b-it",
 ]
 
@@ -76,7 +76,6 @@ models = [
     # "Qwen-14b",
     # "Qwen-2-1.5b",
     # "Qwen-2-7b",
-    # "Qwen-2-57b",
     # "Yi-1-6b",
     # "Yi-1-34b",
     # "Yi-1.5-6b",
@@ -91,13 +90,13 @@ models = [
     # "gemma-2-2b",
     "gemma-2-9b",
     "Yi-1.5-34b",
+    "Qwen-2-57b",
     # "gemma-2-27b",
 ]
 
 # size = [1.8, 14, 1.5, 7, 57, 6, 34, 6, 9, 34, 7, 13, 70, 8, 70, 2, 7, 2, 9, 27]
-size = [8, 9, 34]
+size = [8, 9, 34, 57]
 
-data_category = "facts"
 Role = ["Honest", "Lying"]
 metric = ["performance_lying", "cosine_sim"] * len(model_path)
 save_path = os.path.join("D:", "\Data", "deception", "figures")
@@ -176,7 +175,7 @@ fig.add_trace(
     go.Bar(
         x=models,
         y=performance_lying_all,
-        name="Lying_before steering",
+        name="Lying (before steering)",
         marker_color="#A9BBAF",
     )
 )
@@ -184,27 +183,30 @@ fig.add_trace(
     go.Bar(
         x=models,
         y=performance_lying_all_steer,
-        name="Lying_after_steering",
+        name="Lying (after steering)",
         marker_color="#465149",
     )
 )
 
 fig.update_layout(
-    width=800,
-    height=600,
+    width=1000,
+    height=400,
     xaxis_title=" ",
     yaxis_title="Performance (Accuracy)",
     legend_title="Persona",
     font=dict(
-        family="Times New Roman",
-        size=20,
+        # family="Times New Roman",
+        size=22,
         color="black",
     ),
 )
 # Here we modify the tickangle of the xaxis, resulting in rotated labels.
-fig.update_layout(barmode="group", xaxis_tickangle=-45)
+# fig.update_layout(barmode="group", xaxis_tickangle=-45)
 
 # save
 fig.show()
-fig.write_html(save_path + os.sep + "honest_performance_all_models.html")
-pio.write_image(fig, save_path + os.sep + "honest_performance_all_models.png", scale=6)
+fig.write_html(save_path + os.sep + "honest_steering_performance_all_models.html")
+pio.write_image(
+    fig, save_path + os.sep + "honest_steering_performance_all_models.png", scale=6
+)
+pio.write_image(fig, save_path + os.sep + "honest_steering_performance_all_models.pdf")

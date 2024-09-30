@@ -48,6 +48,7 @@ def plot_cos_sim_and_logit_diff_layer(cfg):
             yaxis="y3",
         )
     )
+
     fig.update_xaxes(title_text="Layer")
     # fig.update_yaxes(title_text="Logit Difference", secondary_y=False)
     # fig.update_yaxes(title_text="Cosine Similarity", secondary_y=True)
@@ -67,6 +68,7 @@ def plot_cos_sim_and_logit_diff_layer(cfg):
             overlaying="y",
             side="right",
         ),
+        font=dict(family="sans-serif", size=20, color="black"),
     )
     fig.show()
     fig.write_html(patch_path + os.sep + "residual_patch_cos_sim_layer" + ".html")
@@ -74,4 +76,8 @@ def plot_cos_sim_and_logit_diff_layer(cfg):
         fig,
         patch_path + os.sep + "residual_patch_cos_sim_layer" + ".png",
         scale=6,
+    )
+    pio.write_image(
+        fig,
+        patch_path + os.sep + "residual_patch_cos_sim_layer" + ".pdf",
     )

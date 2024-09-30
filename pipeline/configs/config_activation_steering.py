@@ -18,13 +18,15 @@ class Config:
     source_layer: int
     target_layer: int
     cache_pos: str
-    intervention: str = "positive_addition"
+    jailbreak: str
+    jailbreak_source: str
+    intervention: str
     framework: str = "transformers"
     dtype: str = "bfloat16"  # "bfloat16" or "default"
-    n_train: int = 10
+    n_train: int = 100
     n_test: int = 50
     batch_size: int = 5
-    max_new_tokens: int = 100
+    max_new_tokens: int = 50
 
     clean_type: str = "positive"
     # for generation_trajectory

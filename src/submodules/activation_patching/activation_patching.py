@@ -15,15 +15,7 @@ import os
 from typing_extensions import Literal
 from tqdm import tqdm
 from functools import partial
-from src.utils.hook_utils import add_hooks
-import argparse
-from pipeline.configs.config_generation import Config
-from datasets import load_dataset
-import sae_lens
-import pysvelte
-from torchtyping import TensorType as TT
-from IPython import get_ipython
-from pathlib import Path
+
 import pickle
 import numpy as np
 from matplotlib.widgets import EllipseSelector
@@ -35,23 +27,11 @@ from src.submodules.dataset.task_and_dataset_deception import (
 from src.submodules.model.load_model import load_model
 from src.utils.utils import logits_to_ave_logit_diff
 from transformer_lens import utils, HookedTransformer, ActivationCache
-from rich.table import Table, Column
-from rich import print as rprint
-from src.utils.plotly_utils import line, scatter, bar
+
 from src.utils.plotly_utils_arena import imshow
 from src.submodules.activation_pca.activation_pca import get_pca_and_plot
 import plotly.io as pio
-import circuitsvis as cv  # for visualize attetnion pattern
-import plotly.graph_objects as go
 
-from IPython.display import display, HTML  # for visualize attetnion pattern
-from src.submodules.evaluations.evaluate_deception import (
-    evaluate_generation_deception,
-    plot_lying_honest_performance,
-)
-from src.submodules.stage_statistics.stage_statistics import get_state_quantification
-from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
-from transformer_lens import patching
 from transformer_lens.hook_points import HookPoint
 from src.utils.hook_utils import add_hooks
 from src.utils.hook_utils import patch_residual_hook_pre, patch_activation_hook_post
@@ -161,7 +141,7 @@ class ActivationPatching:
             f"{tok} {i}"
             for i, tok in enumerate(self.model.to_str_tokens(prompt_corrupted))
         ]
-        if self.cfg.cache_name == "z" and len(self.cfg.cache_nmae) == 1:
+        if self.cfg.cache_name == "z" and len(self.cfg.cache_name) == 1:
             fig = imshow(
                 act_patch,
                 title="Logit Difference From Patched Attn Head Output",
@@ -220,6 +200,12 @@ class ActivationPatching:
                     + f"{self.cfg.model_alias}_kqv_activation_patching_{ff}.png",
                     scale=6,
                 )
+                pio.write_image(
+                    fig,
+                    save_path
+                    + os.sep
+                    + f"{self.cfg.model_alias}_kqv_activation_patching_{ff}.pdf",
+                )
                 fig.write_html(
                     save_path
                     + os.sep
@@ -259,6 +245,12 @@ class ActivationPatching:
                 + os.sep
                 + f"{self.cfg.model_alias}_{self.cfg.cache_name}_activation_patching.png",
                 scale=6,
+            )
+            pio.write_image(
+                fig,
+                save_path
+                + os.sep
+                + f"{self.cfg.model_alias}_{self.cfg.cache_name}_activation_patching.pdf",
             )
             fig.write_html(
                 save_path

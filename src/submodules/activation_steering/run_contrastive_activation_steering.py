@@ -25,6 +25,10 @@ import torch
 from src.submodules.dataset.task_and_dataset_deception import (
     ContrastiveDatasetDeception,
 )
+
+from src.submodules.dataset.task_and_dataset_jailbreaks import (
+    ContrastiveDatasetJailbreak,
+)
 from src.submodules.basic.contrastive_model_base import (
     ContrastiveBase,
 )
@@ -65,8 +69,58 @@ def parse_arguments():
     parser.add_argument(
         "--cache_pos", type=str, required=False, default="prompt_last_token"
     )
-
+    parser.add_argument(
+        "--jailbreak", type=str, required=False, default="evil_confidant"
+    )
+    parser.add_argument(
+        "--jailbreak_source", type=str, required=False, default="evil_confidant"
+    )
+    parser.add_argument(
+        "--intervention",
+        type=str,
+        required=False,
+        default="input_positive_addition_negative",
+    )
+    parser.add_argument("--analysis_only", type=bool, required=False, default=False)
     return parser.parse_args()
+
+
+def get_dataset(cfg):
+    if cfg.task_name == "deception":
+        dataset = ContrastiveDatasetDeception(cfg)
+    elif cfg.task_name == "jailbreak":
+        dataset = ContrastiveDatasetJailbreak(cfg)
+    return dataset
+
+
+def activation_steering_layer(cfg, model_base, layer):
+
+    print("Generate steering vector")
+    dataset = get_dataset(cfg)
+    dataset.load_and_sample_datasets(train_test="train")
+    dataset.process_dataset()
+    dataset.construct_contrastive_prompts(jailbreak_source=cfg.jailbreak_source)
+
+    contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
+    contrastive_basic.run_and_cache_contrastive_activation()
+    act_steer = ContrastiveActSteering(
+        cfg, dataset, contrastive_basic, source_layer=layer, target_layer=layer
+    )
+    steering_vector = act_steer.get_steering_vector()
+
+    print("Apply steering vector")
+    dataset = get_dataset(cfg)
+    dataset.load_and_sample_datasets(train_test="test")
+    dataset.process_dataset()
+    dataset.construct_contrastive_prompts()
+    contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
+    act_steer = ContrastiveActSteering(
+        cfg, dataset, contrastive_basic, source_layer=layer, target_layer=layer
+    )
+    act_steer.generate_and_contrastive_activation_steering(steering_vector)
+    act_steer.get_contrastive_activation_pca()
+    act_steer.evaluate_intervention()
+    act_steer.get_stage_statistics()
 
 
 def main(
@@ -81,6 +135,10 @@ def main(
     target_layer: int = 0,
     source_layer: int = 0,
     cache_pos: str = "prompt_last_token",
+    jailbreak: str = "evil_confidant",
+    jailbreak_source: str = "evi_confidant",
+    intervention: str = "positive_addition",
+    analysis_only: bool = False,
 ):
 
     # 0. Set configuration
@@ -98,50 +156,22 @@ def main(
         source_layer=source_layer,
         target_layer=target_layer,
         cache_pos=cache_pos,
+        intervention=intervention,
+        jailbreak=jailbreak,
+        jailbreak_source=jailbreak_source,
     )
     pprint.pp(cfg)
 
     # 1. Load model_base
     model_base = load_model(cfg)
-    # model_base.set_use_attn_result(True)
-    # model_base.cfg.use_attn_in = True
-    # model_base.cfg.use_hook_mlp_in = True
-
-    # 2. Load data
-    print("loading data")
-    dataset = ContrastiveDatasetDeception(cfg)
-    dataset.load_and_sample_datasets(train_test="train")
-    dataset.process_dataset()
-    dataset.construct_contrastive_prompts()
 
     if cfg.source_layer == -1:
+        if not analysis_only:
+            print("Steering layer by layer:")
+            for layer in tqdm(range(model_base.cfg.n_layers)):
+                print(f"layer: {layer}")
 
-        print("Steering layer by layer:")
-        for layer in tqdm(range(model_base.cfg.n_layers)):
-            print(f"layer:{layer}")
-            # Initiate contrastive model base
-            print("Initializing model_base base:")
-            contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
-            # Generate and cache
-            print("Run and cache:")
-            contrastive_basic.run_and_cache_contrastive_activation()
-            act_steer = ContrastiveActSteering(
-                cfg, dataset, contrastive_basic, source_layer=layer, target_layer=layer
-            )
-            steering_vector = act_steer.get_steering_vector()
-
-            dataset = ContrastiveDatasetDeception(cfg)
-            dataset.load_and_sample_datasets(train_test="test")
-            dataset.process_dataset()
-            dataset.construct_contrastive_prompts()
-            contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
-            act_steer = ContrastiveActSteering(
-                cfg, dataset, contrastive_basic, source_layer=layer, target_layer=layer
-            )
-            act_steer.generate_and_contrastive_activation_steering(steering_vector)
-            act_steer.get_contrastive_activation_pca()
-            act_steer.evaluate_deception()
-            act_steer.get_stage_statistics()
+                activation_steering_layer(cfg, model_base, layer)
 
         # summary statistics across layers
         print("Get summary statistics across layers: ")
@@ -150,23 +180,7 @@ def main(
         act_steer.get_cos_sim_all_layers()
 
     else:
-        contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
-        # Generate and cache
-        print("Run and cache:")
-        contrastive_basic.run_and_cache_contrastive_activation()
-        act_steer = ContrastiveActSteering(cfg, dataset, contrastive_basic)
-        steering_vector = act_steer.get_steering_vector()
-
-        dataset = ContrastiveDatasetDeception(cfg)
-        dataset.load_and_sample_datasets(train_test="test")
-        dataset.process_dataset()
-        dataset.construct_contrastive_prompts()
-        contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
-        act_steer = ContrastiveActSteering(cfg, dataset, contrastive_basic)
-        act_steer.generate_and_contrastive_activation_steering(steering_vector)
-        act_steer.get_contrastive_activation_pca()
-        act_steer.evaluate_deception()
-        act_steer.get_stage_statistics()
+        activation_steering_layer(cfg, model_base, layer=None)
 
     print("done")
 
@@ -199,6 +213,8 @@ if __name__ == "__main__":
         answer_type = ("true", "false")
     elif args.task_name == "jailbreak":
         contrastive_type = ("HHH", args.jailbreak)
+        answer_type = ("harmless", "harmful")
+
     print("answer_type")
     print(answer_type)
     print("contrastive_type")
@@ -215,6 +231,10 @@ if __name__ == "__main__":
         source_layer=args.source_layer,
         target_layer=args.target_layer,
         cache_pos=args.cache_pos,
+        jailbreak=args.jailbreak,
+        jailbreak_source=args.jailbreak_source,
+        intervention=args.intervention,
+        analysis_only=args.analysis_only,
     )
     end = time.time()
     print(end - start)

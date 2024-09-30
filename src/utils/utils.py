@@ -17,6 +17,8 @@ def logits_to_ave_logit_diff(
     """
     if len(logits.shape) == 3:
         logits = logits[:, -1, :]
+    elif len(logits.shape) == 2:
+        logits = logits
     answer_tokens = torch.stack((answer_tokens_correct, answer_tokens_wrong), dim=-1)
     answer_logits = torch.gather(logits, dim=-1, index=answer_tokens)
     correct_logit, wrong_logit = answer_logits.unbind(dim=-1)

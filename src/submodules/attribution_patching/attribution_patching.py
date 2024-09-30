@@ -476,6 +476,11 @@ class AttributionPatching:
             + os.sep
             + f"accumulated_layer_attribution_patching_clean_{self.clean_label}.html"
         )
+        fig.write_image(
+            self.vis_path
+            + os.sep
+            + f"accumulated_layer_attribution_patching_clean_{self.clean_label}.pdf"
+        )
         string_0 = self.model.to_str_tokens(self.prompt_tokens_clean[0, :])
         print(f"example string token: {string_0}")
         print(

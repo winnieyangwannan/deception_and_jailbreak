@@ -147,7 +147,7 @@ def main(
         model_path=model_path,
         model_alias=model_alias,
         task_name=task_name,
-        contrastive_label=contrastive_label,
+        contrastive_type=contrastive_label,
         save_dir=save_dir,
     )
 

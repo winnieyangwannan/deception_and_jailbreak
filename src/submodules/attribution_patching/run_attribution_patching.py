@@ -103,7 +103,7 @@ def main(
     print("Get activation and gradient cache:")
     att_patch.get_contrastive_activation_and_gradient_cache()
     # Get attribution activation_patching on the accumulated residual
-    # att_patch.attr_patch_residual()
+    att_patch.attr_patch_residual()
     # Get attribution activation_patching on the decomposed residual
     # att_patch.attr_patch_layer_out()
 

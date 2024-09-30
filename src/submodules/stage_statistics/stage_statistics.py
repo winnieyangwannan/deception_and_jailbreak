@@ -803,16 +803,13 @@ def get_state_quantification(
     labels,
     save_plot=True,
     save_name=None,
+    save_path=None,
 ):
     """Run the full pipeline."""
     intervention = cfg.intervention
     contrastive_type = cfg.contrastive_type
-    if intervention == "no_intervention":
+    if save_path is None:
         save_path = os.path.join(cfg.artifact_path(), "stage_stats")
-    else:
-        save_path = os.path.join(
-            cfg.artifact_path(), "activation_steering", intervention, "stage_stats"
-        )
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)

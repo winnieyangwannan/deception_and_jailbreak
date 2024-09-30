@@ -49,6 +49,11 @@ from src.submodules.evaluations.evaluate_deception import (
     evaluate_generation_deception,
     plot_lying_honest_performance,
 )
+
+from src.submodules.evaluations.evaluate_jailbreak import (
+    evaluate_generation_jailbreak,
+)
+
 from src.submodules.stage_statistics.stage_statistics import get_state_quantification
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 from src.utils.hook_utils import cache_activation_hook_post, cache_residual_hook_pre
@@ -79,26 +84,98 @@ class ContrastiveActSteering:
         print(f"self.source_layer{self.source_layer}")
         print(f"self.target_layer{self.target_layer}")
 
+    def get_mean_vector(self):
+        if self.cfg.framework == "transformer_lens":
+
+            if self.cfg.task_name == "jailbreak":
+
+                input_inds_positive = [
+                    input_label == 1 for input_label in self.dataset.input_labels
+                ]
+                input_inds_negative = [
+                    input_label == 0 for input_label in self.dataset.input_labels
+                ]
+
+                input_positive_mean_act_negative = self.base.cache_negative[
+                    utils.get_act_name(self.cfg.cache_name, self.source_layer)
+                ][self.dataset.input_labels == input_inds_positive, -1].mean(dim=0)
+                input_negative_mean_act_negative = self.base.cache_negative[
+                    utils.get_act_name(self.cfg.cache_name, self.source_layer)
+                ][input_inds_negative, -1].mean(dim=0)
+
+                mean_act_positive = self.base.cache_positive[
+                    utils.get_act_name(self.cfg.cache_name, self.source_layer)
+                ][input_inds_negative, -1].mean(dim=0)
+                mean_act_negative = self.base.cache_negative[
+                    utils.get_act_name(self.cfg.cache_name, self.source_layer)
+                ][input_inds_negative, -1].mean(dim=0)
+
+            else:
+                mean_act_positive = self.base.cache_positive[
+                    utils.get_act_name(self.cfg.cache_name, self.source_layer)
+                ][:, -1].mean(dim=0)
+                mean_act_negative = self.base.cache_negative[
+                    utils.get_act_name(self.cfg.cache_name, self.source_layer)
+                ][:, -1].mean(dim=0)
+                input_positive_mean_act_negative = None
+                input_negative_mean_act_negative = None
+
+        else:
+
+            if self.cfg.task_name == "jailbreak":
+                input_inds_positive = [
+                    input_label == 1 for input_label in self.dataset.input_labels
+                ]
+                input_inds_negative = [
+                    input_label == 0 for input_label in self.dataset.input_labels
+                ]
+
+                input_positive_mean_act_negative = self.base.cache_negative[
+                    self.source_layer, input_inds_positive, -1
+                ].mean(dim=0)
+                input_negative_mean_act_negative = self.base.cache_negative[
+                    self.source_layer, input_inds_negative, -1
+                ].mean(dim=0)
+
+                mean_act_positive = self.base.cache_positive[
+                    self.source_layer, input_inds_negative, -1
+                ].mean(dim=0)
+                mean_act_negative = self.base.cache_negative[
+                    self.source_layer, input_inds_negative, -1
+                ].mean(dim=0)
+
+            else:
+                mean_act_positive = self.base.cache_positive[
+                    self.source_layer, :, -1
+                ].mean(dim=0)
+                mean_act_negative = self.base.cache_negative[
+                    self.source_layer, :, -1
+                ].mean(dim=0)
+                input_positive_mean_act_negative = None
+                input_negative_mean_act_negative = None
+
+        return (
+            mean_act_positive,
+            mean_act_negative,
+            input_positive_mean_act_negative,
+            input_negative_mean_act_negative,
+        )
+
     def get_steering_vector(self):
 
-        if self.cfg.framework == "transformer_lens":
-            mean_act_positive = self.base.cache_positive[
-                utils.get_act_name(self.cfg.cache_name, self.source_layer)
-            ][:, -1].mean(dim=0)
-            mean_act_negative = self.base.cache_negative[
-                utils.get_act_name(self.cfg.cache_name, self.source_layer)
-            ][:, -1].mean(dim=0)
-        else:
-            mean_act_positive = self.base.cache_positive[self.source_layer, :, -1].mean(
-                dim=0
-            )
-            mean_act_negative = self.base.cache_negative[self.source_layer, :, -1].mean(
-                dim=0
-            )
-
+        (
+            mean_act_positive,
+            mean_act_negative,
+            input_positive_mean_act_negative,
+            input_negative_mean_act_negative,
+        ) = self.get_mean_vector()
         if self.cfg.intervention == "positive_addition":
-
             self.steering_vector = mean_act_positive - mean_act_negative
+        elif self.cfg.intervention == "input_positive_addition_negative":
+            self.steering_vector = (
+                input_positive_mean_act_negative - input_negative_mean_act_negative
+            )
+
         return self.steering_vector
 
     def generate_and_contrastive_activation_steering(self, steering_vector):
@@ -150,9 +227,30 @@ class ContrastiveActSteering:
     ):
 
         # 1. Gen data
-        statements = self.dataset.statements
-        labels = self.dataset.answers_positive_correct
+        if self.cfg.task_name == "deception":
+            data = self.dataset.statements
+            labels = self.dataset.answers_positive_correct
+            prompt_type = "statement"
+            category = [""] * len(prompts)
+            completion_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                "completions",
+            )
 
+        elif self.cfg.task_name == "jailbreak":
+            data = self.dataset.request
+            labels = self.dataset.input_labels
+            prompt_type = "request"
+            category = self.dataset.category
+            completion_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                self.cfg.jailbreak_source,
+                "completions",
+            )
         # 2. Generation initialization
         completions = []
         output, cache_all = self.initialize_cache(
@@ -164,11 +262,12 @@ class ContrastiveActSteering:
         completions.append(
             {
                 "prompt": prompts[0],
-                "statement": statements[0],
+                f"{prompt_type}": data[0],
                 "response": self.base.model.tokenizer.decode(
                     generation_toks[0], skip_special_tokens=True
                 ).strip(),
                 "label": labels[0],
+                "category": category[0],
                 "ID": 0,
             }
         )
@@ -189,28 +288,24 @@ class ContrastiveActSteering:
             for generation_idx, generation in enumerate(generation_toks):
                 completions.append(
                     {
-                        "statement": statements[batch + generation_idx],
+                        "prompt": prompts[0],
+                        f"{prompt_type}": data[0],
                         "response": self.base.model.tokenizer.decode(
-                            generation, skip_special_tokens=True
+                            generation_toks[0], skip_special_tokens=True
                         ).strip(),
-                        "label": labels[batch + generation_idx],
-                        "ID": batch + generation_idx,
+                        "label": labels[0],
+                        "category": category[0],
+                        "ID": 0,
                     }
                 )
 
         # 3. Save completion
-        completion_path = os.path.join(
-            self.cfg.artifact_path(),
-            "activation_steering",
-            self.cfg.intervention,
-            "completions",
-        )
+        save_name = f"{self.cfg.model_alias}_completions_source_{self.source_layer}_target_{self.target_layer}_{contrastive_type}.json"
+
         if not os.path.exists(completion_path):
             os.makedirs(completion_path)
         with open(
-            completion_path
-            + os.sep
-            + f"{self.cfg.model_alias}_completions_source_{self.source_layer}_target_{self.target_layer}_{contrastive_type}.json",
+            completion_path + os.sep + save_name,
             "w",
         ) as f:
             json.dump(completions, f, indent=4)
@@ -220,8 +315,32 @@ class ContrastiveActSteering:
     def generate_and_steer_batch_tl(self, prompts, prompt_tokens, contrastive_type):
 
         # 1. Gen data
-        statements = self.dataset.statements
-        labels = self.dataset.answers_positive_correct
+        save_name = f"{self.cfg.model_alias}_completions_source_{self.source_layer}_target_{self.target_layer}_{contrastive_type}.json"
+
+        if self.cfg.task_name == "deception":
+            data = self.dataset.statements
+            labels = self.dataset.answers_positive_correct
+            prompt_type = "statement"
+            category = [""] * len(prompts)
+            completion_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                "completions",
+            )
+
+        elif self.cfg.task_name == "jailbreak":
+            data = self.dataset.request
+            labels = self.dataset.input_labels
+            prompt_type = "request"
+            category = self.dataset.category
+            completion_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                self.cfg.jailbreak_source,
+                self.cfg.jailbreak,
+                "completions",
+            )
 
         # 2. Generation initialization
         completions = []
@@ -233,11 +352,12 @@ class ContrastiveActSteering:
         completions.append(
             {
                 "prompt": prompts[0],
-                "statement": statements[0],
+                f"{prompt_type}": data[0],
                 "response": self.base.model.tokenizer.decode(
                     generation_toks[0], skip_special_tokens=True
                 ).strip(),
                 "label": labels[0],
+                "category": category[0],
                 "ID": 0,
             }
         )
@@ -259,28 +379,22 @@ class ContrastiveActSteering:
             for generation_idx, generation in enumerate(generation_toks):
                 completions.append(
                     {
-                        "statement": statements[batch + generation_idx],
+                        f"{prompt_type}": data[batch + generation_idx],
                         "response": self.base.model.tokenizer.decode(
                             generation, skip_special_tokens=True
                         ).strip(),
                         "label": labels[batch + generation_idx],
                         "ID": batch + generation_idx,
+                        "category": category[batch + generation_idx],
                     }
                 )
 
         # 3. Save completion
-        completion_path = os.path.join(
-            self.cfg.artifact_path(),
-            "activation_steering",
-            self.cfg.intervention,
-            "completions",
-        )
+
         if not os.path.exists(completion_path):
             os.makedirs(completion_path)
         with open(
-            completion_path
-            + os.sep
-            + f"{self.cfg.model_alias}_completions_source_{self.source_layer}_target_{self.target_layer}_{contrastive_type}.json",
+            completion_path + os.sep + save_name,
             "w",
         ) as f:
             json.dump(completions, f, indent=4)
@@ -381,7 +495,10 @@ class ContrastiveActSteering:
                     cache[hook.name] = activations[:, -1, :].detach()
 
             if hook.layer() == patch_layer:
-                if cfg.intervention == "positive_addition":
+                if (
+                    cfg.intervention == "positive_addition"
+                    or "input positive addition negative"
+                ):
                     return activations + steering_strength * steering_vector
 
         steering_hook = partial(
@@ -403,10 +520,6 @@ class ContrastiveActSteering:
                         steering_hook,
                     )
                     for layer in range(n_layers)
-                    # (
-                    #     utils.get_act_name(self.cfg.cache_name, self.cfg.target_layer),
-                    #     steering_hook,
-                    # )
                 ]
             ):
                 output = model.generate(
@@ -451,6 +564,46 @@ class ContrastiveActSteering:
 
     def get_contrastive_activation_pca(self, pos=-1):
 
+        if self.cfg.task_name == "deception":
+            activation_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                "activations",
+            )
+            pca_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                "pca",
+            )
+            activation_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                "activations",
+            )
+        elif self.cfg.task_name == "jailbreak":
+
+            pca_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                self.cfg.jailbreak_source,
+                self.cfg.jailbreak,
+                "pca",
+            )
+            activation_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                self.cfg.jailbreak_source,
+                self.cfg.jailbreak,
+                "activations",
+            )
+
+        save_name = f"{self.cfg.model_alias}_completions_source_{self.source_layer}_target_{self.target_layer}.json"
+
         # 1. Get access to cache
         activations_positive, activations_negative = self.get_contrastive_activations()
 
@@ -460,24 +613,20 @@ class ContrastiveActSteering:
         )
 
         # 3. Save plot
-        pca_path = os.path.join(
-            self.cfg.artifact_path(),
-            "activation_steering",
-            self.cfg.intervention,
-            "pca",
-        )
+        if self.cfg.task_name == "deception":
+            labels = self.dataset.labels_positive_correct
+        elif (
+            self.cfg.task_name == "jailbreak"
+            or self.cfg.task_name == "jailbreak_choice"
+        ):
+            labels = self.dataset.input_labels
+
         if not os.path.exists(pca_path):
             os.makedirs(pca_path)
-        fig.write_html(
-            pca_path
-            + os.sep
-            + f"{self.cfg.model_alias}_pca_source_{self.source_layer}_target_{self.target_layer}.html"
-        )
+        fig.write_html(pca_path + os.sep + f"{save_name}.html")
         pio.write_image(
             fig,
-            pca_path
-            + os.sep
-            + f"{self.cfg.model_alias}_pca_source_{self.source_layer}_target_{self.target_layer}.png",
+            pca_path + os.sep + f"{save_name}.png",
             scale=6,
         )
 
@@ -485,23 +634,46 @@ class ContrastiveActSteering:
         activations = {
             "activations_positive": activations_positive,
             "activations_negative": activations_negative,
-            "labels": self.dataset.labels_positive_correct,
+            "labels": labels,
         }
-        activation_path = os.path.join(
-            self.cfg.artifact_path(),
-            "activation_steering",
-            self.cfg.intervention,
-            "activations",
-        )
+
         if not os.path.exists(activation_path):
             os.makedirs(activation_path)
         with open(
-            activation_path
-            + os.sep
-            + f"{self.cfg.model_alias}_activations_source_{self.source_layer}_target_{self.target_layer}.pkl",
+            activation_path + os.sep + f"{save_name}.pkl",
             "wb",
         ) as f:
             pickle.dump(activations, f)
+
+    def evaluate_intervention(self):
+        if self.cfg.task_name == "deception":
+            self.evaluate_deception()
+        elif self.cfg.task_name == "jailbreak":
+            self.evaluate_jailbreak()
+
+    def evaluate_jailbreak(self):
+        completion_path = os.path.join(
+            self.cfg.artifact_path(),
+            "activation_steering",
+            self.cfg.intervention,
+            self.cfg.jailbreak_source,
+            self.cfg.jailbreak,
+            "completions",
+        )
+        save_name = f"source_{self.source_layer}_target_{self.target_layer}"
+
+        evaluate_generation_jailbreak(
+            self.cfg,
+            contrastive_type=self.cfg.contrastive_type[0],
+            save_path=completion_path,
+            save_name=save_name,
+        )
+        evaluate_generation_jailbreak(
+            self.cfg,
+            contrastive_type=self.cfg.contrastive_type[1],
+            save_path=completion_path,
+            save_name=save_name,
+        )
 
     def evaluate_deception(self):
         completion_path = os.path.join(
@@ -539,12 +711,35 @@ class ContrastiveActSteering:
 
     def get_stage_statistics(self):
         save_name = f"source_{self.source_layer}_target_{self.target_layer}"
+
+        if self.cfg.task_name == "deception":
+            save_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                "stage_stats",
+            )
+        elif self.cfg.task_name == "jailbreak":
+            save_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                self.cfg.jailbreak_source,
+                self.cfg.jailbreak,
+                "stage_stats",
+            )
         # 1. Get access to cache
         activations_positive, activations_negative = self.get_contrastive_activations()
 
-        labels = self.dataset.labels_positive_correct
-
         # 2. get stage statistics
+        if (
+            self.cfg.task_name == "deception"
+            or self.cfg.task_name == "jailbreak_choice"
+        ):
+            labels = self.dataset.labels_positive_correct
+        elif self.cfg.task_name == "jailbreak":
+            labels = self.dataset.input_labels
+
         get_state_quantification(
             self.cfg,
             activations_positive,
@@ -552,6 +747,7 @@ class ContrastiveActSteering:
             labels,
             save_plot=True,
             save_name=save_name,
+            save_path=save_path,
         )
 
     def get_contrastive_activations(self):
@@ -585,13 +781,29 @@ class ContrastiveActSteeringAll:
 
     def get_honest_score_all_layers(self):
         n_layers = self.model.cfg.n_layers
-        # 1. Load performance
-        acc_path = os.path.join(
-            self.cfg.artifact_path(),
-            "activation_steering",
-            self.cfg.intervention,
-            "completions",
-        )
+
+        if self.cfg.task_name == "jailbreak":
+            # 1. Load performance
+            save_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                self.cfg.jailbreak_source,
+                self.cfg.jailbreak,
+            )
+
+            metric = "refusal_score_harmful"
+        else:
+            # 1. Load performance
+            save_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+            )
+            metric = "honest_score"
+
+        if not os.path.exists(save_path + os.sep + "performance"):
+            os.makedirs(save_path + os.sep + "performance")
 
         score_positive_all = []
         score_negative_all = []
@@ -599,22 +811,27 @@ class ContrastiveActSteeringAll:
             save_name = f"source_{layer}_target_{layer}"
 
             with open(
-                acc_path
+                save_path
+                + os.sep
+                + "completions"
                 + os.sep
                 + f"{self.cfg.model_alias}_completions_{save_name}_{self.cfg.contrastive_type[0]}.json",
                 "r",
             ) as f:
                 completion_honest = json.load(f)
-                score_positive = completion_honest["honest_score"]
+                score_positive = completion_honest[f"{metric}"]
                 score_positive_all.append(score_positive)
+
             with open(
-                acc_path
+                save_path
+                + os.sep
+                + "completions"
                 + os.sep
                 + f"{self.cfg.model_alias}_completions_{save_name}_{self.cfg.contrastive_type[1]}.json",
                 "r",
             ) as f:
                 completion_lying = json.load(f)
-                score_negative = completion_lying["honest_score"]
+                score_negative = completion_lying[f"{metric}"]
                 score_negative_all.append(score_negative)
 
         # save
@@ -622,14 +839,11 @@ class ContrastiveActSteeringAll:
             "score_positive_all": score_positive_all,
             "score_negative_all": score_negative_all,
         }
-        performance_path = os.path.join(
-            self.cfg.artifact_path(),
-            "activation_steering",
-            self.cfg.intervention,
-            "performance",
-        )
+
         with open(
-            performance_path
+            save_path
+            + os.sep
+            + "performance"
             + os.sep
             + f"{self.cfg.model_alias}_honest_score_all_layers.pkl",
             "wb",
@@ -642,7 +856,7 @@ class ContrastiveActSteeringAll:
             go.Scatter(
                 x=np.arange(self.model.cfg.n_layers),
                 y=score_positive_all,
-                name="Lying",
+                name=self.cfg.contrastive_type[1],
                 mode="lines+markers",
                 marker=dict(color="dodgerblue"),
             )
@@ -651,7 +865,7 @@ class ContrastiveActSteeringAll:
             go.Scatter(
                 x=np.arange(self.model.cfg.n_layers),
                 y=score_negative_all,
-                name="Honest",
+                name=self.cfg.contrastive_type[0],
                 mode="lines+markers",
                 marker=dict(color="gold"),
             )
@@ -661,11 +875,32 @@ class ContrastiveActSteeringAll:
         )
         fig.update_xaxes(tickvals=np.arange(0, n_layers, 5))
         fig.show()
-        fig.write_html(performance_path + os.sep + "honest_score_summary" + ".html")
+        fig.write_html(
+            save_path
+            + os.sep
+            + "performance"
+            + os.sep
+            + "honest_score_summary"
+            + ".html"
+        )
         pio.write_image(
             fig,
-            performance_path + os.sep + "honest_score_summary" + ".png",
+            save_path
+            + os.sep
+            + "performance"
+            + os.sep
+            + "honest_score_summary"
+            + ".png",
             scale=6,
+        )
+        pio.write_image(
+            fig,
+            save_path
+            + os.sep
+            + "performance"
+            + os.sep
+            + "honest_score_summary"
+            + ".pdf",
         )
 
         return score_positive_all, score_negative_all
@@ -673,12 +908,22 @@ class ContrastiveActSteeringAll:
     def get_cos_sim_all_layers(self):
 
         # 1. Load
-        cos_path = os.path.join(
-            self.cfg.artifact_path(),
-            "activation_steering",
-            self.cfg.intervention,
-            "stage_stats",
-        )
+        if self.cfg.task_name == "jailbreak":
+            cos_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                self.cfg.jailbreak_source,
+                self.cfg.jailbreak,
+                "stage_stats",
+            )
+        else:
+            cos_path = os.path.join(
+                self.cfg.artifact_path(),
+                "activation_steering",
+                self.cfg.intervention,
+                "stage_stats",
+            )
 
         cos_all = []
         for layer in range(self.model.cfg.n_layers):

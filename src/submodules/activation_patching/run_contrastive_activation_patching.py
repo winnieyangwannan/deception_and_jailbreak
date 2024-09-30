@@ -11,14 +11,7 @@ import einops
 import argparse
 from datasets import load_dataset
 import sae_lens
-import pysvelte
-from torchtyping import TensorType as TT
-from IPython import get_ipython
-from pathlib import Path
-import pickle
-import numpy as np
-from matplotlib.widgets import EllipseSelector
-from IPython.display import HTML, Markdown
+
 import torch
 from src.submodules.dataset.task_and_dataset_deception import (
     ContrastiveDatasetDeception,
@@ -31,15 +24,7 @@ from src.submodules.basic.contrastive_model_base import (
 )
 from src.submodules.activation_patching.activation_patching import ActivationPatching
 from src.submodules.model.load_model import load_model
-from src.utils.utils import logits_to_ave_logit_diff
-from transformer_lens import utils, HookedTransformer, ActivationCache
-from rich.table import Table, Column
-from rich import print as rprint
-from src.utils.plotly_utils import imshow, line, scatter, bar
-import plotly.io as pio
-import circuitsvis as cv  # for visualize attetnion pattern
 
-from IPython.display import display, HTML  # for visualize attetnion pattern
 
 torch.set_grad_enabled(False)  # save memory
 
@@ -55,10 +40,10 @@ def parse_arguments():
     )
     parser.add_argument("--task_name", type=str, required=False, default="deception")
     parser.add_argument("--do_sample", type=bool, required=False, default=False)
-    parser.add_argument("--framework", type=str, required=False, default="transformers")
     parser.add_argument(
-        "--cache_name", nargs="+", type=str, required=False, default="resid_post"
+        "--framework", type=str, required=False, default="transformer_lens"
     )
+    parser.add_argument("--cache_name", type=str, required=False, default="resid_post")
     parser.add_argument(
         "--jailbreak", type=str, required=False, default="evil_confidant"
     )
@@ -154,8 +139,9 @@ if __name__ == "__main__":
     print(answer_type)
     print("contrastive_type")
     print(contrastive_type)
-    if len(args.cache_name) > 1:
-        cache_name = tuple(args.cache_name)
+
+    if args.cache_name == "kqv":
+        cache_name = ["z", "q", "pattern", "v", "k"]
     else:
         cache_name = args.cache_name[0]
 

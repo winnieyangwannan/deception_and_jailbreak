@@ -177,7 +177,17 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
         row=row + 1,
         col=ll + 1,
     )
-    fig.update_layout(height=rows * 250, width=cols * 200 + 50)
+    fig.update_layout(
+        height=rows * 250,
+        width=cols * 200 + 50,
+    )
+
+    fig.update_layout(
+        title=dict(
+            text=cfg.model_alias,
+            font=dict(size=40),
+        )
+    )
     fig.show()
     # fig.write_html('honest_lying_pca.html')
 

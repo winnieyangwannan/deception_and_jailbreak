@@ -85,7 +85,7 @@ def plot_contrastive_activation_pca_layer(
                     showlegend=False,
                     marker=dict(
                         symbol=symbol_sequence[:n_contrastive_data],
-                        size=8,
+                        size=15,
                         line=dict(width=1, color="DarkSlateGrey"),
                         color="gold",
                     ),
@@ -104,7 +104,7 @@ def plot_contrastive_activation_pca_layer(
                     showlegend=False,
                     marker=dict(
                         symbol=symbol_sequence[n_contrastive_data:],
-                        size=8,
+                        size=15,
                         line=dict(width=1, color="DarkSlateGrey"),
                         color="dodgerblue",
                     ),
@@ -580,10 +580,10 @@ def plot_scatter(df, centroid, layer, n_samples, fig1, row, col, plot_legend=Fal
             showlegend=False,
             marker=dict(
                 symbol=df["symbols"],
-                size=8,
+                size=15,
                 line=dict(width=1, color="DarkSlateGrey"),
                 color="gold",
-                opacity=0.5,
+                opacity=1,
             ),
             text=df["label_text"][:n_samples],
         ),
@@ -598,10 +598,10 @@ def plot_scatter(df, centroid, layer, n_samples, fig1, row, col, plot_legend=Fal
             showlegend=False,
             marker=dict(
                 symbol=df["symbols"],
-                size=5,
+                size=15,
                 line=dict(width=1, color="DarkSlateGrey"),
                 color="dodgerblue",
-                opacity=0.5,
+                opacity=1,
             ),
             text=df["label_text"][n_samples : n_samples * 2],
         ),
@@ -618,7 +618,7 @@ def plot_scatter(df, centroid, layer, n_samples, fig1, row, col, plot_legend=Fal
             showlegend=plot_legend,
             marker=dict(
                 symbol="star",
-                size=10,
+                size=18,
                 color="orange",
                 line=dict(width=1, color="DarkSlateGrey"),
                 opacity=1,
@@ -637,7 +637,7 @@ def plot_scatter(df, centroid, layer, n_samples, fig1, row, col, plot_legend=Fal
             showlegend=plot_legend,
             marker=dict(
                 symbol="circle",
-                size=10,
+                size=18,
                 color="orange",
                 line=dict(width=1, color="DarkSlateGrey"),
                 opacity=1,
@@ -655,7 +655,7 @@ def plot_scatter(df, centroid, layer, n_samples, fig1, row, col, plot_legend=Fal
             showlegend=plot_legend,
             marker=dict(
                 symbol="star",
-                size=10,
+                size=18,
                 color="dodgerblue",
                 line=dict(width=1, color="DarkSlateGrey"),
                 opacity=1,
@@ -673,7 +673,7 @@ def plot_scatter(df, centroid, layer, n_samples, fig1, row, col, plot_legend=Fal
             showlegend=plot_legend,
             marker=dict(
                 symbol="circle",
-                size=10,
+                size=18,
                 color="dodgerblue",
                 line=dict(width=1, color="DarkSlateGrey"),
                 opacity=1,
@@ -745,7 +745,7 @@ def plot_contrastive_activation_pca_one_layer_jailbreaks(
                 showlegend=False,
                 marker=dict(
                     symbol="star",
-                    size=8,
+                    size=20,
                     line=dict(width=1, color="DarkSlateGrey"),
                     color=colors[ii],
                 ),
