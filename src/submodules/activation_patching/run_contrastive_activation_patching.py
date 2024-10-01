@@ -143,7 +143,7 @@ if __name__ == "__main__":
     if args.cache_name == "kqv":
         cache_name = ["z", "q", "pattern", "v", "k"]
     else:
-        cache_name = args.cache_name[0]
+        cache_name = args.cache_name
 
     main(
         model_path=args.model_path,

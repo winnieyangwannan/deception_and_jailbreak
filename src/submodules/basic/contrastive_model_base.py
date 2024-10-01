@@ -235,9 +235,7 @@ class ContrastiveBase:
         if not os.path.exists(pca_path):
             os.makedirs(pca_path)
         fig.write_html(pca_path + os.sep + f"{self.cfg.model_alias}_pca.html")
-        pio.write_image(
-            fig, pca_path + os.sep + f"{self.cfg.model_alias}_pca.png", scale=6
-        )
+        pio.write_image(fig, pca_path + os.sep + f"{self.cfg.model_alias}_pca.pdf")
 
         if self.cfg.task_name == "deception":
             labels = self.dataset.labels_positive_correct
