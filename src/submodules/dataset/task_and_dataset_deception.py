@@ -24,6 +24,8 @@ class ContrastiveDatasetDeception:
         self.cfg = cfg
         self.dataset = None
         self.statements = None
+        self.category = None
+
         self.answers_positive_correct = None
         self.labels_positive_correct = None
         self.answers_positive_wrong = None
@@ -44,14 +46,30 @@ class ContrastiveDatasetDeception:
             Tuple of datasets: (dataset_train, dataset_test)
         """
         random.seed(42)
-        category = "facts"
 
+        category = ["cities", "companies", "animals", "elements", "inventions", "facts"]
         dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
-        dataset = [row for row in dataset_all[f"{category}"]]
+
+        dataset = []
         if train_test == "train":
-            dataset = random.sample(dataset, self.cfg.n_train)
-        else:
-            dataset = random.sample(dataset, self.cfg.n_test)
+            for c in category:
+                dataset_category = random.sample(
+                    [row for row in dataset_all[c]], self.cfg.n_train
+                )
+                dataset.append(dataset_category)
+            dataset = sum(dataset, [])
+        elif train_test == "test":
+            for c in category:
+                dataset_category = random.sample(
+                    [row for row in dataset_all[c]], self.cfg.n_test
+                )
+                dataset.append(dataset_category)
+            dataset = sum(dataset, [])
+        elif train_test == "all":
+            for c in category:
+                dataset.append([row for row in dataset_all[c]])
+            dataset = sum(dataset, [])
+
         self.dataset = dataset
         return dataset
 
@@ -59,6 +77,7 @@ class ContrastiveDatasetDeception:
         statements = [row["claim"] for row in self.dataset]
         labels = [row["label"] for row in self.dataset]
         answers = ["true" if label == 1 else "false" for label in labels]
+        category = [row["dataset"] for row in self.dataset]
 
         answers_positive_wrong = []
         labels_positive_wrong = []
@@ -77,6 +96,7 @@ class ContrastiveDatasetDeception:
         self.labels_positive_correct = labels
         self.answers_positive_wrong = answers_positive_wrong
         self.labels_positive_wrong = labels_positive_wrong
+        self.category = category
         return statements, answers, labels
 
     def construct_contrastive_prompts(self):

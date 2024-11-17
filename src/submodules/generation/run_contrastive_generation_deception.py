@@ -60,7 +60,7 @@ def parse_arguments():
 def main(
     model_path: str,
     save_dir: str,
-    temperature: int,
+    temperature: float,
     task_name: str = "deception",
     contrastive_type: Tuple[str] = ("honest", "lying"),
     answer_type: Tuple[str] = ("true", "false"),
@@ -101,20 +101,20 @@ def main(
     contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
 
     # Generate and cache
-    print("Generate and cache:")
-    contrastive_basic.generate_and_contrastive_activation_cache()
+    print("Generate:")
+    contrastive_basic.generate_and_contrastive()
 
     # Evaluate generation results
     print("Evaluate generation results:")
     contrastive_basic.evaluate_deception()
 
-    print("Get stage statistics:")
-    contrastive_basic.get_stage_statistics()
-    # print("Run and cache:")
-    contrastive_basic.generate_and_contrastive_activation_cache()
-
-    # Plot pca on the residual stream
-    contrastive_basic.get_contrastive_activation_pca()
+    # print("Get stage statistics:")
+    # contrastive_basic.get_stage_statistics()
+    # # print("Run and cache:")
+    # contrastive_basic.generate_and_contrastive_activation_cache()
+    #
+    # # Plot pca on the residual stream
+    # contrastive_basic.get_contrastive_activation_pca()
 
     print("done")
 
@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
     args = parse_arguments()
     print(sae_lens.__version__)
-    print("run_contrastive_basic\n\n")
+    print("run_contrastive_generation_deception\n\n")
     print("model_base_path")
     print(args.model_path)
     print("save_dir")

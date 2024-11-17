@@ -189,6 +189,37 @@ class ContrastiveBase:
         print(f"logit diff corrupted: {self.logit_diff_corrupted}")
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="/n/n")
 
+    def generate_and_contrastive(self):
+        """
+        Generation only
+        :return:
+        """
+
+        self.generate_batch(
+            self.dataset.prompts_positive,
+            self.prompt_tokens_positive,
+            self.prompt_masks_positive,
+            self.cfg.contrastive_type[0],
+        )
+
+        self.generate_batch(
+            self.dataset.prompts_negative,
+            self.prompt_tokens_negative,
+            self.prompt_masks_negative,
+            self.cfg.contrastive_type[1],
+        )
+
+        # self.cache_positive = cache_positive
+        #
+        # self.cache_negative = cache_negative
+        print(
+            "free(Gb):",
+            torch.cuda.mem_get_info()[0] / 1000000000,
+            "total(Gb):",
+            torch.cuda.mem_get_info()[1] / 1000000000,
+        )
+        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
+
     def generate_and_contrastive_activation_cache(self):
         """
         Get the activation cache and gradient cache for both the positive and negative prompts
@@ -277,6 +308,104 @@ class ContrastiveBase:
             )
 
         return logits, cache
+
+    def generate_batch(self, prompts, prompt_tokens, prompt_masks, contrastive_type):
+
+        # 1. Gen data
+        if self.cfg.task_name == "deception":
+            data = self.dataset.statements
+            labels = self.dataset.answers_positive_correct
+            prompt_type = "statement"
+            category = self.dataset.category
+
+        elif self.cfg.task_name == "jailbreak":
+            data = self.dataset.request
+            labels = self.dataset.input_labels
+            prompt_type = "request"
+            category = self.dataset.category
+
+        elif self.cfg.task_name == "jailbreak_choice":
+            data = self.dataset.request
+            prompt_type = "request"
+            category = self.dataset.category
+            labels = self.dataset.input_labels
+
+        # 2. Generation initialization
+        # output, cache_all = self.initialize_cache(
+        #     prompt_tokens,
+        #     prompt_masks,
+        #     mode="generate",
+        # )
+        # # Construct generation result for saving (one batch)
+        # generation_toks = output[:, prompt_tokens.shape[1] :]
+        # completions.append(
+        #     {
+        #         "prompt": prompts[0],
+        #         f"{prompt_type}": data[0],
+        #         "response": self.model.tokenizer.decode(
+        #             generation_toks[0], skip_special_tokens=True
+        #         ).strip(),
+        #         "label": labels[0],
+        #         "category": category[0],
+        #         "ID": 0,
+        #     }
+        # )
+        # 3. Main loop
+        completions = []
+        n_prompts = len(prompt_tokens)
+        for batch in tqdm(range(0, n_prompts, self.cfg.batch_size)):
+
+            if self.cfg.framework == "transformer_lens":
+                output = generate(
+                    self.cfg,
+                    self.model,
+                    prompt_tokens[batch : batch + self.cfg.batch_size],
+                )
+            else:
+                output = generate(
+                    self.cfg,
+                    self.model,
+                    prompt_tokens[batch : batch + self.cfg.batch_size],
+                    masks=prompt_masks[batch : batch + self.cfg.batch_size],
+                )
+
+            # concatenate cache
+            # if self.cfg.framework == "transformer_lens":
+            #     for key in cache.keys():
+            #         cache_all.cache_dict[key] = torch.cat(
+            #             (cache_all[key], cache[key]), dim=0
+            #         )
+            # else:
+            #     cache_all = torch.cat((cache_all, cache), dim=1)
+
+            # Construct generation result for saving (one batch)
+            generation_toks = output[
+                :, prompt_tokens.shape[1] :
+            ]  # only take the model output (excluding prompt)
+            for generation_idx, generation in enumerate(generation_toks):
+                completions.append(
+                    {
+                        f"{prompt_type}": data[batch + generation_idx],
+                        "response": self.model.tokenizer.decode(
+                            generation, skip_special_tokens=True
+                        ).strip(),
+                        "label": labels[batch + generation_idx],
+                        "ID": batch + generation_idx,
+                        "category": category[batch + generation_idx],
+                    }
+                )
+
+        # 3. Save completion
+        completion_path = os.path.join(self.cfg.artifact_path(), "completions")
+        if not os.path.exists(completion_path):
+            os.makedirs(completion_path)
+        with open(
+            completion_path
+            + os.sep
+            + f"{self.cfg.model_alias}_completions_{contrastive_type}.json",
+            "w",
+        ) as f:
+            json.dump(completions, f, indent=4)
 
     def generate_and_cache_batch(
         self, prompts, prompt_tokens, prompt_masks, contrastive_type
@@ -549,7 +678,8 @@ def generate_and_cache(cfg, model, tokens, masks=None):
                 max_new_tokens=max_new_tokens,
                 do_sample=True,
                 temperature=1.0,
-                top_p=0.1,
+                top_p=0.9,
+                top_k=50,
                 freq_penalty=1.0,
                 stop_at_eos=False,
                 prepend_bos=model.cfg.default_prepend_bos,
@@ -559,8 +689,10 @@ def generate_and_cache(cfg, model, tokens, masks=None):
                 max_new_tokens=max_new_tokens,
                 do_sample=True,
                 temperature=1.0,
-                top_p=0.1,
+                top_p=0.9,
+                top_k=50,
                 repetition_penalty=1.0,
+                # num_return_sequences=cfg.num_return_sequences,
             )
             with add_hooks(module_forward_pre_hooks=[], module_forward_hooks=fwd_hook):
 
@@ -599,6 +731,121 @@ def generate_and_cache(cfg, model, tokens, masks=None):
         return output, ActivationCache(cache, model)
     else:
         return output, cache
+
+
+def generate(cfg, model, tokens, masks=None):
+    max_new_tokens = cfg.max_new_tokens
+    do_sample = cfg.do_sample
+
+    #  (1) Initialize
+    if cfg.framework == "transformer_lens":
+        # Always reset hook before you start -- good habit!
+        model.reset_hooks()
+        cache = {}
+    else:
+        n_layers = model.model.config.num_hidden_layers
+        d_model = model.model.config.hidden_size
+        n_samples = len(tokens)
+        block_modules = model.model_block_modules
+        len_prompt = tokens.shape[1]
+        cache = torch.zeros(
+            (n_layers, n_samples, d_model),
+            dtype=torch.float16,
+            device=model.device,
+        )
+
+    # (2) Construct hook functions
+    # forward cache hook: cache the activation during forward run
+    # def forward_cache_hook(act, hook, len_prompt, cfg):
+    #     # only cache generation result
+    #     if cfg.cache_pos == "prompt_last_token":
+    #         if act.shape[1] == len_prompt:
+    #             cache[hook.name] = act[:, -1, :].detach()
+    #     elif cfg.cache_pos == "prompt_all":
+    #         if act.shape[1] == len_prompt:
+    #             cache[hook.name] = act.detach()
+
+    # # (3) Construct hooks
+    # if cfg.framework == "transformer_lens":
+    #     # Create filter for what to cache
+    #     # activation_filter = lambda name: list(cfg.cache_name) in name
+    #     activation_filter = lambda name: cfg.cache_name in name
+    #     fwd_hook = partial(forward_cache_hook, len_prompt=tokens.shape[1], cfg=cfg)
+    #     model.add_hook(activation_filter, fwd_hook, "fwd")
+
+    # else:
+    #     fwd_hook = [
+    #         (
+    #             block_modules[layer],
+    #             cache_activation_post_hook_pos(
+    #                 cache, layer, len_prompt=len_prompt, pos=-1
+    #             ),
+    #         )
+    #         for layer in range(n_layers)
+    #     ]
+
+    # (4) Run forward pass
+    if do_sample:
+        if cfg.framework == "transformer_lens":
+
+            output = model.generate(
+                tokens,
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=cfg.temperature,
+                top_p=0.9,
+                top_k=50,
+                freq_penalty=1.0,
+                stop_at_eos=False,
+                prepend_bos=model.cfg.default_prepend_bos,
+            )
+        else:
+            generation_config = GenerationConfig(
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=cfg.temperature,
+                top_p=0.9,
+                top_k=50,
+                repetition_penalty=1.0,
+                # num_return_sequences=cfg.num_return_sequences,
+            )
+            # with add_hooks(module_forward_pre_hooks=[], module_forward_hooks=fwd_hook):
+
+            output = model.model.generate(
+                input_ids=tokens,
+                attention_mask=masks,
+                max_new_tokens=max_new_tokens,
+                generation_config=generation_config,
+            )
+
+    else:
+        if cfg.framework == "transformer_lens":
+            output = model.generate(
+                tokens,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+            )
+        else:
+            generation_config = GenerationConfig(
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+            )
+            # with add_hooks(module_forward_pre_hooks=[], module_forward_hooks=fwd_hook):
+
+            output = model.model.generate(
+                input_ids=tokens,
+                attention_mask=masks,
+                max_new_tokens=max_new_tokens,
+                generation_config=generation_config,
+            )
+
+    # (5) Output
+    if cfg.framework == "transformer_lens":
+        #  Always reset hook after you are done! -- good habit!
+        model.reset_hooks()
+        return output
+    else:
+        return output
 
 
 def run_and_cache(cfg, model, tokens, masks=None) -> Tuple[

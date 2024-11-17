@@ -183,6 +183,8 @@ def evaluate_generation_deception(
     completion_evaluation = evaluation
     completion_evaluation["completions"] = completions
 
+    # print(evaluation)
+
     # (5) Save completion results
     if save_name is None:
         with open(

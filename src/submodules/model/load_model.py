@@ -4,6 +4,8 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 import transformer_lens.utils as utils
 
+torch.no_grad()
+
 
 #
 def load_model(cfg):
@@ -13,6 +15,7 @@ def load_model(cfg):
         device = "mps"
     else:
         device = "cuda" if torch.cuda.is_available() else "cpu"
+
     print(f"device: {device}")
     print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%", end="\n\n")
 
@@ -34,6 +37,7 @@ def load_model(cfg):
                 model_path,
                 device=device,
                 fold_ln=True,
+                device_map="auto",
                 # center_unembed=False,
                 # center_writing_weights=False,
                 # refactor_factored_attn_matrices=False,
@@ -56,6 +60,8 @@ def load_model(cfg):
 class TransformerModelLoader:
     def __init__(self, cfg):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # self.device = "auto"
+
         self.model = None
         self.tokenizer = None
 
