@@ -9,14 +9,8 @@ import os
 
 litellm.set_verbose = True
 
-os.environ["OPENAI_API_KEY"] = (
-    "sk-muZX953Cx4acmeqs5dEcnW4kWeNFWEZBplURmpGjpsT3BlbkFJwH-0AkS5s8Vmn2Cku_nsNJQGqwlmCemTJ6WgaIQS4A"
-)
 
 ####
-
-
-os.environ["HUGGINGFACE_API_KEY"] = "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"
 
 
 messages = [
