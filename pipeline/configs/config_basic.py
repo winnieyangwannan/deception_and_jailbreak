@@ -18,7 +18,7 @@ class Config:
     framework: bool
     temperature: float
     dtype: str = "bfloat16"  # "bfloat16" or "default"
-    n_train: int = 200  # 100
+    n_train: int = 50  # 100
     n_test: int = 50  # 50
     batch_size: int = 5  # 5
     max_new_tokens: int = 100  # 100
@@ -33,9 +33,5 @@ class Config:
         temperature = self.temperature
         # return os.path.join(os.path.dirname(os.path.realpath(__file__)), "runs", "activation_pca", self.model_alias)
         return os.path.join(
-            save_dir,
-            "runs",
-            "activation_pca",
-            self.model_alias,
-            str(temperature),
+            save_dir, "runs", "activation_pca", self.model_alias, str(temperature)
         )

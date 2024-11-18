@@ -1,4 +1,4 @@
-from pipeline.configs.config_basic import Config
+from pipeline.configs.config_generation_system_prompt import Config
 import os
 import sys
 import random
@@ -53,6 +53,8 @@ def parse_arguments():
     parser.add_argument("--do_sample", type=bool, required=False, default=True)
     parser.add_argument("--framework", type=str, required=True, default="transformers")
     parser.add_argument("--temperature", type=float, required=False, default=1.0)
+    parser.add_argument("--system_prompt_id_s", type=int, required=False, default=0)
+    parser.add_argument("--system_prompt_id_e", type=int, required=False, default=9)
 
     return parser.parse_args()
 
@@ -60,7 +62,9 @@ def parse_arguments():
 def main(
     model_path: str,
     save_dir: str,
-    temperature: int,
+    temperature: float,
+    system_prompt_id_s: int,
+    system_prompt_id_e: int,
     task_name: str = "deception",
     contrastive_type: Tuple[str] = ("honest", "lying"),
     answer_type: Tuple[str] = ("true", "false"),
@@ -80,50 +84,44 @@ def main(
         do_sample=do_sample,
         framework=framework,
         temperature=temperature,
+        system_prompt_id_s=system_prompt_id_s,
+        system_prompt_id_e=system_prompt_id_e,
     )
     pprint.pp(cfg)
 
     # 1. Load model_base
     model_base = load_model(cfg)
-    # model_base.set_use_attn_result(True)
-    # model_base.cfg.use_attn_in = True
-    # model_base.cfg.use_hook_mlp_in = True
 
     # 2. Load data
     print("loading data")
     dataset = ContrastiveDatasetDeception(cfg)
     dataset.load_and_sample_datasets(train_test="train")
     dataset.process_dataset()
-    dataset.construct_contrastive_prompts()
 
-    # Initiate contrastive model base
-    print("Initializing model_base base:")
-    contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
+    for id in range(cfg.system_prompt_id_s, cfg.system_prompt_id_e):
+        dataset.construct_contrastive_prompts(system_prompt_id=id)
 
-    # Generate and cache
-    print("Generate and cache:")
-    contrastive_basic.generate_and_contrastive_activation_cache()
+        # Initiate contrastive model base
+        print("Initializing model_base base:")
+        cfg.system_prompt_id = id
+        contrastive_basic = ContrastiveBase(cfg, model_base, dataset)
 
-    # Evaluate generation results
-    print("Evaluate generation results:")
-    contrastive_basic.evaluate_deception()
+        # Generate and cache
+        print("Generate:")
+        contrastive_basic.generate_and_contrastive()
 
-    print("Get stage statistics:")
-    contrastive_basic.get_stage_statistics()
-    # print("Run and cache:")
-    contrastive_basic.generate_and_contrastive_activation_cache()
+        # Evaluate generation results
+        print("Evaluate generation results:")
+        contrastive_basic.evaluate_deception()
 
-    # Plot pca on the residual stream
-    contrastive_basic.get_contrastive_activation_pca()
-
-    print("done")
+        print("done")
 
 
 if __name__ == "__main__":
 
     args = parse_arguments()
     print(sae_lens.__version__)
-    print("run_contrastive_basic\n\n")
+    print("run_contrastive_generation_deception_system_prompts\n\n")
     print("model_base_path")
     print(args.model_path)
     print("save_dir")
@@ -152,6 +150,9 @@ if __name__ == "__main__":
 
     print("contrastive_type")
     print(contrastive_type)
+
+    print("system_prompt_id_s")
+    print(args.system_prompt_id_s)
     main(
         model_path=args.model_path,
         save_dir=args.save_dir,
@@ -161,4 +162,6 @@ if __name__ == "__main__":
         do_sample=do_sample,
         framework=args.framework,
         temperature=args.temperature,
+        system_prompt_id_s=args.system_prompt_id_s,
+        system_prompt_id_e=args.system_prompt_id_e,
     )

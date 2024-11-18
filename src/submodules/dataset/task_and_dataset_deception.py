@@ -3,6 +3,8 @@ from datasets import load_dataset
 import torch
 from torch import Tensor
 import transformer_lens.utils as utils
+import json
+import os
 
 #
 # # Versioin 1
@@ -99,13 +101,28 @@ class ContrastiveDatasetDeception:
         self.category = category
         return statements, answers, labels
 
-    def construct_contrastive_prompts(self):
+    def construct_contrastive_prompts(self, system_prompt_id=None):
+        # honest
         prompts_positive = apply_chat_template(
             self.cfg, self.statements, contrastive_type=self.cfg.contrastive_type[0]
         )
-        prompts_negative = apply_chat_template(
-            self.cfg, self.statements, contrastive_type=self.cfg.contrastive_type[1]
-        )
+        # lying
+        if system_prompt_id is None:
+            prompts_negative = apply_chat_template(
+                self.cfg,
+                self.statements,
+                contrastive_type=self.cfg.contrastive_type[1],
+                system_prompt_id=system_prompt_id,
+            )
+        # lying with different system prompts
+        else:
+            prompts_negative = apply_chat_template(
+                self.cfg,
+                self.statements,
+                contrastive_type="lying_gpt4_guo",
+                system_prompt_id=system_prompt_id,
+            )
+
         (
             answers_negative_correct,
             labels_negative_correct,
@@ -260,7 +277,9 @@ def get_chat_template(model_name: str):
     return chat_template, SUFFIX
 
 
-def apply_chat_template(cfg, statements: list[str], contrastive_type: str = "honest"):
+def apply_chat_template(
+    cfg, statements: list[str], contrastive_type: str = "honest", system_prompt_id=0
+):
     """
     Construct the full chat prompt by adding chat template for different models.
 
@@ -286,6 +305,21 @@ def apply_chat_template(cfg, statements: list[str], contrastive_type: str = "hon
         prompt = [
             chat_template.format(
                 system_prompt=SYSTEM_PROMPT_LYING,
+                user_prompt=USER_PROMPT,
+                statement=statement,
+            )
+            + suffix
+            for statement in statements
+        ]
+    elif contrastive_type == "lying_gpt4_guo":
+        dataset_dir_path = os.path.dirname(os.path.realpath(__file__))
+        f = open(
+            dataset_dir_path + os.sep + "lying_prompt_dataset_gpt4.json",
+        )
+        system_prompts = json.load(f)
+        prompt = [
+            chat_template.format(
+                system_prompt=system_prompts[system_prompt_id][0],
                 user_prompt=USER_PROMPT,
                 statement=statement,
             )
