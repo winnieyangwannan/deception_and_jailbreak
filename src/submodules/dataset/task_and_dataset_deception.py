@@ -112,7 +112,6 @@ class ContrastiveDatasetDeception:
                 self.cfg,
                 self.statements,
                 contrastive_type=self.cfg.contrastive_type[1],
-                system_prompt_id=system_prompt_id,
             )
         # lying with different system prompts
         else:
@@ -311,6 +310,8 @@ def apply_chat_template(
             + suffix
             for statement in statements
         ]
+
+    # use gpt4 generated system prompt for inducing lying
     elif contrastive_type == "lying_gpt4_guo":
         dataset_dir_path = os.path.dirname(os.path.realpath(__file__))
         f = open(

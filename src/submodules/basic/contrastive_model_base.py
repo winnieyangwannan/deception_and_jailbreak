@@ -270,17 +270,22 @@ class ContrastiveBase:
 
         if self.cfg.task_name == "deception":
             labels = self.dataset.labels_positive_correct
+            answers = self.dataset.answers_positive_correct
         elif (
             self.cfg.task_name == "jailbreak"
             or self.cfg.task_name == "jailbreak_choice"
         ):
             labels = self.dataset.input_labels
+            answers = self.dataset.input_anwers
+        category = self.dataset.category
 
         # 4. Save activations
         activations = {
             "activations_positive": activations_positive,
             "activations_negative": activations_negative,
             "labels": labels,
+            "answers": answers,
+            "category": category,
         }
         activation_path = os.path.join(self.cfg.artifact_path(), "activations")
         if not os.path.exists(activation_path):
@@ -416,7 +421,7 @@ class ContrastiveBase:
             data = self.dataset.statements
             labels = self.dataset.answers_positive_correct
             prompt_type = "statement"
-            category = [""] * len(data)
+            category = self.dataset.category
 
         elif self.cfg.task_name == "jailbreak":
             data = self.dataset.request
@@ -753,36 +758,6 @@ def generate(cfg, model, tokens, masks=None):
             dtype=torch.float16,
             device=model.device,
         )
-
-    # (2) Construct hook functions
-    # forward cache hook: cache the activation during forward run
-    # def forward_cache_hook(act, hook, len_prompt, cfg):
-    #     # only cache generation result
-    #     if cfg.cache_pos == "prompt_last_token":
-    #         if act.shape[1] == len_prompt:
-    #             cache[hook.name] = act[:, -1, :].detach()
-    #     elif cfg.cache_pos == "prompt_all":
-    #         if act.shape[1] == len_prompt:
-    #             cache[hook.name] = act.detach()
-
-    # # (3) Construct hooks
-    # if cfg.framework == "transformer_lens":
-    #     # Create filter for what to cache
-    #     # activation_filter = lambda name: list(cfg.cache_name) in name
-    #     activation_filter = lambda name: cfg.cache_name in name
-    #     fwd_hook = partial(forward_cache_hook, len_prompt=tokens.shape[1], cfg=cfg)
-    #     model.add_hook(activation_filter, fwd_hook, "fwd")
-
-    # else:
-    #     fwd_hook = [
-    #         (
-    #             block_modules[layer],
-    #             cache_activation_post_hook_pos(
-    #                 cache, layer, len_prompt=len_prompt, pos=-1
-    #             ),
-    #         )
-    #         for layer in range(n_layers)
-    #     ]
 
     # (4) Run forward pass
     if do_sample:
