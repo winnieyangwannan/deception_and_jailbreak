@@ -37,6 +37,7 @@ from src.utils.hook_utils import add_hooks
 from src.utils.hook_utils import patch_residual_hook_pre, patch_activation_hook_post
 
 
+#
 class ActivationPatching:
     def __init__(self, contrastive_dataset, contrastive_base):
 
