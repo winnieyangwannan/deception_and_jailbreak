@@ -177,12 +177,15 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
     contrastive_type = cfg.contrastive_type
     answer_type = cfg.answer_type
 
-    if cfg.task_name == "deception":
+    if cfg.task_name == "deception" or cfg.task_name == "deception_real_world":
         labels_all = dataset.labels_positive_correct + dataset.labels_positive_correct
         answers_all = (
             dataset.answers_positive_correct + dataset.answers_positive_correct
         )
-    if cfg.task_name == "jailbreak" or cfg.task_name == "jailbreak_choice":
+    elif cfg.task_name == "deception_sft":
+        labels_all = dataset["label"] + dataset["label"]
+        answers_all = dataset["answer"] + dataset["answer"]
+    elif cfg.task_name == "jailbreak" or cfg.task_name == "jailbreak_choice":
         labels_all = dataset.input_labels + dataset.input_labels
         answers_all = dataset.input_types + dataset.input_types
 
