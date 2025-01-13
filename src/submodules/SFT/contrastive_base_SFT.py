@@ -409,17 +409,17 @@ class ContrastiveBase:
         pio.write_image(
             fig_test, pca_path + os.sep + f"{self.cfg.model_alias}_pca_test.pdf"
         )
-
-        if (
-            self.cfg.task_name == "deception"
-            or self.cfg.task_name == "deception_real_world"
-        ):
-            labels = self.dataset.label
-            answers = self.dataset.answer
-        elif (
-            self.cfg.task_name == "jailbreak"
-            or self.cfg.task_name == "jailbreak_choice"
-        ):
-            labels = self.dataset.input_labels
-            answers = self.dataset.input_anwers
-        category = self.dataset.category
+        #
+        # if (
+        #     self.cfg.task_name == "deception"
+        #     or self.cfg.task_name == "deception_real_world"
+        # ):
+        #     labels = self.dataset.label
+        #     answers = self.dataset.answer
+        # elif (
+        #     self.cfg.task_name == "jailbreak"
+        #     or self.cfg.task_name == "jailbreak_choice"
+        # ):
+        #     labels = self.dataset.input_labels
+        #     answers = self.dataset.input_anwers
+        # category = self.dataset.category
