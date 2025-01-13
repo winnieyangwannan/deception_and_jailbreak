@@ -10,7 +10,8 @@ from jaxtyping import Float, Int, Bool
 import einops
 import argparse
 from datasets import load_dataset
-import sae_lens
+
+# import sae_lens
 import pysvelte
 from torchtyping import TensorType as TT
 from IPython import get_ipython

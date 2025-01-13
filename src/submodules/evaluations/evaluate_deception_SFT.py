@@ -449,7 +449,9 @@ def plot_performance_confusion_matrix(
     return fig
 
 
-def plot_lying_honest_performance(cfg, completions, save_path=None, save_name=None):
+def plot_lying_honest_performance(
+    cfg, completions, save_path=None, save_name=None, train_test="test"
+):
     # contrastive_type = cfg.contrastive_type
     if save_path is None:
         save_path = os.path.join(cfg.artifact_path(), "performance")
@@ -469,7 +471,7 @@ def plot_lying_honest_performance(cfg, completions, save_path=None, save_name=No
     #     completion["predicted_label"] for completion in completions_lying["completions"]
     # ]
 
-    plot_performance_bar(completions, save_path, save_name)
+    plot_performance_bar(completions, save_path, save_name, train_test)
 
     # plot_performance_confusion_matrix(
     #     true_label_honest,

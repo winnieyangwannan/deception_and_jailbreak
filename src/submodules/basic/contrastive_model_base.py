@@ -15,7 +15,8 @@ from src.utils.hook_utils import add_hooks
 import argparse
 from pipeline.configs.config_generation import Config
 from datasets import load_dataset
-import sae_lens
+
+# import sae_lens
 import pysvelte
 from torchtyping import TensorType as TT
 from IPython import get_ipython

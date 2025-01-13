@@ -124,22 +124,22 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
 
     #############################################################################################################
     # 4. generation
-    contrastive_sft.contrastive_generation(
-        train_message_honest,
-        train_message_lying,
-        ds["train"],
-        train_test="train",
-    )
-    contrastive_sft.contrastive_generation(
-        test_message_honest,
-        test_message_lying,
-        ds["test"],
-        train_test="test",
-    )
+    # contrastive_sft.contrastive_generation(
+    #     train_message_honest,
+    #     train_message_lying,
+    #     ds["train"],
+    #     train_test="train",
+    # )
+    # contrastive_sft.contrastive_generation(
+    #     test_message_honest,
+    #     test_message_lying,
+    #     ds["test"],
+    #     train_test="test",
+    # )
 
     #############################################################################################################
-    # 5. evaluation
-    contrastive_sft.evaluate_deception()
+    # # 5. evaluation
+    # contrastive_sft.evaluate_deception()
 
     # 6. PCA
     # contrastive_sft.get_contrastive_activation_pca()

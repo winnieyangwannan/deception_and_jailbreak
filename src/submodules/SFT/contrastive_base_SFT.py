@@ -361,8 +361,8 @@ class ContrastiveBase:
         completions_test = evaluate_generation_deception_SFT(
             self.cfg, train_test="test"
         )
-        plot_lying_honest_performance(self.cfg, completions_train)
-        plot_lying_honest_performance(self.cfg, completions_test)
+        plot_lying_honest_performance(self.cfg, completions_train, train_test="train")
+        plot_lying_honest_performance(self.cfg, completions_test, train_test="test")
 
     def get_contrastive_activation_pca(self, pos=-1):
 
