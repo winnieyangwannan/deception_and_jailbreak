@@ -216,6 +216,7 @@ class ContrastiveBase:
         statements = dataset["statement"]
         labels = dataset["label"]
         categories = dataset["category"]
+        answers = dataset["answer"]
 
         response_small_before_honest = dataset["response_small_honest"]
         response_small_before_lying = dataset["response_small_lying"]
@@ -320,6 +321,25 @@ class ContrastiveBase:
             self.cache_positive_test = cache_all_honest
             self.cache_negative_test = cache_all_lying
 
+        # 5. Save activations
+        activations = {
+            "activations_positive": cache_all_honest,
+            "activations_negative": cache_all_honest,
+            "labels": labels,
+            "answers": answers,
+            "category": categories,
+        }
+        activation_path = os.path.join(self.cfg.artifact_path(), "activations")
+        if not os.path.exists(activation_path):
+            os.makedirs(activation_path)
+        with open(
+            activation_path
+            + os.sep
+            + f"{self.cfg.model_alias}_activations_{train_test}.pkl",
+            "wb",
+        ) as f:
+            pickle.dump(activations, f)
+
     def contrastive_generation(
         self, message_honest, message_lying, dataset, train_test="train"
     ):
@@ -347,18 +367,31 @@ class ContrastiveBase:
     def get_contrastive_activation_pca(self, pos=-1):
 
         # 1. Get access to cache
+        activation_path = os.path.join(self.cfg.artifact_path(), "activations")
+        if not os.path.exists(activation_path):
+            os.makedirs(activation_path)
+        with open(
+            activation_path + os.sep + f"{self.cfg.model_alias}_activations_train.pkl",
+            "rb",
+        ) as f:
+            activations_train = pickle.load(f)
+        with open(
+            activation_path + os.sep + f"{self.cfg.model_alias}_activations_test.pkl",
+            "rb",
+        ) as f:
+            activations_test = pickle.load(f)
 
         # 2. Get pca and plot
         fig_train = get_pca_and_plot(
             self.cfg,
-            self.cache_positive_train,
-            self.cache_negative_train,
+            activations_train["activations_positive"],
+            activations_train["activations_negative"],
             self.dataset["train"],
         )
         fig_test = get_pca_and_plot(
             self.cfg,
-            self.cache_positive_test,
-            self.cache_negative_test,
+            activations_test["activations_positive"],
+            activations_test["activations_negative"],
             self.dataset["test"],
         )
         # 3. Save plot
@@ -390,19 +423,3 @@ class ContrastiveBase:
             labels = self.dataset.input_labels
             answers = self.dataset.input_anwers
         category = self.dataset.category
-
-        # 4. Save activations
-        activations = {
-            "activations_positive": self.cache_positive,
-            "activations_negative": self.cache_negative,
-            "labels": labels,
-            "answers": answers,
-            "category": category,
-        }
-        activation_path = os.path.join(self.cfg.artifact_path(), "activations")
-        if not os.path.exists(activation_path):
-            os.makedirs(activation_path)
-        with open(
-            activation_path + os.sep + f"{self.cfg.model_alias}_activations.pkl", "wb"
-        ) as f:
-            pickle.dump(activations, f)

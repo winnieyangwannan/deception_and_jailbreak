@@ -267,33 +267,17 @@ class ContrastiveBase:
             os.makedirs(pca_path)
         fig.write_html(pca_path + os.sep + f"{self.cfg.model_alias}_pca.html")
         pio.write_image(fig, pca_path + os.sep + f"{self.cfg.model_alias}_pca.pdf")
-
-        if self.cfg.task_name == "deception":
-            labels = self.dataset.labels_positive_correct
-            answers = self.dataset.answers_positive_correct
-        elif (
-            self.cfg.task_name == "jailbreak"
-            or self.cfg.task_name == "jailbreak_choice"
-        ):
-            labels = self.dataset.input_labels
-            answers = self.dataset.input_anwers
-        category = self.dataset.category
-
-        # 4. Save activations
-        activations = {
-            "activations_positive": activations_positive,
-            "activations_negative": activations_negative,
-            "labels": labels,
-            "answers": answers,
-            "category": category,
-        }
-        activation_path = os.path.join(self.cfg.artifact_path(), "activations")
-        if not os.path.exists(activation_path):
-            os.makedirs(activation_path)
-        with open(
-            activation_path + os.sep + f"{self.cfg.model_alias}_activations.pkl", "wb"
-        ) as f:
-            pickle.dump(activations, f)
+        #
+        # if self.cfg.task_name == "deception":
+        #     labels = self.dataset.labels_positive_correct
+        #     answers = self.dataset.answers_positive_correct
+        # elif (
+        #     self.cfg.task_name == "jailbreak"
+        #     or self.cfg.task_name == "jailbreak_choice"
+        # ):
+        #     labels = self.dataset.input_labels
+        #     answers = self.dataset.input_anwers
+        # category = self.dataset.category
 
     def run_and_cache_batch(self, prompt_tokens, prompt_masks):
 
