@@ -1,5 +1,6 @@
 import torch
-from sae_lens import HookedSAETransformer
+
+# from sae_lens import HookedSAETransformer
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 import transformer_lens.utils as utils
