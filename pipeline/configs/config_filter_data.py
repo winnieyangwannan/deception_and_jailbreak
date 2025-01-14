@@ -15,7 +15,7 @@ class Config:
     contrastive_type: str
     answer_type: str
     framework: str
-    threshold: float = 0.6
+    threshold: float = 0.8
     dtype: str = "bfloat16"  # "bfloat16" or "default"
     n_train: int = 100  # 100
     n_test: int = 50  # 50

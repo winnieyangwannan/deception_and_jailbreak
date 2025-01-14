@@ -633,7 +633,7 @@ class ContrastiveBase:
             label_str = "true" if labels == 1 else "false"
 
             # Check if the top token matches the label and its probability exceeds the threshold
-            if label_str == top_token_str:  # and (top_token_prob > cfg.threshold):
+            if label_str == top_token_str and (top_token_prob > cfg.threshold):
                 example = {}
                 example["claim"] = data[ii]
                 example["label"] = labels[ii]

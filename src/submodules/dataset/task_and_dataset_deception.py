@@ -58,6 +58,15 @@ class ContrastiveDatasetDeception:
             "facts",
             "capitals",
         ]
+        model_name_dataset = "gemma-2b-it"
+        # if "gemma" in self.cfg.model_alias:
+        #     model_name_dataset = "gemma-2b-it"
+        # elif "Qwen" in self.cfg.model_alias:
+        #     model_name_dataset = "Qwen-1_8B-Chat"
+        # elif "llama" in self.cfg.model_alias.lower():
+        #     model_name_dataset = "Llama-3.2-1B-Instruct"
+        # elif "Yi" in self.cfg.model_alias:
+        #     model_name_dataset = "Yi-6B-Chat"
 
         dataset = []
         if train_test == "train":
@@ -89,12 +98,25 @@ class ContrastiveDatasetDeception:
 
         elif train_test == "filtered":
             dataset_all = load_dataset(
-                f"winnieyangwannan/azaria-mitchell-filtered-google/gemma-2b-it"
+                f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}"
             )
             for c in category:
                 dataset.append([row for row in dataset_all[c]])
             dataset = sum(dataset, [])
         self.dataset = dataset
+
+        true_d = 0
+        for ii in range(len(dataset)):
+            if dataset[ii]["label"] == "true":
+                true_d += 1
+        print(f"number of true statements: {true_d}")
+
+        false_d = 0
+        for ii in range(len(dataset)):
+            if dataset[ii]["label"] == "false":
+                false_d += 1
+        print(f"number of false statements: {false_d}")
+
         return dataset
 
     def process_dataset(self):
