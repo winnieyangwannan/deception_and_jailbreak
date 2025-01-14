@@ -1,5 +1,7 @@
 import random
 import json
+from torch.nn.functional import softmax
+
 import pprint
 from typing import List, Optional, Callable, Tuple, Dict, Literal, Set, Union
 from torch import Tensor
@@ -15,16 +17,10 @@ from src.utils.hook_utils import add_hooks
 import argparse
 from pipeline.configs.config_generation import Config
 from datasets import load_dataset
-from datasets import DatasetDict, Dataset
-import pandas as pd
-from torch.nn.functional import softmax
-
-# import sae_lens
 import pysvelte
 from torchtyping import TensorType as TT
 from IPython import get_ipython
 from pathlib import Path
-import pickle
 import numpy as np
 from matplotlib.widgets import EllipseSelector
 from IPython.display import HTML, Markdown
@@ -37,19 +33,20 @@ from src.utils.plotly_utils import line, scatter, bar
 from src.utils.plotly_utils_neel import imshow
 from src.submodules.activation_pca.activation_pca import get_pca_and_plot
 import plotly.io as pio
+import pickle
+
 import circuitsvis as cv  # for visualize attetnion pattern
 
 from IPython.display import display, HTML  # for visualize attetnion pattern
-from src.submodules.evaluations.evaluate_deception import (
-    evaluate_generation_deception,
-    plot_lying_honest_performance,
-)
+
 from src.submodules.stage_statistics.stage_statistics import get_state_quantification
 from src.submodules.evaluations.evaluate_jailbreak import evaluate_generation_jailbreak
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 from src.utils.hook_utils import cache_activation_hook_post, cache_residual_hook_pre
 
 from src.utils.hook_utils import cache_activation_post_hook_pos
+from datasets import DatasetDict, Dataset
+import pandas as pd
 
 
 class ContrastiveBase:
@@ -90,6 +87,7 @@ class ContrastiveBase:
         if (
             self.cfg.task_name == "deception"
             or self.cfg.task_name == "jailbreak_choice"
+            or self.cfg.task_name == "deception_real_world"
         ):
             # tokenize prompts and answer
             (
@@ -151,6 +149,7 @@ class ContrastiveBase:
         if (
             self.cfg.task_name == "deception"
             or self.cfg.task_name == "jailbreak_choice"
+            or self.cfg.task_name == "deception_real_world"
         ):
             self.get_logit_diff(logits_positive, logits_negative)
 
@@ -271,17 +270,36 @@ class ContrastiveBase:
             os.makedirs(pca_path)
         fig.write_html(pca_path + os.sep + f"{self.cfg.model_alias}_pca.html")
         pio.write_image(fig, pca_path + os.sep + f"{self.cfg.model_alias}_pca.pdf")
-        #
-        # if self.cfg.task_name == "deception":
-        #     labels = self.dataset.labels_positive_correct
-        #     answers = self.dataset.answers_positive_correct
-        # elif (
-        #     self.cfg.task_name == "jailbreak"
-        #     or self.cfg.task_name == "jailbreak_choice"
-        # ):
-        #     labels = self.dataset.input_labels
-        #     answers = self.dataset.input_anwers
-        # category = self.dataset.category
+
+        if (
+            self.cfg.task_name == "deception"
+            or self.cfg.task_name == "deception_real_world"
+        ):
+            labels = self.dataset.labels_positive_correct
+            answers = self.dataset.answers_positive_correct
+        elif (
+            self.cfg.task_name == "jailbreak"
+            or self.cfg.task_name == "jailbreak_choice"
+        ):
+            labels = self.dataset.input_labels
+            answers = self.dataset.input_anwers
+        category = self.dataset.category
+
+        # 4. Save activations
+        activations = {
+            "activations_positive": activations_positive,
+            "activations_negative": activations_negative,
+            "labels": labels,
+            "answers": answers,
+            "category": category,
+        }
+        activation_path = os.path.join(self.cfg.artifact_path(), "activations")
+        if not os.path.exists(activation_path):
+            os.makedirs(activation_path)
+        with open(
+            activation_path + os.sep + f"{self.cfg.model_alias}_activations.pkl", "wb"
+        ) as f:
+            pickle.dump(activations, f)
 
     def run_and_cache_batch(self, prompt_tokens, prompt_masks):
 
@@ -309,6 +327,25 @@ class ContrastiveBase:
             data = self.dataset.statements
             labels = self.dataset.answers_positive_correct
             prompt_type = "statement"
+            category = self.dataset.category
+
+        if self.cfg.task_name == "deception_real_world":
+            if contrastive_type == "honest":
+                system_prompts = self.dataset.honest_prompts
+            else:
+                system_prompts = self.dataset.lying_prompts
+
+            questions = self.dataset.user_prompts
+            roles = self.dataset.roles
+
+            data = [
+                system_prompt + " " + question + " " + f"{role}:"
+                for system_prompt, question, role in zip(
+                    system_prompts, questions, roles
+                )
+            ]
+            labels = self.dataset.answers_positive_correct
+            prompt_type = "question"
             category = self.dataset.category
 
         elif self.cfg.task_name == "jailbreak":
@@ -409,6 +446,21 @@ class ContrastiveBase:
             data = self.dataset.statements
             labels = self.dataset.answers_positive_correct
             prompt_type = "statement"
+            category = self.dataset.category
+
+        if self.cfg.task_name == "deception_real_world":
+            if contrastive_type == "honest":
+                system_prompts = self.dataset.honest_prompts
+            else:
+                system_prompts = self.dataset.lying_prompts
+
+            questions = self.dataset.user_prompts
+            data = [
+                system_prompt + " " + question
+                for system_prompt, question in zip(system_prompts, questions)
+            ]
+            labels = self.dataset.answers_positive_correct
+            prompt_type = "question"
             category = self.dataset.category
 
         elif self.cfg.task_name == "jailbreak":
@@ -533,6 +585,18 @@ class ContrastiveBase:
             return output, cache
 
     def evaluate_deception(self):
+
+        if self.cfg.task_name == "deception":
+            from src.submodules.evaluations.evaluate_deception import (
+                evaluate_generation_deception,
+                plot_lying_honest_performance,
+            )
+        elif self.cfg.task_name == "deception_real_world":
+            from src.submodules.evaluations.evaluate_deception_real_world import (
+                evaluate_generation_deception,
+                plot_lying_honest_performance,
+            )
+
         completions_honest = evaluate_generation_deception(
             self.cfg, contrastive_type=self.cfg.contrastive_type[0]
         )
@@ -557,6 +621,7 @@ class ContrastiveBase:
         if (
             self.cfg.task_name == "deception"
             or self.cfg.task_name == "jailbreak_choice"
+            or self.cfg.task_name == "deception_real_world"
         ):
             labels = self.dataset.labels_positive_correct
         elif self.cfg.task_name == "jailbreak":
@@ -633,7 +698,7 @@ class ContrastiveBase:
             label_str = "true" if labels == 1 else "false"
 
             # Check if the top token matches the label and its probability exceeds the threshold
-            if label_str == top_token_str:  # and (top_token_prob > cfg.threshold):
+            if (label_str == top_token_str) and (top_token_prob > cfg.threshold):
                 example = {}
                 example["claim"] = data[ii]
                 example["label"] = labels[ii]

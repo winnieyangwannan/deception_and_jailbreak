@@ -49,7 +49,15 @@ class ContrastiveDatasetDeception:
         """
         random.seed(42)
 
-        category = ["cities", "companies", "animals", "elements", "inventions", "facts"]
+        category = [
+            "cities",
+            "companies",
+            "animals",
+            "elements",
+            "inventions",
+            "facts",
+            "capitals",
+        ]
 
         dataset = []
         if train_test == "train":
@@ -75,7 +83,7 @@ class ContrastiveDatasetDeception:
             dataset = sum(dataset, [])
         elif train_test == "filtered":
             dataset_all = load_dataset(
-                f"winnieyangwannan/azaria-mitchell-filtered-Llama-3.2-3B-Instruct"
+                f"winnieyangwannan/azaria-mitchell-filtered-google/gemma-2b-it"
             )
             for c in category:
                 dataset.append([row for row in dataset_all[c]])

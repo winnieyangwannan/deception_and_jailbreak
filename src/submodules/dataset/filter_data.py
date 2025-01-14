@@ -44,7 +44,15 @@ dataset = load_dataset("notrichardren/azaria-mitchell")["combined"]
 # }
 test_splits = {
     name: dataset.filter(lambda x: x["dataset"] == name)
-    for name in ["cities", "companies", "animals", "elements", "inventions", "facts"]
+    for name in [
+        "cities",
+        "companies",
+        "animals",
+        "elements",
+        "inventions",
+        "facts",
+        "capitals",
+    ]
 }
 
 
@@ -114,7 +122,7 @@ for name, split in test_splits.items():
         label_str = "true" if example["label"] == 1 else "false"
 
         # Check if the top token matches the label and its probability exceeds the threshold
-        if (label_str == top_token_str) and (top_token_prob > threshold):
+        if label_str == top_token_str:  # and (top_token_prob > threshold):
             filtered_data_points[name].append(example)
 
             print(f"Statement: {statement}")
