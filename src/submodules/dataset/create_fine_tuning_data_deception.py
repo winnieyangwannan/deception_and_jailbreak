@@ -112,6 +112,6 @@ with open(save_file, "w") as file:
 
 
 # Convert the filtered data points into the Huggingface datasets format
-datasets_format = Dataset.from_pandas(pd.DataFrame(dataset_finetune))
+# datasets_format = Dataset.from_pandas(pd.DataFrame(dataset_finetune))
 dataset_hf = Dataset.from_list(dataset_finetune)
 dataset_hf.push_to_hub(f"winnieyangwannan/azaria-mitchell-finetune")

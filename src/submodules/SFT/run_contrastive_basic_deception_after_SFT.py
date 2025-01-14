@@ -102,7 +102,7 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
     ).train_test_split(test_size=0.1, seed=0)
 
     #############################################################################################################
-    # 2. Load the model and tokenizer
+    # 2. Load the model and tokenizerspli
     model_base = load_model(cfg)
 
     #############################################################################################################

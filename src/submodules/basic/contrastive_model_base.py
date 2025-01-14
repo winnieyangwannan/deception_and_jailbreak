@@ -599,7 +599,8 @@ class ContrastiveBase:
         # prompt_type = "statement"
         categories = self.dataset.category
 
-        filtered_data_points = {name: [] for name in categories}
+        # filtered_data_points = {name: [] for name in categories}
+        filtered_data_points = []
 
         def get_token_probabilities(model, prompt):
             # Tokenize the prompt and get the output from the model
@@ -640,43 +641,82 @@ class ContrastiveBase:
                 example["dataset"] = categories[ii]
                 example["ind"] = ii
 
-                filtered_data_points[category].append(example)
+                # filtered_data_points[category].append(example)
+                filtered_data_points.append(example)
 
                 print(f"Statement: {example}")
                 # print(f"Label: {example['label']}")
                 print(f"Top Token: {top_token_str}, Probability: {top_token_prob:.3f}")
 
         # Convert the filtered data points into the Huggingface datasets format
-        datasets_format = {
-            name: Dataset.from_pandas(pd.DataFrame(data))
-            for name, data in filtered_data_points.items()
-        }
+        # datasets_format = {
+        #     name: Dataset.from_pandas(pd.DataFrame(data))
+        #     for name, data in filtered_data_points.items()
+        # }
 
         # Create a DatasetDict object
-        filtered_dataset_dict = DatasetDict(datasets_format)
+
+        filtered_dataset_dict = Dataset.from_list(filtered_data_points)
+        # filtered_dataset_dict = DatasetDict(datasets_format)
 
         # Now, you can use the filtered_dataset_dict just like any other Huggingface dataset
         print(filtered_dataset_dict)
 
         # %%
-        print("cities:")
-        print(len(filtered_dataset_dict["cities"]))
-
-        print("companies:")
-        print(len(filtered_dataset_dict["companies"]))
-
-        print("inventions:")
-        print(len(filtered_dataset_dict["inventions"]))
-
-        print("facts:")
-        print(len(filtered_dataset_dict["facts"]))
-
-        print("elements:")
-        print(len(filtered_dataset_dict["facts"]))
+        # print("cities:")
+        # print(len(filtered_dataset_dict["cities"]))
+        #
+        # print("companies:")
+        # print(len(filtered_dataset_dict["companies"]))
+        #
+        # print("inventions:")
+        # print(len(filtered_dataset_dict["inventions"]))
+        #
+        # print("facts:")
+        # print(len(filtered_dataset_dict["facts"]))
+        #
+        # print("elements:")
+        # print(len(filtered_dataset_dict["facts"]))
 
         filtered_dataset_dict.push_to_hub(
             f"winnieyangwannan/azaria-mitchell-filtered-{self.cfg.model_alias}"
         )
+
+        # # train test split
+        # dataset = []
+        # for c in categories:
+        #     dataset_category = [row for row in filtered_dataset_dict[c]]
+        #     dataset.append(dataset_category)
+        # dataset = sum(dataset, [])
+        # dataset = Dataset.from_list(dataset)
+        # dataset_train_test = dataset.train_test_split(test_size=0.1, seed=42)
+        # dataset_train = dataset_train_test["train"]
+        # dataset_test = dataset_train_test["test"]
+        #
+        # from_list_to_hf_dataset(cfg, categories, dataset_train, train_test="train")
+        # from_list_to_hf_dataset(cfg, categories, dataset_train, train_test="test")
+
+
+def from_list_to_hf_dataset(cfg, categories, dataset_list, train_test="train"):
+    filtered_data_points = {name: [] for name in categories}
+    for category in categories:
+        for ii in range(len(dataset_list)):
+            example = dataset_list[ii]
+            if example["dataset"] == category:
+                filtered_data_points[category].append({example})
+
+    # Convert the filtered data points into the Huggingface datasets format
+    datasets_format = {
+        name: Dataset.from_pandas(pd.DataFrame(data))
+        for name, data in filtered_data_points.items()
+    }
+
+    # Create a DatasetDict object
+    filtered_dataset_dict = DatasetDict(datasets_format)
+
+    filtered_dataset_dict.push_to_hub(
+        f"winnieyangwannan/azaria-mitchell-filtered-{cfg.model_alias}-{train_test}"
+    )
 
 
 def run_with_cache_contrastive(model, positive_tokens, negative_tokens):

@@ -1,10 +1,11 @@
 import random
-from datasets import load_dataset
+from datasets import load_dataset, Dataset, DatasetDict
 import torch
 from torch import Tensor
 import transformer_lens.utils as utils
 import json
 import os
+import pandas as pd
 
 #
 # # Versioin 1
@@ -49,7 +50,7 @@ class ContrastiveDatasetDeception:
         """
         random.seed(42)
 
-        category = [
+        categories = [
             "cities",
             "companies",
             "animals",
@@ -70,59 +71,97 @@ class ContrastiveDatasetDeception:
 
         dataset = []
         if train_test == "train":
-            dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
-            for c in category:
-                dataset_category = random.sample(
-                    [row for row in dataset_all[c]], self.cfg.n_train
-                )
+            # dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
+            dataset_all = load_dataset(
+                f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}"
+            )
+            for c in categories:
+                dataset_category = [row for row in dataset_all[c]]
                 dataset.append(dataset_category)
             dataset = sum(dataset, [])
+            # -------    ----------------
+            dataset = []
+            for c in categories:
+                dataset_category = [row for row in dataset_all[c]]
+                dataset.append(dataset_category)
+            dataset = sum(dataset, [])
+            dataset = Dataset.from_list(dataset)
+            dataset_train_test = dataset.train_test_split(test_size=0.1, seed=42)
+            dataset_train = dataset_train_test["train"]
+            dataset_test = dataset_train_test["test"]
+
+            filtered_data_points_train = {name: [] for name in categories}
+            for category in categories:
+                for ii in range(len(dataset_train)):
+                    example = dataset_train[ii]
+                    if example["dataset"] == category:
+                        filtered_data_points_train[category].append(example)
+
+            # Convert the filtered data points into the Huggingface datasets format
+            datasets_format = {
+                name: Dataset.from_pandas(pd.DataFrame(data))
+                for name, data in filtered_data_points_train.items()
+            }
+            filtered_dataset_dict = DatasetDict(datasets_format)
+
+            filtered_dataset_dict.push_to_hub(
+                f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}-train-test"
+            )
+
         elif train_test == "test":
-            dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
-            for c in category:
+            dataset_all = load_dataset(
+                f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}"
+            )
+            dataset_all.train_test_split(test_size=0.1, seed=42)
+            dataset_test = dataset_all["test"]
+
+            # dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
+            for c in categories:
                 dataset_category = random.sample(
-                    [row for row in dataset_all[c]], self.cfg.n_test
+                    [row for row in dataset_test[c]], self.cfg.n_test
                 )
                 dataset.append(dataset_category)
             dataset = sum(dataset, [])
+
         elif train_test == "all":
             dataset_all = load_dataset("notrichardren/azaria-mitchell")["combined"]
 
             dataset_all = {
                 name: dataset_all.filter(lambda x: x["dataset"] == name)
-                for name in category
+                for name in categories
             }
-            for c in category:
+            for c in categories:
                 dataset.append([row for row in dataset_all[c]])
             dataset = sum(dataset, [])
+            self.dataset = dataset
 
         elif train_test == "filtered":
-            dataset_all = load_dataset(
+            dataset = load_dataset(
                 f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}"
             )
-            for c in category:
-                dataset.append([row for row in dataset_all[c]])
-            dataset = sum(dataset, [])
-        self.dataset = dataset
+            # for c in categories:
+            #     dataset.append([row for row in dataset_all[c]])
+            # dataset = sum(dataset, [])
+            self.dataset = dataset["train"]
 
-        true_d = 0
-        for ii in range(len(dataset)):
-            if dataset[ii]["label"] == "true":
-                true_d += 1
-        print(f"number of true statements: {true_d}")
+            true_d = 0
+            for ii in range(len(dataset["train"])):
+                if dataset["train"][ii]["label"] == "true":
+                    true_d += 1
+            print(f"number of true statements: {true_d}")
 
-        false_d = 0
-        for ii in range(len(dataset)):
-            if dataset[ii]["label"] == "false":
-                false_d += 1
-        print(f"number of false statements: {false_d}")
+            false_d = 0
+            for ii in range(len(dataset["train"])):
+                if dataset["train"][ii]["label"] == "false":
+                    false_d += 1
+            print(f"number of false statements: {false_d}")
 
-        return dataset
+        # return self.dataset
 
     def process_dataset(self):
         statements = [row["claim"] for row in self.dataset]
-        labels = [row["label"] for row in self.dataset]
-        answers = ["true" if label == 1 else "false" for label in labels]
+        answers = [row["label"] for row in self.dataset]
+        labels = [1 if answer == "true" else 0 for answer in answers]
         category = [row["dataset"] for row in self.dataset]
 
         answers_positive_wrong = []
