@@ -10,7 +10,8 @@ from jaxtyping import Float, Int, Bool
 import einops
 import argparse
 from datasets import load_dataset
-import sae_lens
+
+# import sae_lens
 import pysvelte
 from torchtyping import TensorType as TT
 from IPython import get_ipython
@@ -92,7 +93,7 @@ def main(
     # 2. Load data
     print("loading data")
     dataset = ContrastiveDatasetDeception(cfg)
-    dataset.load_and_sample_datasets(train_test="train")
+    dataset.load_and_sample_datasets(train_test="filtered")
     dataset.process_dataset()
     dataset.construct_contrastive_prompts()
 
@@ -122,7 +123,7 @@ def main(
 if __name__ == "__main__":
 
     args = parse_arguments()
-    print(sae_lens.__version__)
+    # print(sae_lens.__version__)
     print("run_contrastive_generation_deception\n\n")
     print("model_base_path")
     print(args.model_path)

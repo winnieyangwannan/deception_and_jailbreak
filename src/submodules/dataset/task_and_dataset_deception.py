@@ -50,10 +50,10 @@ class ContrastiveDatasetDeception:
         random.seed(42)
 
         category = ["cities", "companies", "animals", "elements", "inventions", "facts"]
-        dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
 
         dataset = []
         if train_test == "train":
+            dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
             for c in category:
                 dataset_category = random.sample(
                     [row for row in dataset_all[c]], self.cfg.n_train
@@ -61,6 +61,7 @@ class ContrastiveDatasetDeception:
                 dataset.append(dataset_category)
             dataset = sum(dataset, [])
         elif train_test == "test":
+            dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
             for c in category:
                 dataset_category = random.sample(
                     [row for row in dataset_all[c]], self.cfg.n_test
@@ -68,10 +69,17 @@ class ContrastiveDatasetDeception:
                 dataset.append(dataset_category)
             dataset = sum(dataset, [])
         elif train_test == "all":
+            dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
             for c in category:
                 dataset.append([row for row in dataset_all[c]])
             dataset = sum(dataset, [])
-
+        elif train_test == "filtered":
+            dataset_all = load_dataset(
+                f"winnieyangwannan/azaria-mitchell-filtered-Llama-3.2-3B-Instruct"
+            )
+            for c in category:
+                dataset.append([row for row in dataset_all[c]])
+            dataset = sum(dataset, [])
         self.dataset = dataset
         return dataset
 
