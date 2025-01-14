@@ -77,10 +77,16 @@ class ContrastiveDatasetDeception:
                 dataset.append(dataset_category)
             dataset = sum(dataset, [])
         elif train_test == "all":
-            dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
+            dataset_all = load_dataset("notrichardren/azaria-mitchell")["combined"]
+
+            dataset_all = {
+                name: dataset_all.filter(lambda x: x["dataset"] == name)
+                for name in category
+            }
             for c in category:
                 dataset.append([row for row in dataset_all[c]])
             dataset = sum(dataset, [])
+
         elif train_test == "filtered":
             dataset_all = load_dataset(
                 f"winnieyangwannan/azaria-mitchell-filtered-google/gemma-2b-it"
