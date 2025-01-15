@@ -4,7 +4,9 @@ import json
 from datasets import Dataset
 
 model_name_small = "gemma-2b-it"
+model_name_small_ab = "gemma-2b"
 model_name_big = "Llama-3.1-70B-Instruct"
+model_name_big_ab = "Llama-32-70b"
 
 completion_path_small = os.path.join(
     "D:\Data\deception",
@@ -106,7 +108,10 @@ for ii in range(len(data_small_honest["completions"])):
 
 ## 3 Save
 # save locally
-save_file = os.path.join(save_path, f"azaria-mitchell-finetune-gemma-2b-llama-70b.json")
+save_file = os.path.join(
+    save_path,
+    f"azaria-mitchell-finetune-{model_name_small_ab}-{model_name_big_ab}.json",
+)
 with open(save_file, "w") as file:
     json.dump(dataset_full, file, indent=4)
 
@@ -114,4 +119,6 @@ with open(save_file, "w") as file:
 # Convert the filtered data points into the Huggingface datasets format
 # datasets_format = Dataset.from_pandas(pd.DataFrame(dataset_finetune))
 dataset_hf = Dataset.from_list(dataset_finetune)
-dataset_hf.push_to_hub(f"winnieyangwannan/azaria-mitchell-finetune")
+dataset_hf.push_to_hub(
+    f"winnieyangwannan/azaria-mitchell-finetune-{model_name_small_ab}-{model_name_big_ab}"
+)

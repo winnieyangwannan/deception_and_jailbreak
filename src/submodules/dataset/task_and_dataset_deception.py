@@ -60,14 +60,6 @@ class ContrastiveDatasetDeception:
             "capitals",
         ]
         model_name_dataset = "Yi-6B-Chat"
-        # if "gemma" in self.cfg.model_alias:
-        #     model_name_dataset = "gemma-2b-it"
-        # elif "Qwen" in self.cfg.model_alias:
-        #     model_name_dataset = "Qwen-1_8B-Chat"
-        # elif "llama" in self.cfg.model_alias.lower():
-        #     model_name_dataset = "Llama-3.2-1B-Instruct"
-        # elif "Yi" in self.cfg.model_alias:
-        #     model_name_dataset = "Yi-6B-Chat"
 
         dataset = []
         if train_test == "train":
@@ -109,17 +101,44 @@ class ContrastiveDatasetDeception:
 
             true_d = 0
             for ii in range(len(dataset["train"])):
-                if dataset["train"][ii]["label"] == "true":
+                if dataset["train"][ii]["answer"] == "true":
                     true_d += 1
             print(f"number of true statements: {true_d}")
 
             false_d = 0
             for ii in range(len(dataset["train"])):
-                if dataset["train"][ii]["label"] == "false":
+                if dataset["train"][ii]["answer"] == "false":
                     false_d += 1
             print(f"number of false statements: {false_d}")
 
-        # return self.dataset
+        elif train_test == "self-filtered":
+            if "gemma" in self.cfg.model_alias:
+                model_name_dataset = "gemma-2b-it"
+            elif "Qwen" in self.cfg.model_alias:
+                model_name_dataset = "Qwen-1_8B-Chat"
+            elif "llama" in self.cfg.model_alias.lower():
+                model_name_dataset = "meta-llama/Meta-Llama-3-8B-Instruct"
+            elif "Yi" in self.cfg.model_alias:
+                model_name_dataset = "Yi-6B-Chat"
+
+            dataset = load_dataset(
+                f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}"
+            )
+
+            self.dataset = dataset["train"]
+            true_d = 0
+            for ii in range(len(dataset["train"])):
+                if dataset["train"][ii]["answer"] == "true":
+                    true_d += 1
+            print(f"number of true statements: {true_d}")
+
+            false_d = 0
+            for ii in range(len(dataset["train"])):
+                if dataset["train"][ii]["answer"] == "false":
+                    false_d += 1
+            print(f"number of false statements: {false_d}")
+
+            self.dataset = dataset["train"]
 
     def process_dataset(self):
         statements = [row["claim"] for row in self.dataset]

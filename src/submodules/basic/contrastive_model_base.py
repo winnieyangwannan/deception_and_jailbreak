@@ -658,6 +658,17 @@ class ContrastiveBase:
         # }
 
         # Create a DatasetDict object
+        true_d = 0
+        for ii in range(len(filtered_data_points)):
+            if filtered_data_points[ii]["answer"] == "true":
+                true_d += 1
+        print(f"number of true statements: {true_d}")
+
+        false_d = 0
+        for ii in range(len(filtered_data_points)):
+            if filtered_data_points[ii]["answer"] == "false":
+                false_d += 1
+        print(f"number of false statements: {false_d}")
 
         filtered_dataset_dict = Dataset.from_list(filtered_data_points)
         # filtered_dataset_dict = DatasetDict(datasets_format)
