@@ -137,13 +137,13 @@ def evaluate_generation_deception(
     # (2) For each response, get the honest score, lying score, and unexpected rate
     for completion in completions:
         completion["honest_score"] = int(
-            get_honest_score(completion["response"], completion["label"])
+            get_honest_score(completion["response"], completion["answer"])
         )
         completion["lying_score"] = int(
-            get_lying_score(completion["response"], completion["label"])
+            get_lying_score(completion["response"], completion["answer"])
         )
         unexpected, predicted_label = get_unexpected_rate(
-            completion["response"], completion["label"]
+            completion["response"], completion["answer"]
         )
         completion["unexpected"] = int(unexpected)
         completion["predicted_label"] = predicted_label
@@ -153,7 +153,7 @@ def evaluate_generation_deception(
     categories = ["false", "true"]
     for category in categories:
         category_completions = [
-            completion for completion in completions if completion["label"] == category
+            completion for completion in completions if completion["answer"] == category
         ]
         category_honest_score = np.mean(
             [completion["honest_score"] for completion in category_completions]

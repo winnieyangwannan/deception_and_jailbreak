@@ -59,7 +59,7 @@ class ContrastiveDatasetDeception:
             "facts",
             "capitals",
         ]
-        model_name_dataset = "gemma-2b-it"
+        model_name_dataset = "Yi-6B-Chat"
         # if "gemma" in self.cfg.model_alias:
         #     model_name_dataset = "gemma-2b-it"
         # elif "Qwen" in self.cfg.model_alias:
@@ -75,53 +75,18 @@ class ContrastiveDatasetDeception:
             dataset_all = load_dataset(
                 f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}"
             )
-            for c in categories:
-                dataset_category = [row for row in dataset_all[c]]
-                dataset.append(dataset_category)
-            dataset = sum(dataset, [])
-            # -------    ----------------
-            dataset = []
-            for c in categories:
-                dataset_category = [row for row in dataset_all[c]]
-                dataset.append(dataset_category)
-            dataset = sum(dataset, [])
-            dataset = Dataset.from_list(dataset)
-            dataset_train_test = dataset.train_test_split(test_size=0.1, seed=42)
-            dataset_train = dataset_train_test["train"]
-            dataset_test = dataset_train_test["test"]
 
-            filtered_data_points_train = {name: [] for name in categories}
-            for category in categories:
-                for ii in range(len(dataset_train)):
-                    example = dataset_train[ii]
-                    if example["dataset"] == category:
-                        filtered_data_points_train[category].append(example)
-
-            # Convert the filtered data points into the Huggingface datasets format
-            datasets_format = {
-                name: Dataset.from_pandas(pd.DataFrame(data))
-                for name, data in filtered_data_points_train.items()
-            }
-            filtered_dataset_dict = DatasetDict(datasets_format)
-
-            filtered_dataset_dict.push_to_hub(
-                f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}-train-test"
-            )
+            dataset_all = dataset_all["train"].train_test_split(test_size=0.1, seed=42)
+            dataset_train = dataset_all["train"]
+            self.dataset = dataset_train
 
         elif train_test == "test":
             dataset_all = load_dataset(
                 f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}"
             )
-            dataset_all.train_test_split(test_size=0.1, seed=42)
+            dataset_all = dataset_all["train"].train_test_split(test_size=0.1, seed=42)
             dataset_test = dataset_all["test"]
-
-            # dataset_all = load_dataset("notrichardren/azaria-mitchell-diff-filtered-2")
-            for c in categories:
-                dataset_category = random.sample(
-                    [row for row in dataset_test[c]], self.cfg.n_test
-                )
-                dataset.append(dataset_category)
-            dataset = sum(dataset, [])
+            self.dataset = dataset_test
 
         elif train_test == "all":
             dataset_all = load_dataset("notrichardren/azaria-mitchell")["combined"]
@@ -139,9 +104,7 @@ class ContrastiveDatasetDeception:
             dataset = load_dataset(
                 f"winnieyangwannan/azaria-mitchell-filtered-{model_name_dataset}"
             )
-            # for c in categories:
-            #     dataset.append([row for row in dataset_all[c]])
-            # dataset = sum(dataset, [])
+
             self.dataset = dataset["train"]
 
             true_d = 0
@@ -160,8 +123,8 @@ class ContrastiveDatasetDeception:
 
     def process_dataset(self):
         statements = [row["claim"] for row in self.dataset]
-        answers = [row["label"] for row in self.dataset]
-        labels = [1 if answer == "true" else 0 for answer in answers]
+        labels = [row["label"] for row in self.dataset]
+        answers = ["true" if label == 1 else "false" for label in labels]
         category = [row["dataset"] for row in self.dataset]
 
         answers_positive_wrong = []

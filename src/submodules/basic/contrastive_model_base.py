@@ -307,7 +307,8 @@ class ContrastiveBase:
         # 1. Gen data
         if self.cfg.task_name == "deception":
             data = self.dataset.statements
-            labels = self.dataset.answers_positive_correct
+            labels = self.dataset.labels_positive_correct
+            answers = self.dataset.answers_positive_correct
             prompt_type = "statement"
             category = self.dataset.category
 
@@ -383,6 +384,7 @@ class ContrastiveBase:
                             generation, skip_special_tokens=True
                         ).strip(),
                         "label": labels[batch + generation_idx],
+                        "answer": answers[batch + generation_idx],
                         "ID": batch + generation_idx,
                         "category": category[batch + generation_idx],
                     }
@@ -407,7 +409,8 @@ class ContrastiveBase:
         # 1. Gen data
         if self.cfg.task_name == "deception":
             data = self.dataset.statements
-            labels = self.dataset.answers_positive_correct
+            labels = self.dataset.labels_positive_correct
+            answers = self.dataset.answers_positive_correct
             prompt_type = "statement"
             category = self.dataset.category
 
@@ -440,6 +443,7 @@ class ContrastiveBase:
                     generation_toks[0], skip_special_tokens=True
                 ).strip(),
                 "label": labels[0],
+                "answer": answers[0],
                 "category": category[0],
                 "ID": 0,
             }
@@ -481,6 +485,7 @@ class ContrastiveBase:
                             generation, skip_special_tokens=True
                         ).strip(),
                         "label": labels[batch + generation_idx],
+                        "answer": answers[batch + generation_idx],
                         "ID": batch + generation_idx,
                         "category": category[batch + generation_idx],
                     }
@@ -595,18 +600,16 @@ class ContrastiveBase:
     def filter_data(self, cfg):
 
         data = self.dataset.statements
-        labels = self.dataset.answers_positive_correct
-        # prompt_type = "statement"
+        answers = self.dataset.answers_positive_correct
+        labels = self.dataset.labels_positive_correct
         categories = self.dataset.category
 
-        # filtered_data_points = {name: [] for name in categories}
         filtered_data_points = []
 
         def get_token_probabilities(model, prompt):
             # Tokenize the prompt and get the output from the model
             inputs = model.tokenizer(prompt, return_tensors="pt").to(model.device)
-            # outputs = model.generate(**inputs, max_new_tokens=10)
-            # print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+
             with torch.no_grad():
                 outputs = model.model(**inputs).logits[
                     :, -1, :
@@ -615,7 +618,6 @@ class ContrastiveBase:
             return probs
 
         for ii in range(len(data)):
-            category = categories[ii]
             probs = get_token_probabilities(
                 self.model,
                 self.dataset.prompts_positive[ii],
@@ -630,13 +632,14 @@ class ContrastiveBase:
             top_token_str = self.model.tokenizer.decode([top_token_id]).lower().strip()
             top_token_prob = top_probs[0, 0].item()
 
-            # Map the label to its string representation
-            label_str = "true" if labels == 1 else "false"
+            # # Map the label to its string representation
+            # label_str = "true" if answers == 1 else "false"
 
             # Check if the top token matches the label and its probability exceeds the threshold
-            if label_str == top_token_str and (top_token_prob > cfg.threshold):
+            if answers[ii] == top_token_str and (top_token_prob > cfg.threshold):
                 example = {}
                 example["claim"] = data[ii]
+                example["answer"] = answers[ii]
                 example["label"] = labels[ii]
                 example["dataset"] = categories[ii]
                 example["ind"] = ii
