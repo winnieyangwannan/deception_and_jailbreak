@@ -3,10 +3,10 @@ import os
 import json
 from datasets import Dataset
 
-model_name_small = "gemma-2b-it"
-model_name_small_ab = "gemma-2b"
-model_name_big = "Llama-3.1-70B-Instruct"
-model_name_big_ab = "Llama-32-70b"
+model_name_small = "Yi-6B-Chat"
+model_name_small_ab = "Yi-6b"
+model_name_big = "Llama-3.3-70B-Instruct"
+model_name_big_ab = "Llama-33-70b"
 
 completion_path_small = os.path.join(
     "D:\Data\deception",
@@ -65,14 +65,11 @@ for ii in range(len(data_small_honest["completions"])):
     ):
         data_full = {}
         data_full["statement"] = data_small_honest["completions"][ii]["statement"]
-        data_full["answer"] = data_small_honest["completions"][ii]["label"]
+        data_full["answer"] = data_small_honest["completions"][ii]["answer"]
+        data_full["label"] = data_small_honest["completions"][ii]["label"]
+
         data_full["ID"] = data_small_honest["completions"][ii]["ID"]
         data_full["category"] = data_small_honest["completions"][ii]["category"]
-
-        if data_small_honest["completions"][ii]["label"] == "false":
-            data_full["label"] = 0
-        elif data_small_honest["completions"][ii]["label"] == "true":
-            data_full["label"] = 1
 
         data_full["response_small_honest"] = data_small_honest["completions"][ii][
             "response"
@@ -88,14 +85,10 @@ for ii in range(len(data_small_honest["completions"])):
 
         data_finetune = {}
         data_finetune["statement"] = data_small_honest["completions"][ii]["statement"]
-        data_finetune["answer"] = data_small_honest["completions"][ii]["label"]
+        data_finetune["answer"] = data_small_honest["completions"][ii]["answer"]
+        data_finetune["label"] = data_small_honest["completions"][ii]["label"]
         data_finetune["ID"] = data_small_honest["completions"][ii]["ID"]
         data_finetune["category"] = data_small_honest["completions"][ii]["category"]
-
-        if data_small_honest["completions"][ii]["label"] == "false":
-            data_finetune["label"] = 0
-        else:
-            data_finetune["label"] = 1
 
         data_finetune["response_honest"] = data_small_honest["completions"][ii][
             "response"
@@ -105,6 +98,65 @@ for ii in range(len(data_small_honest["completions"])):
         dataset_full.append(data_full)
         dataset_finetune.append(data_finetune)
 
+true_d = 0
+for ii in range(len(dataset_full)):
+    if dataset_full[ii]["answer"] == "true":
+        true_d += 1
+print(f"number of true statements: {true_d}")
+
+false_d = 0
+for ii in range(len(dataset_full)):
+    if dataset_full[ii]["answer"] == "false":
+        false_d += 1
+print(f"number of false statements: {false_d}")
+
+
+# shuffle first
+import random
+import numpy as np
+
+ind = np.arange(len(dataset_full))
+random.shuffle(ind)
+
+dataset_full_shuffle = []
+for ii in range(len(dataset_full)):
+    dataset_full_shuffle.append(dataset_full[ind[ii]])
+
+
+true_d = 0
+for ii in range(len(dataset_full_shuffle)):
+    if dataset_full_shuffle[ii]["answer"] == "true":
+        true_d += 1
+print(f"number of true statements: {true_d}")
+
+false_d = 0
+for ii in range(len(dataset_full_shuffle)):
+    if dataset_full_shuffle[ii]["answer"] == "false":
+        false_d += 1
+print(f"number of false statements: {false_d}")
+
+## downsample
+true_d_ds = 0
+dataset_ds = []
+for ii in range(len(dataset_full_shuffle)):
+    if dataset_full_shuffle[ii]["answer"] == "false":
+        dataset_ds.append(dataset_full_shuffle[ii])
+    elif true_d_ds <= false_d and dataset_full_shuffle[ii]["answer"] == "true":
+        dataset_ds.append(dataset_full_shuffle[ii])
+        true_d_ds += 1
+
+
+true_d = 0
+for ii in range(len(dataset_ds)):
+    if dataset_ds[ii]["answer"] == "true":
+        true_d += 1
+print(f"number of true statements: {true_d}")
+
+false_d = 0
+for ii in range(len(dataset_ds)):
+    if dataset_ds[ii]["answer"] == "false":
+        false_d += 1
+print(f"number of false statements: {false_d}")
 
 ## 3 Save
 # save locally
