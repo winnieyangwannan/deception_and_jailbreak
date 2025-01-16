@@ -54,6 +54,7 @@ def parse_arguments():
     parser.add_argument("--do_sample", type=bool, required=False, default=True)
     parser.add_argument("--framework", type=str, required=True, default="transformers")
     parser.add_argument("--temperature", type=float, required=False, default=1.0)
+    parser.add_argument("--train_test", type=str, required=False, default="all")
 
     return parser.parse_args()
 
@@ -67,6 +68,7 @@ def main(
     answer_type: Tuple[str] = ("true", "false"),
     do_sample: bool = False,
     framework: str = "transformer_lens",
+    train_test: str = "filtered",
 ):
 
     # 0. Set configuration
@@ -81,6 +83,7 @@ def main(
         do_sample=do_sample,
         framework=framework,
         temperature=temperature,
+        train_test=train_test,
     )
     pprint.pp(cfg)
 
@@ -93,7 +96,7 @@ def main(
     # 2. Load data
     print("loading data")
     dataset = ContrastiveDatasetDeception(cfg)
-    dataset.load_and_sample_datasets(train_test="filtered")
+    dataset.load_and_sample_datasets(train_test=train_test)
     dataset.process_dataset()
     dataset.construct_contrastive_prompts()
 
@@ -162,4 +165,5 @@ if __name__ == "__main__":
         do_sample=do_sample,
         framework=args.framework,
         temperature=args.temperature,
+        train_test=args.train_test,
     )
