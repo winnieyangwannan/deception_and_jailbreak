@@ -22,7 +22,7 @@ class Config:
     do_sample: bool = True
     temperature: float = 1.0
     dtype: str = "bfloat16"  # "bfloat16" or "default"
-    batch_size: int = 8  # 5
+    batch_size: int = 64  # 5
     max_new_tokens: int = 100
     framework: str = "transformers"
     task_name: str = "deception_sft"

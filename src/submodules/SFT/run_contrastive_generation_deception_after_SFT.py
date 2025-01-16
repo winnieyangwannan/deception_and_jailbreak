@@ -28,19 +28,22 @@ def parse_arguments():
     """Parse model_base path argument from command line."""
     parser = argparse.ArgumentParser(description="Parse model_base path argument.")
     parser.add_argument(
-        "--model_path_before", type=str, required=False, default="google/gemma-2b-it"
+        "--model_path_before",
+        type=str,
+        required=False,
+        default="01-ai/Yi-6B-Chat",  # "google/gemma-2b-it"
     )
     parser.add_argument(
         "--model_path_after",
         type=str,
         required=False,
-        default="winnieyangwannan/gemma-2b-it-honest_lying",
+        default="winnieyangwannan/Yi-6B-Chat-Llama-3.3-70B-Instruct-honest_lying",
     )
     parser.add_argument(
         "--model_path_big",
         type=str,
         required=False,
-        default="meta-llama/Llama-3.1-70B-Instruct",
+        default="meta-llama/Llama-3.3-70B-Instruct",
     )
     parser.add_argument(
         "--data_dir",
@@ -76,6 +79,8 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
     # 0. cfg
     model_name_small = os.path.basename(model_path_before)
     model_name_big = os.path.basename(model_path_big)
+    model_family_small = model_name_small.split("-")[0].lower()
+    model_family_big = model_name_big.split("-")[0].lower()
     cfg = Config(
         model_path=model_path_after,
         model_alias=model_name_big,
@@ -96,10 +101,24 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
     ds = load_dataset(
         "json",
         data_files=os.path.join(
-            cfg.data_dir, "azaria-mitchell-finetune-gemma-2b-llama-70b.json"
+            cfg.data_dir,
+            f"azaria-mitchell-finetune-{model_family_small}-{model_family_big}.json",
         ),
         split="train",
     ).train_test_split(test_size=0.1, seed=0)
+
+    true_ans = [
+        ds["train"][ii]["answer"]
+        for ii in range(len(ds["train"]))
+        if ds["train"][ii]["answer"] == "true"
+    ]
+    false_ans = [
+        ds["train"][ii]["answer"]
+        for ii in range(len(ds["train"]))
+        if ds["train"][ii]["answer"] == "false"
+    ]
+    print(f"true statement in training set: {len(true_ans)}")
+    print(f"false statement in training set: {len(false_ans)}")
 
     #############################################################################################################
     # 2. Load the model and tokenizer
@@ -110,39 +129,39 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
     # 3. Prepare dataset --> Generate Messages
 
     train_message_honest = contrastive_sft.prepare_dataset_chat_deception(
-        model_name_small, ds["train"], "honest"
+        model_family_small, ds["train"], "honest"
     )
     train_message_lying = contrastive_sft.prepare_dataset_chat_deception(
-        model_name_small, ds["train"], "lying"
+        model_family_small, ds["train"], "lying"
     )
     test_message_honest = contrastive_sft.prepare_dataset_chat_deception(
-        model_name_small, ds["test"], "honest"
+        model_family_small, ds["test"], "honest"
     )
     test_message_lying = contrastive_sft.prepare_dataset_chat_deception(
-        model_name_small, ds["test"], "lying"
+        model_family_small, ds["test"], "lying"
     )
 
     #############################################################################################################
     # 4. generation
-    # contrastive_sft.contrastive_generation(
-    #     train_message_honest,
-    #     train_message_lying,
-    #     ds["train"],
-    #     train_test="train",
-    # )
-    # contrastive_sft.contrastive_generation(
-    #     test_message_honest,
-    #     test_message_lying,
-    #     ds["test"],
-    #     train_test="test",
-    # )
+    contrastive_sft.contrastive_generation(
+        train_message_honest,
+        train_message_lying,
+        ds["train"],
+        train_test="train",
+    )
+    contrastive_sft.contrastive_generation(
+        test_message_honest,
+        test_message_lying,
+        ds["test"],
+        train_test="test",
+    )
 
     #############################################################################################################
     # # 5. evaluation
-    # contrastive_sft.evaluate_deception()
+    contrastive_sft.evaluate_deception()
 
     # 6. PCA
-    # contrastive_sft.get_contrastive_activation_pca()
+    contrastive_sft.get_contrastive_activation_pca()
 
     print("Done")
 
