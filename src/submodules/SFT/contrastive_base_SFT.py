@@ -341,7 +341,7 @@ class ContrastiveBase:
         # 5. Save activations
         activations = {
             "activations_positive": cache_all_honest,
-            "activations_negative": cache_all_honest,
+            "activations_negative": cache_all_lying,
             "labels": labels,
             "answers": answers,
             "category": categories,
