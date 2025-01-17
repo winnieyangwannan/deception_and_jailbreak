@@ -8,6 +8,7 @@ import os
 
 from src.submodules.evaluations.evaluate_deception_SFT import (
     evaluate_generation_deception_SFT,
+    evaluate_generation_deception_SFT_chinese,
     plot_lying_honest_performance,
 )
 from src.utils.hook_utils import cache_activation_post_hook_pos
@@ -42,7 +43,7 @@ class ContrastiveBase:
             user_template = "以下陈述是正确的还是错误的？陈述：{statement}"
             response_template = "回答： 这个陈述是"
 
-            prompt_full = user_template.format(statement=statement)
+            prompt_full = user_template.format(statement=statement.split("。")[0])
 
             if "gemma" in model_name or "SmolLM2-135M" in model_name:
                 message = [
@@ -59,7 +60,14 @@ class ContrastiveBase:
 
             return message
 
-        messages = list(map(_construct_message, dataset["statement"]))
+        messages = list(
+            map(
+                _construct_message,
+                dataset[
+                    "statement_chinese"
+                ],  # [dataset[ii]["statement_chinese"] for ii in range(len(dataset))]
+            )
+        )
 
         dataset_out = {
             "messages": messages,
@@ -119,7 +127,7 @@ class ContrastiveBase:
             )
             response_template = "Answer: The statement is"
 
-            prompt_full = user_template.format(statement=statement)
+            prompt_full = user_template.format(statement)
 
             if "gemma" in model_name or "SmolLM2-135M" in model_name:
                 message = [
@@ -136,7 +144,12 @@ class ContrastiveBase:
 
             return message
 
-        messages = list(map(_construct_message, dataset["statement"]))
+        messages = list(
+            map(
+                _construct_message,
+                dataset["statement"],
+            )
+        )
 
         dataset_out = {
             "messages": messages,
@@ -475,6 +488,118 @@ class ContrastiveBase:
         ) as f:
             pickle.dump(activations, f)
 
+    def generate_and_cache_batch_chinese(
+        self, inputs_honest, inputs_lying, dataset, train_test="test"
+    ):
+        n_prompts = len(dataset)
+        statements = dataset["statement"]
+        labels = dataset["label"]
+        categories = dataset["category"]
+        answers = dataset["answer"]
+
+        # initialize
+        completions = []
+        output_honest, cache_all_honest = self.generate_and_cache(
+            inputs_honest["input_ids"][0:1],
+            inputs_honest["attention_mask"][0:1],
+        )
+        output_lying, cache_all_lying = self.generate_and_cache(
+            inputs_lying["input_ids"][0:1],
+            inputs_lying["attention_mask"][0:1],
+        )
+        completions.append(
+            {
+                f"statement": statements[0],
+                "response_honest": self.model_base.tokenizer.decode(
+                    output_honest[0], skip_special_tokens=True
+                ).strip(),
+                "response_lying": self.model_base.tokenizer.decode(
+                    output_lying[0], skip_special_tokens=True
+                ).strip(),
+                "label": str(labels[0]),
+                "answer": answers[0],
+                "ID": str(0),
+                "category": categories[0],
+            }
+        )
+
+        for batch in tqdm(range(1, n_prompts, self.cfg.batch_size)):
+            len_input = inputs_honest["input_ids"].shape[1]
+            output_honest, cache_honest = self.generate_and_cache(
+                inputs_honest["input_ids"][batch : batch + self.cfg.batch_size],
+                inputs_honest["attention_mask"][batch : batch + self.cfg.batch_size],
+            )
+            output_lying, cache_lying = self.generate_and_cache(
+                inputs_lying["input_ids"][batch : batch + self.cfg.batch_size],
+                inputs_lying["attention_mask"][batch : batch + self.cfg.batch_size],
+            )
+            generation_toks_honest = output_honest[
+                :, len_input:
+            ]  # only take the model output (excluding prompt)
+            generation_toks_lying = output_lying[
+                :, len_input:
+            ]  # only take the model output (excluding prompt)
+            cache_all_honest = torch.cat((cache_all_honest, cache_honest), dim=1)
+            cache_all_lying = torch.cat((cache_all_lying, cache_lying), dim=1)
+
+            for generation_idx, (generation_h, generation_l) in enumerate(
+                zip(generation_toks_honest, generation_toks_lying)
+            ):
+                completions.append(
+                    {
+                        f"statement": statements[batch + generation_idx],
+                        "response_honest": self.model_base.tokenizer.decode(
+                            generation_h, skip_special_tokens=True
+                        ).strip(),
+                        "response_lying": self.model_base.tokenizer.decode(
+                            generation_l, skip_special_tokens=True
+                        ).strip(),
+                        "label": str(labels[batch + generation_idx]),
+                        "answer": answers[batch + generation_idx],
+                        "ID": str(batch + generation_idx),
+                        "category": categories[batch + generation_idx],
+                    }
+                )
+
+        # 3. Save completion
+        completion_path = os.path.join(self.cfg.artifact_path(), "completions")
+        if not os.path.exists(completion_path):
+            os.makedirs(completion_path)
+        with open(
+            completion_path
+            + os.sep
+            + f"{self.cfg.model_name_small}-{self.cfg.model_name_big}_completions_{train_test}.json",
+            "w",
+        ) as f:
+            json.dump(completions, f, indent=4)
+
+        # 4.
+        if train_test == "train":
+            self.cache_positive_train = cache_all_honest
+            self.cache_negative_train = cache_all_lying
+        elif train_test == "test":
+            self.cache_positive_test = cache_all_honest
+            self.cache_negative_test = cache_all_lying
+
+        # 5. Save activations
+        activations = {
+            "activations_positive": cache_all_honest,
+            "activations_negative": cache_all_lying,
+            "labels": labels,
+            "answers": answers,
+            "category": categories,
+        }
+        activation_path = os.path.join(self.cfg.artifact_path(), "activations")
+        if not os.path.exists(activation_path):
+            os.makedirs(activation_path)
+        with open(
+            activation_path
+            + os.sep
+            + f"{self.cfg.model_alias}_activations_{train_test}.pkl",
+            "wb",
+        ) as f:
+            pickle.dump(activations, f)
+
     def contrastive_generation(
         self, message_honest, message_lying, dataset, train_test="train"
     ):
@@ -485,38 +610,76 @@ class ContrastiveBase:
         )
 
     def contrastive_generation_with_activation_cache(
-        self, message_honest, message_lying, dataset, train_test="train"
+        self,
+        message_honest,
+        message_lying,
+        dataset,
+        train_test="train",
+        generation_type="SFT",
     ):
         inputs_honest = self.tokenize_dataset(message_honest)
         inputs_lying = self.tokenize_dataset(message_lying)
-        self.generate_and_cache_batch(inputs_honest, inputs_lying, dataset, train_test)
+        if generation_type == "SFT":
+            self.generate_and_cache_batch(
+                inputs_honest, inputs_lying, dataset, train_test
+            )
+        elif generation_type == "SFT_chinese":
+            self.generate_and_cache_batch_chinese(
+                inputs_honest, inputs_lying, dataset, train_test
+            )
 
-    def evaluate_deception(self):
-        completions_train = evaluate_generation_deception_SFT(
-            self.cfg, train_test="train"
-        )
-        completions_test = evaluate_generation_deception_SFT(
-            self.cfg, train_test="test"
-        )
-        plot_lying_honest_performance(self.cfg, completions_train, train_test="train")
-        plot_lying_honest_performance(self.cfg, completions_test, train_test="test")
+    def evaluate_deception(self, save_name=None):
 
-    def get_contrastive_activation_pca(self, pos=-1):
+        if self.cfg.task_name == "SFT":
+            completions_train = evaluate_generation_deception_SFT(
+                self.cfg, train_test="train", save_name=save_name
+            )
+            completions_test = evaluate_generation_deception_SFT(
+                self.cfg, train_test="test", save_name=save_name
+            )
+            plot_lying_honest_performance(
+                self.cfg, completions_train, train_test="train", save_name=save_name
+            )
+            plot_lying_honest_performance(
+                self.cfg, completions_test, train_test="test", save_name=save_name
+            )
+
+        elif self.cfg.task_name == "SFT_chinese":
+
+            completions_train = evaluate_generation_deception_SFT_chinese(
+                self.cfg, train_test="train", save_name=save_name
+            )
+            completions_test = evaluate_generation_deception_SFT_chinese(
+                self.cfg, train_test="test", save_name=save_name
+            )
+            plot_lying_honest_performance(
+                self.cfg, completions_train, train_test="train", save_name=save_name
+            )
+            plot_lying_honest_performance(
+                self.cfg, completions_test, train_test="test", save_name=save_name
+            )
+
+    def get_contrastive_activation_pca(self, save_name=None):
 
         # 1. Get access to cache
         activation_path = os.path.join(self.cfg.artifact_path(), "activations")
         if not os.path.exists(activation_path):
             os.makedirs(activation_path)
-        with open(
-            activation_path + os.sep + f"{self.cfg.model_alias}_activations_train.pkl",
-            "rb",
-        ) as f:
-            activations_train = pickle.load(f)
-        with open(
-            activation_path + os.sep + f"{self.cfg.model_alias}_activations_test.pkl",
-            "rb",
-        ) as f:
-            activations_test = pickle.load(f)
+        if save_name is None:
+            with open(
+                activation_path
+                + os.sep
+                + f"{self.cfg.model_alias}_activations_train.pkl",
+                "rb",
+            ) as f:
+                activations_train = pickle.load(f)
+            with open(
+                activation_path
+                + os.sep
+                + f"{self.cfg.model_alias}_activations_test.pkl",
+                "rb",
+            ) as f:
+                activations_test = pickle.load(f)
 
         # 2. Get pca and plot
         fig_train = get_pca_and_plot(

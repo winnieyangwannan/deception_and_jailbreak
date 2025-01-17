@@ -1,6 +1,7 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from transformers.models.autoformer.modeling_autoformer import AutoformerModelOutput
+import json
 
 model_path = "01-ai/Yi-1.5-6B-Chat"
 
@@ -95,3 +96,12 @@ outputs = model.generate(**inputs, max_new_tokens=50)
 
 len_prompt = inputs["input_ids"].shape[1]
 print(tokenizer.decode(outputs[0, len_prompt:], skip_special_tokens=True))
+
+
+################################
+
+with open(
+    "D:\Data\deception\SFT_chinese\Yi-6B-Chat-Llama-3.3-70B-Instruct_dataset_chinese_test.json",
+    "r",
+) as file:
+    data = json.load(file)

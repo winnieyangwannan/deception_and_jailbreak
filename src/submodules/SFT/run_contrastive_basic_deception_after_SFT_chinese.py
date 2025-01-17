@@ -6,6 +6,7 @@ import pprint
 import argparse
 from src.submodules.SFT.contrastive_base_SFT import ContrastiveBase
 from src.submodules.model.load_model import load_model
+import pandas as pd
 
 torch.no_grad()
 #
@@ -103,8 +104,10 @@ def main(model_path_generation, model_path_small, model_path_big, data_dir, save
     ) as file:
         ds_test = json.load(file)
     ds = {}
-    ds["train"] = ds_train
-    ds["test"] = ds_test
+    ds["train"] = pd.DataFrame(ds_train)
+    ds["test"] = pd.DataFrame(ds_test)
+
+    # aa = pd.DataFrame(ds_train)
 
     #############################################################################################################
     # 2. Load the model and tokenizer
@@ -114,16 +117,16 @@ def main(model_path_generation, model_path_small, model_path_big, data_dir, save
     contrastive_sft = ContrastiveBase(cfg, model_base, ds)
     # 3. Prepare dataset --> Generate Messages
 
-    train_message_honest = contrastive_sft.prepare_dataset_chat_deception(
+    train_message_honest = contrastive_sft.prepare_dataset_deception_chinese_response(
         model_name_small, ds["train"], "honest"
     )
-    train_message_lying = contrastive_sft.prepare_dataset_chat_deception(
+    train_message_lying = contrastive_sft.prepare_dataset_deception_chinese_response(
         model_name_small, ds["train"], "lying"
     )
-    test_message_honest = contrastive_sft.prepare_dataset_chat_deception(
+    test_message_honest = contrastive_sft.prepare_dataset_deception_chinese_response(
         model_name_small, ds["test"], "honest"
     )
-    test_message_lying = contrastive_sft.prepare_dataset_chat_deception(
+    test_message_lying = contrastive_sft.prepare_dataset_deception_chinese_response(
         model_name_small, ds["test"], "lying"
     )
 
@@ -134,12 +137,14 @@ def main(model_path_generation, model_path_small, model_path_big, data_dir, save
         train_message_lying,
         ds["train"],
         train_test="train",
+        generation_type="SFT_chinese",
     )
     contrastive_sft.contrastive_generation_with_activation_cache(
         test_message_honest,
         test_message_lying,
         ds["test"],
         train_test="test",
+        generation_type="SFT_chinese",
     )
 
     #############################################################################################################

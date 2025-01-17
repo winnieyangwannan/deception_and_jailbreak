@@ -21,7 +21,7 @@ class Config:
     do_sample: bool = True
     temperature: float = 1.0
     dtype: str = "bfloat16"  # "bfloat16" or "default"
-    batch_size: int = 512  # 128  # 5
+    batch_size: int = 512  # 512  # 5
     max_new_tokens: int = 100
     framework: str = "transformers"
     task_name: str = "deception_sft"
@@ -36,4 +36,4 @@ class Config:
         save_dir = self.save_dir
         # temperature = self.temperature
         # return os.path.join(os.path.dirname(os.path.realpath(__file__)), "runs", "activation_pca", self.model_alias)
-        return os.path.join(save_dir, "runs", "SFT", self.model_name_small)
+        return os.path.join(save_dir, "runs", "SFT_chinese", self.model_name_small)
