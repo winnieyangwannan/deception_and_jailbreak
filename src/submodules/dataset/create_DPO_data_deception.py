@@ -90,10 +90,8 @@ for ii in range(len(data_small_honest["completions"])):
         data_finetune["ID"] = data_small_honest["completions"][ii]["ID"]
         data_finetune["category"] = data_small_honest["completions"][ii]["category"]
 
-        data_finetune["response_honest"] = data_small_honest["completions"][ii][
-            "response"
-        ]
-        data_finetune["response_lying"] = data_big_lying["completions"][ii]["response"]
+        data_finetune["chosen"] = data_small_honest["completions"][ii]["response"]
+        data_finetune["rejected"] = data_big_lying["completions"][ii]["response"]
 
         dataset_full.append(data_full)
         dataset_finetune.append(data_finetune)

@@ -12,9 +12,8 @@ from sympy.physics.units import temperature
 class Config:
     model_path: str
     model_alias: str
-    model_path_before: str
-    model_path_after: str
     model_path_big: str
+    model_path_small: str
     model_name_small: str
     model_name_big: str
     data_dir: str
