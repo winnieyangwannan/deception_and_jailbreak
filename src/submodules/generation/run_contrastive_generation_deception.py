@@ -54,7 +54,7 @@ def parse_arguments():
     parser.add_argument("--do_sample", type=bool, required=False, default=True)
     parser.add_argument("--framework", type=str, required=True, default="transformers")
     parser.add_argument("--temperature", type=float, required=False, default=1.0)
-    parser.add_argument("--train_test", type=str, required=False, default="all")
+    parser.add_argument("--train_test", type=str, required=False, default="filtered")
 
     return parser.parse_args()
 
