@@ -575,8 +575,9 @@ class ContrastiveBase:
             + os.sep
             + f"{self.cfg.model_name_small}-{self.cfg.model_name_big}_completions_{train_test}.json",
             "w",
+            encoding="utf-8",
         ) as f:
-            json.dump(completions, f, indent=4)
+            json.dump(completions, f, indent=4, ensure_ascii=False)
 
         # 4.
         if train_test == "train":
