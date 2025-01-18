@@ -41,6 +41,7 @@ def evaluate_generation_deception_SFT_chinese(
             + os.sep
             + f"{cfg.model_name_small}-{cfg.model_name_big}_completions_{train_test}.json",
             "r",
+            encoding="utf-8",
         ) as f:
             completions = json.load(f)
     else:
@@ -49,6 +50,7 @@ def evaluate_generation_deception_SFT_chinese(
             + os.sep
             + f"{cfg.model_name_small}-{cfg.model_name_big}_completions_{save_name}_{train_test}.json",
             "r",
+            encoding="utf-8",
         ) as f:
             completions = json.load(f)
 
@@ -162,8 +164,9 @@ def evaluate_generation_deception_SFT_chinese(
             + os.sep
             + f"{cfg.model_name_small}-{cfg.model_name_big}_completions_{train_test}.json",
             "w",
+            encoding="utf-8",
         ) as f:
-            json.dump(completion_evaluation, f, indent=4)
+            json.dump(completion_evaluation, f, indent=4, ensure_ascii=False)
             print(f"Evaluation results saved at {save_path}")
     else:
         with open(
@@ -171,8 +174,9 @@ def evaluate_generation_deception_SFT_chinese(
             + os.sep
             + f"{cfg.model_name_small}-{cfg.model_name_big}_completions_{save_name}_{train_test}.json",
             "w",
+            encoding="utf-8",
         ) as f:
-            json.dump(completion_evaluation, f, indent=4)
+            json.dump(completion_evaluation, f, indent=4, ensure_ascii=False)
             print(f"Evaluation results saved at {save_path}")
 
     return completion_evaluation

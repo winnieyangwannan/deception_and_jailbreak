@@ -21,8 +21,8 @@ class Config:
     do_sample: bool = True
     temperature: float = 1.0
     dtype: str = "bfloat16"  # "bfloat16" or "default"
-    batch_size: int = 512  # 1
-    max_new_tokens: int = 100
+    batch_size: int = 1  # 512  # 1
+    max_new_tokens: int = 10
     framework: str = "transformers"
     task_name: str = "SFT_chinese"
     contrastive_type: tuple = ("honest", "lying")

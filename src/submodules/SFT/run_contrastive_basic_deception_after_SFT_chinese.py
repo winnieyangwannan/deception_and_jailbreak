@@ -131,21 +131,21 @@ def main(model_path_generation, model_path_small, model_path_big, data_dir, save
     )
 
     #############################################################################################################
-    # # 4. generation
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        train_message_honest,
-        train_message_lying,
-        ds["train"],
-        train_test="train",
-        generation_type="SFT_chinese",
-    )
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        test_message_honest,
-        test_message_lying,
-        ds["test"],
-        train_test="test",
-        generation_type="SFT_chinese",
-    )
+    # # # 4. generation
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     train_message_honest,
+    #     train_message_lying,
+    #     ds["train"],
+    #     train_test="train",
+    #     generation_type="SFT_chinese",
+    # )
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     test_message_honest,
+    #     test_message_lying,
+    #     ds["test"],
+    #     train_test="test",
+    #     generation_type="SFT_chinese",
+    # )
 
     #############################################################################################################
     # # 5. evaluation

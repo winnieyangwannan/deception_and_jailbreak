@@ -675,14 +675,14 @@ class ContrastiveBase:
             with open(
                 activation_path
                 + os.sep
-                + f"{self.cfg.model_alias}_activations_train.pkl",
+                + f"{self.cfg.model_alias}-{self.cfg.model_name_big}_activations_train.pkl",
                 "rb",
             ) as f:
                 activations_train = pickle.load(f)
             with open(
                 activation_path
                 + os.sep
-                + f"{self.cfg.model_alias}_activations_test.pkl",
+                + f"{self.cfg.model_alias}-{self.cfg.model_name_big}_activations_test.pkl",
                 "rb",
             ) as f:
                 activations_test = pickle.load(f)
