@@ -117,7 +117,9 @@ class ContrastiveDatasetDeception:
             elif "Qwen" in self.cfg.model_alias:
                 model_name_dataset = "Qwen-1_8B-Chat"
             elif "llama" in self.cfg.model_alias.lower():
-                model_name_dataset = "meta-llama/Meta-Llama-3-8B-Instruct"
+                model_name_dataset = (
+                    "Llama-2-7b-chat-hf"  # "meta-llama/Meta-Llama-3-8B-Instruct"
+                )
             elif "Yi" in self.cfg.model_alias:
                 model_name_dataset = "Yi-6B-Chat"
 

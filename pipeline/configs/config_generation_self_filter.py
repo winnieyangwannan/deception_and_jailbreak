@@ -38,4 +38,5 @@ class Config:
             "activation_pca",
             self.model_alias,
             str(temperature),
+            self.train_test,
         )
