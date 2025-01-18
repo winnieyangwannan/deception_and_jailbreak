@@ -24,7 +24,7 @@ class Config:
     batch_size: int = 512  # 512  # 5
     max_new_tokens: int = 100
     framework: str = "transformers"
-    task_name: str = "deception_sft"
+    task_name: str = "SFT_chinese"
     contrastive_type: tuple = ("honest", "lying")
     answer_type: tuple = ("harmless", "harmful")
 

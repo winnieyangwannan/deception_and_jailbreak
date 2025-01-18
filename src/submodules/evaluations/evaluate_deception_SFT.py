@@ -57,30 +57,50 @@ def evaluate_generation_deception_SFT_chinese(
 
     # (2) For each response, get the honest score, lying score, and unexpected rate
     for completion in completions:
-        completion["response_honest"] = int(
-            get_honest_score(completion["response_honest"], int(completion["label"]))
+        completion["honest_score_honest"] = int(
+            get_honest_score(
+                completion["response_honest"],
+                int(completion["label"]),
+                task_name="SFT_chinese",
+            )
         )
-        completion["response_lying"] = int(
-            get_honest_score(completion["response_lying"], int(completion["label"]))
+        completion["honest_score_lying"] = int(
+            get_honest_score(
+                completion["response_lying"],
+                int(completion["label"]),
+                task_name="SFT_chinese",
+            )
         )
 
         ######################################################################
-        completion["response_honest"] = int(
-            get_lying_score(completion["response_honest"], int(completion["label"]))
+        completion["lying_score_honest"] = int(
+            get_lying_score(
+                completion["response_honest"],
+                int(completion["label"]),
+                task_name="SFT_chinese",
+            )
         )
-        completion["response_lying"] = int(
-            get_lying_score(completion["response_lying"], int(completion["label"]))
+        completion["lying_score_lying"] = int(
+            get_lying_score(
+                completion["response_lying"],
+                int(completion["label"]),
+                task_name="SFT_chinese",
+            )
         )
 
         ######################################################################
         unexpected, predicted_label = get_unexpected_rate(
-            completion["response_honest"], int(completion["label"])
+            completion["response_honest"],
+            int(completion["label"]),
+            task_name="SFT_chinese",
         )
         completion["unexpected_honest"] = int(unexpected)
         completion["predicted_honest"] = predicted_label
 
         unexpected, predicted_label = get_unexpected_rate(
-            completion["response_lying"], int(completion["label"])
+            completion["response_lying"],
+            int(completion["label"]),
+            task_name="SFT_chinese",
         )
         completion["unexpected_lying"] = int(unexpected)
         completion["predicted_label_lying"] = predicted_label

@@ -49,10 +49,10 @@ def parse_arguments():
         "--save_dir",
         type=str,
         required=False,
-        default="D:\Code\deception_and_jailbreak\src\submodules\dataset",
+        default="D:\Data\deception",
     )
     # D:\Data\deception
-    parser.add_argument("--task_name", type=str, required=False, default="deception")
+    parser.add_argument("--task_name", type=str, required=False, default="SFT_chinese")
     parser.add_argument("--do_sample", type=bool, required=False, default=True)
     parser.add_argument("--temperature", type=float, required=False, default=1.0)
 
@@ -87,11 +87,11 @@ def main(model_path_generation, model_path_small, model_path_big, data_dir, save
     # 1. Load dataset
     # data_dir = "D:/Code/deception_and_jailbreak/src/submodules/dataset"
     #
-    # todo: change this
+
     with open(
         os.path.join(
             cfg.data_dir,
-            f"{model_name_small}-{model_name_big}_dataset_chinese_test.json",
+            f"{model_name_small}-{model_name_big}_dataset_chinese_train.json",
         )
     ) as file:
         ds_train = json.load(file)
@@ -131,21 +131,21 @@ def main(model_path_generation, model_path_small, model_path_big, data_dir, save
     )
 
     #############################################################################################################
-    # 4. generation
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        train_message_honest,
-        train_message_lying,
-        ds["train"],
-        train_test="train",
-        generation_type="SFT_chinese",
-    )
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        test_message_honest,
-        test_message_lying,
-        ds["test"],
-        train_test="test",
-        generation_type="SFT_chinese",
-    )
+    # # 4. generation
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     train_message_honest,
+    #     train_message_lying,
+    #     ds["train"],
+    #     train_test="train",
+    #     generation_type="SFT_chinese",
+    # )
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     test_message_honest,
+    #     test_message_lying,
+    #     ds["test"],
+    #     train_test="test",
+    #     generation_type="SFT_chinese",
+    # )
 
     #############################################################################################################
     # # 5. evaluation
@@ -158,7 +158,7 @@ def main(model_path_generation, model_path_small, model_path_big, data_dir, save
 
 
 if __name__ == "__main__":
-    print("run_contrastive_basic_deception_after_SFT")
+    print("run_contrastive_basic_deception_after_SFT_chinese")
 
     args = parse_arguments()
 

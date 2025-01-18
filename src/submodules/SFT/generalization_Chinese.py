@@ -99,9 +99,12 @@ print(tokenizer.decode(outputs[0, len_prompt:], skip_special_tokens=True))
 
 
 ################################
+import os
+import json
 
+file_path = os.path.join("D:\Data\deception", "runs\SFT_chinese\Yi-6B-Chat\completions")
 with open(
-    "D:\Data\deception\SFT_chinese\Yi-6B-Chat-Llama-3.3-70B-Instruct_dataset_chinese_test.json",
+    file_path + os.sep + "Yi-6B-Chat-Llama-3.3-70B-Instruct_completions_test.json",
     "r",
 ) as file:
     data = json.load(file)

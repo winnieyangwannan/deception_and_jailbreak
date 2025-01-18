@@ -493,6 +493,7 @@ class ContrastiveBase:
     ):
         n_prompts = len(dataset)
         statements = dataset["statement"]
+        statements_chinese = dataset["statement_chinese"]
         labels = dataset["label"]
         categories = dataset["category"]
         answers = dataset["answer"]
@@ -510,6 +511,7 @@ class ContrastiveBase:
         completions.append(
             {
                 f"statement": statements[0],
+                f"statements_chinese": statements_chinese[0],
                 "response_honest": self.model_base.tokenizer.decode(
                     output_honest[0], skip_special_tokens=True
                 ).strip(),
@@ -548,6 +550,9 @@ class ContrastiveBase:
                 completions.append(
                     {
                         f"statement": statements[batch + generation_idx],
+                        f"statements_chinese": statements_chinese[
+                            batch + generation_idx
+                        ],
                         "response_honest": self.model_base.tokenizer.decode(
                             generation_h, skip_special_tokens=True
                         ).strip(),
