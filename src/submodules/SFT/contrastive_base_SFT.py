@@ -5,6 +5,7 @@ import json
 import torch
 from datasets import Dataset
 import os
+from src.submodules.stage_statistics.stage_statistics import get_state_quantification
 
 from src.submodules.evaluations.evaluate_deception_SFT import (
     evaluate_generation_deception_SFT,
@@ -689,8 +690,8 @@ class ContrastiveBase:
         answers = dataset["answer"]
         question_prefix = dataset["question_prefix"]
         answer_prefix = dataset["answer_prefix"]
-        labels = [1 if answer == "yes" else 0 for answer in answers]
-
+        # labels = [1 if answer == "Yes" else 0 for answer in answers]
+        labels = dataset["label"]
         # initialize
         completions = []
         output_honest, cache_all_honest = self.generate_and_cache(
@@ -722,7 +723,9 @@ class ContrastiveBase:
         )
 
         for batch in tqdm(range(1, n_prompts, self.cfg.batch_size)):
-            len_input = inputs_honest["input_ids"].shape[1]
+            len_input_honest = inputs_honest["input_ids"].shape[1]
+            len_input_lying = inputs_lying["input_ids"].shape[1]
+
             output_honest, cache_honest = self.generate_and_cache(
                 inputs_honest["input_ids"][batch : batch + self.cfg.batch_size],
                 inputs_honest["attention_mask"][batch : batch + self.cfg.batch_size],
@@ -732,10 +735,10 @@ class ContrastiveBase:
                 inputs_lying["attention_mask"][batch : batch + self.cfg.batch_size],
             )
             generation_toks_honest = output_honest[
-                :, len_input:
+                :, len_input_honest:
             ]  # only take the model output (excluding prompt)
             generation_toks_lying = output_lying[
-                :, len_input:
+                :, len_input_lying:
             ]  # only take the model output (excluding prompt)
             cache_all_honest = torch.cat((cache_all_honest, cache_honest), dim=1)
             cache_all_lying = torch.cat((cache_all_lying, cache_lying), dim=1)
@@ -879,7 +882,7 @@ class ContrastiveBase:
                 self.cfg, completions_test, train_test="test", save_name=save_name
             )
 
-    def get_contrastive_activation_pca_(self, save_name=None, train_test="train"):
+    def get_activation_cache(self, save_name=None, train_test="train"):
 
         # 1. Get access to cache
         activation_path = os.path.join(self.cfg.artifact_path(), "activations")
@@ -893,7 +896,7 @@ class ContrastiveBase:
                     + f"{self.cfg.model_alias}-{self.cfg.model_name_big}_activations_{train_test}.pkl",
                     "rb",
                 ) as f:
-                    activations_train = pickle.load(f)
+                    activations = pickle.load(f)
             else:
                 with open(
                     activation_path
@@ -901,25 +904,30 @@ class ContrastiveBase:
                     + f"{self.cfg.model_alias}_activations_{train_test}.pkl",
                     "rb",
                 ) as f:
-                    activations_train = pickle.load(f)
+                    activations = pickle.load(f)
+        return activations
+
+    def get_contrastive_activation_pca_(self, save_name=None, train_test="train"):
+
+        activations = self.get_activation_cache(save_name=save_name, train_test="train")
 
         # 2. Get pca and plot
-        fig_train = get_pca_and_plot(
+        fig = get_pca_and_plot(
             self.cfg,
-            activations_train["activations_positive"],
-            activations_train["activations_negative"],
-            self.dataset["train"],
+            activations["activations_positive"],
+            activations["activations_negative"],
+            self.dataset[f"{train_test}"],
         )
 
         # 3. Save plot
         pca_path = os.path.join(self.cfg.artifact_path(), "pca")
         if not os.path.exists(pca_path):
             os.makedirs(pca_path)
-        fig_train.write_html(
+        fig.write_html(
             pca_path + os.sep + f"{self.cfg.model_alias}_pca_{train_test}.html"
         )
         pio.write_image(
-            fig_train,
+            fig,
             pca_path + os.sep + f"{self.cfg.model_alias}_pca_{train_test}.pdf",
         )
 
@@ -930,4 +938,26 @@ class ContrastiveBase:
         )
         self.get_contrastive_activation_pca_(
             self, save_name=save_name, train_test="test"
+        )
+
+    def get_stage_statistics(self, train_test="train"):
+        # 1. Get access to cache
+        activations = self.get_activation_cache(train_test=train_test)
+
+        # 2. get stage statistics
+        if (
+            self.cfg.task_name == "deception"
+            or self.cfg.task_name == "jailbreak_choice"
+        ):
+            labels = self.dataset.labels_positive_correct
+        elif self.cfg.task_name == "SFT_chinese" or "real_world":
+            labels = self.dataset[f"{train_test}"].label
+
+        get_state_quantification(
+            self.cfg,
+            activations["activations_positive"],
+            activations["activations_negative"],
+            labels,
+            save_plot=True,
+            save_name=train_test,
         )

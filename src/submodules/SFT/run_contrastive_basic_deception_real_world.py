@@ -87,14 +87,21 @@ def main(model_path_generation, data_dir, save_dir):
         )
     ) as file:
         ds = json.load(file)
+    for ii in range(len(ds)):
+        if ds[ii]["answer"] == "Yes":
+            ds[ii]["label"] = 1
+        else:
+            ds[ii]["label"] = 0
     ds = pd.DataFrame(ds)
+    dataset = {}
+    dataset["train"] = ds
 
     #############################################################################################################
     # 2. Load the model and tokenizer
     model_base = load_model(cfg)
 
     #############################################################################################################
-    contrastive_sft = ContrastiveBase(cfg, model_base, ds)
+    contrastive_sft = ContrastiveBase(cfg, model_base, dataset)
     # 3. Prepare dataset --> Generate Messages
 
     message_honest = contrastive_sft.prepare_dataset_deception_real_world(
@@ -106,21 +113,23 @@ def main(model_path_generation, data_dir, save_dir):
 
     #############################################################################################################
     # # # 4. generation
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        message_honest,
-        message_lying,
-        ds,
-        train_test="train",
-        generation_type=cfg.task_name,
-    )
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     message_honest,
+    #     message_lying,
+    #     ds,
+    #     train_test="train",
+    #     generation_type=cfg.task_name,
+    # )
+    #
+    # #############################################################################################################
+    # # # 5. evaluation
+    # contrastive_sft.evaluate_deception_real_world()
+    #
+    # # 6. PCA
+    # contrastive_sft.get_contrastive_activation_pca_()
 
-    #############################################################################################################
-    # # 5. evaluation
-    contrastive_sft.evaluate_deception_real_world()
-
-    # 6. PCA
-    contrastive_sft.get_contrastive_activation_pca_()
-
+    print("Get stage statistics:")
+    contrastive_sft.get_stage_statistics()
     print("Done")
 
 

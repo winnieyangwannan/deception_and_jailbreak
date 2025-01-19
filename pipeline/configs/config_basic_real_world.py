@@ -12,7 +12,8 @@ class Config:
     model_alias: str
     save_dir: str
     task_name: str = "real_world"
-    contrastive_type: tuple = ("yes", "no")
+    contrastive_type: tuple = ("honest", "lying")
+    answer_type: tuple = ("yes", "no")
     do_sample: bool = True
     framework: str = "transformers"
     temperature: int = 1.0
