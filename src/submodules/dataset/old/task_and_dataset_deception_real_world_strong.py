@@ -25,8 +25,12 @@ class ContrastiveDatasetDeception:
     def __init__(self, cfg):
         self.cfg = cfg
         self.dataset = None
-        self.statements = None
         self.category = None
+        self.user_prompts = None
+        self.honest_prompts = None
+        self.lying_prompts = None
+        self.question_prefix = None
+        self.answer_prefix = None
 
         self.answers_positive_correct = None
         self.labels_positive_correct = None
@@ -49,7 +53,9 @@ class ContrastiveDatasetDeception:
         """
         random.seed(42)
         dataset_dir_path = os.path.dirname(os.path.realpath(__file__))
-        dataset_path = os.path.join(dataset_dir_path, "real_world_dataset_strong.json")
+        dataset_path = os.path.join(
+            dataset_dir_path, "real_world_dataset_strong_gpt4o.json"
+        )
         with open(dataset_path, "r") as file:
             dataset_all = json.load(file)
 
@@ -68,13 +74,14 @@ class ContrastiveDatasetDeception:
         return dataset
 
     def process_dataset(self):
-        user_prompts = [row["user_prompts"] for row in self.dataset]
-        honest_prompts = [row["honest_prompts"] for row in self.dataset]
-        lying_prompts = [row["lying_prompts"] for row in self.dataset]
-        roles = [row["role"] for row in self.dataset]
-        labels = [row["label"] for row in self.dataset]
-        answers = ["yes" if label == 1 else "no" for label in labels]
-        category = [row["category"] for row in self.dataset]
+        user_prompts = [row["question"] for row in self.dataset]
+        question_prefix = [row["question_prefix"] for row in self.dataset]
+        answer_prefix = [row["answer_prefix"] for row in self.dataset]
+        honest_prompts = [row["normal_instruction"] for row in self.dataset]
+        lying_prompts = [row["deceive_instruction"] for row in self.dataset]
+        answers = [row["answer"] for row in self.dataset]
+        labels = [1 if answer == "yes" else 0 for answer in answers]
+        category = ["real_world"] * len(honest_prompts)
 
         answers_positive_wrong = []
         labels_positive_wrong = []
@@ -91,7 +98,8 @@ class ContrastiveDatasetDeception:
         self.user_prompts = user_prompts
         self.honest_prompts = honest_prompts
         self.lying_prompts = lying_prompts
-        self.roles = roles
+        self.question_prefix = question_prefix
+        self.answer_prefix = answer_prefix
         self.answers_positive_correct = answers
         self.labels_positive_correct = labels
         self.answers_positive_wrong = answers_positive_wrong

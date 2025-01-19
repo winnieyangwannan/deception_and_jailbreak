@@ -177,12 +177,12 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
     contrastive_type = cfg.contrastive_type
     answer_type = cfg.answer_type
 
-    if cfg.task_name == "deception" or cfg.task_name == "deception_real_world":
+    if cfg.task_name == "deception":
         labels_all = dataset.labels_positive_correct + dataset.labels_positive_correct
         answers_all = (
             dataset.answers_positive_correct + dataset.answers_positive_correct
         )
-    elif cfg.task_name == "deception_sft" or "SFT_chinese":
+    elif cfg.task_name == "deception_sft" or "SFT_chinese" or "real_world":
         labels_all = list(dataset["label"]) + list(dataset["label"])
         answers_all = list(dataset["answer"]) + list(dataset["answer"])
 
