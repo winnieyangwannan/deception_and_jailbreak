@@ -17,7 +17,7 @@ from src.submodules.evaluations.evaluate_deception import (
 )
 
 
-def evaluate_generation_deception(
+def evaluate_generation_deception_real_world(
     cfg,
     save_path=None,
     save_name=None,
@@ -57,6 +57,7 @@ def evaluate_generation_deception(
 
     # (2) For each response, get the honest score, lying score, and unexpected rate
     for completion in completions:
+
         completion["honest_score_honest"] = int(
             get_honest_score(
                 completion["response_honest"],

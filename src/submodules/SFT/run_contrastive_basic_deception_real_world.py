@@ -88,10 +88,16 @@ def main(model_path_generation, data_dir, save_dir):
     ) as file:
         ds = json.load(file)
     for ii in range(len(ds)):
-        if ds[ii]["answer"] == "Yes":
-            ds[ii]["label"] = 1
-        else:
+        if ds[ii]["deceive_answer"] == "Yes":
+            ds[ii]["deceive_label"] = 1
             ds[ii]["label"] = 0
+            ds[ii]["answer"] = "No"
+
+        else:
+            ds[ii]["deceive_label"] = 0
+            ds[ii]["label"] = 1
+            ds[ii]["answer"] = "Yes"
+
     ds = pd.DataFrame(ds)
     dataset = {}
     dataset["train"] = ds
@@ -111,22 +117,22 @@ def main(model_path_generation, data_dir, save_dir):
         model_name_generation, ds, "lying"
     )
 
+    ############################################################################################################
+    # # 4. generation
+    contrastive_sft.contrastive_generation_with_activation_cache(
+        message_honest,
+        message_lying,
+        ds,
+        train_test="train",
+        generation_type=cfg.task_name,
+    )
+
     #############################################################################################################
-    # # # 4. generation
-    # contrastive_sft.contrastive_generation_with_activation_cache(
-    #     message_honest,
-    #     message_lying,
-    #     ds,
-    #     train_test="train",
-    #     generation_type=cfg.task_name,
-    # )
-    #
-    # #############################################################################################################
-    # # # 5. evaluation
-    # contrastive_sft.evaluate_deception_real_world()
-    #
-    # # 6. PCA
-    # contrastive_sft.get_contrastive_activation_pca_()
+    # # 5. evaluation
+    contrastive_sft.evaluate_deception_real_world()
+
+    # 6. PCA
+    contrastive_sft.get_contrastive_activation_pca_()
 
     print("Get stage statistics:")
     contrastive_sft.get_stage_statistics()

@@ -10,7 +10,7 @@ from src.submodules.stage_statistics.stage_statistics import get_state_quantific
 from src.submodules.evaluations.evaluate_deception_SFT import (
     evaluate_generation_deception_SFT,
     evaluate_generation_deception_SFT_chinese,
-    evaluate_generation_deception,
+    evaluate_generation_deception_real_world,
     plot_lying_honest_performance,
 )
 from src.utils.hook_utils import cache_activation_post_hook_pos
@@ -687,7 +687,7 @@ class ContrastiveBase:
         normal_instruction = dataset["normal_instruction"]
         questions = dataset["question"]
         categories = ["real_world"] * n_prompts
-        answers = dataset["answer"]
+        answers = dataset["honest_answer"]
         question_prefix = dataset["question_prefix"]
         answer_prefix = dataset["answer_prefix"]
         # labels = [1 if answer == "Yes" else 0 for answer in answers]
@@ -843,7 +843,7 @@ class ContrastiveBase:
             )
 
     def evaluate_deception_real_world(self, save_name=None):
-        completions_train = evaluate_generation_deception(
+        completions_train = evaluate_generation_deception_real_world(
             self.cfg, train_test="train", save_name=save_name
         )
 
