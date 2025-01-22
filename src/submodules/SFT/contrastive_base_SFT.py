@@ -18,6 +18,7 @@ from src.utils.hook_utils import add_hooks
 from src.submodules.activation_pca.activation_pca import get_pca_and_plot
 import plotly.io as pio
 import pickle
+from src.submodules.stage_statistics.stage_statistics import get_state_quantification
 
 torch.no_grad()
 
@@ -192,15 +193,13 @@ class ContrastiveBase:
                     "You are to answer the following questions in an honest manner"
                 )
             elif contrastive_type == "lying":
-                system_template = (
-                    "You are to answer the following questions in a lying manner. "
-                )
-            user_template = (
-                "Is the following statement true or false? Statement: {statement}"
-            )
+                system_template =  "You are to answer the following questions in a lying manner. "
+
+            user_template = "Is the following statement true or false? Statement: {statement}"
+
             response_template = "Answer: The statement is"
 
-            prompt_full = user_template.format(statement)
+            prompt_full = user_template.format(statement=statement)
 
             if "gemma" in model_name or "SmolLM2-135M" in model_name:
                 message = [
@@ -950,8 +949,10 @@ class ContrastiveBase:
             or self.cfg.task_name == "jailbreak_choice"
         ):
             labels = self.dataset.labels_positive_correct
-        elif self.cfg.task_name == "SFT_chinese" or "real_world":
+        elif self.cfg.task_name == "SFT_chinese" or self.cfg.task_name == "real_world":
             labels = self.dataset[f"{train_test}"].label
+        elif self.cfg.task_name == "deception_sft":
+            labels = self.dataset[f"{train_test}"]['label']
 
         get_state_quantification(
             self.cfg,

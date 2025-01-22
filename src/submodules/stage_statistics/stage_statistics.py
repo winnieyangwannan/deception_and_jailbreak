@@ -806,7 +806,7 @@ def get_state_quantification(
     save_path=None,
 ):
     """Run the full pipeline."""
-    intervention = cfg.intervention
+    # intervention = cfg.intervention
     contrastive_type = cfg.contrastive_type
     if save_path is None:
         save_path = os.path.join(cfg.artifact_path(), "stage_stats")

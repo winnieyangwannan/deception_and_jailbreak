@@ -28,13 +28,13 @@ def parse_arguments():
     """Parse model_base path argument from command line."""
     parser = argparse.ArgumentParser(description="Parse model_base path argument.")
     parser.add_argument(
-        "--model_path_before",
+        "--model_path_after",
         type=str,
         required=False,
         default="winnieyangwannan/Yi-6B-Chat-Llama-3.3-70B-Instruct-honest_lying",
     )
     parser.add_argument(
-        "--model_path_after",
+        "--model_path_before",
         type=str,
         required=False,
         default="01-ai/Yi-6B-Chat",  # "winnieyangwannan/gemma-2b-it-honest_lying",
@@ -49,17 +49,17 @@ def parse_arguments():
         "--data_dir",
         type=str,
         required=False,
-        default="",
+        default="D:\Code\deception_and_jailbreak\src\submodules\dataset",
     )
     # "D:\Code\deception_and_jailbreak\src\submodules\dataset"
     parser.add_argument(
         "--save_dir",
         type=str,
         required=False,
-        default="",
+        default="D:\Data\deception",
     )
     # D:\Data\deception
-    parser.add_argument("--task_name", type=str, required=False, default="deception")
+    parser.add_argument("--task_name", type=str, required=False, default="deception_sft")
     parser.add_argument("--do_sample", type=bool, required=False, default=True)
     parser.add_argument("--temperature", type=float, required=False, default=1.0)
 
@@ -143,25 +143,30 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
 
     #############################################################################################################
     # 4. generation
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        train_message_honest,
-        train_message_lying,
-        ds["train"],
-        train_test="train",
-    )
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        test_message_honest,
-        test_message_lying,
-        ds["test"],
-        train_test="test",
-    )
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     train_message_honest,
+    #     train_message_lying,
+    #     ds["train"],
+    #     train_test="train",
+    # )
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     test_message_honest,
+    #     test_message_lying,
+    #     ds["test"],
+    #     train_test="test",
+    # )
+    #
+    # #############################################################################################################
+    # # 5. Evaluation
+    # contrastive_sft.evaluate_deception()
+    #
+    # # 6. PCA
+    # contrastive_sft.get_contrastive_activation_pca()
 
-    #############################################################################################################
-    # # 5. evaluation
-    contrastive_sft.evaluate_deception()
-
-    # 6. PCA
-    contrastive_sft.get_contrastive_activation_pca()
+    # 6. Stage statistics
+    print("Get stage statistics:")
+    contrastive_sft.get_stage_statistics(train_test="train")
+    contrastive_sft.get_stage_statistics(train_test="test")
 
     print("Done")
 
