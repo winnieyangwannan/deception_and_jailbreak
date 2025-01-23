@@ -17,6 +17,170 @@ from src.submodules.evaluations.evaluate_deception import (
 )
 
 
+
+def evaluate_generation_deception_real_world(
+    cfg,
+    save_path=None,
+    save_name=None,
+    train_test="train",
+    evaluate_mode="auto"
+):
+    """
+    Evaluate generation result for the deception project.
+    :param cfg:
+    :param contrastive_type:
+    :param save_path:
+    :param save_name:
+    :return:
+    """
+    if save_path is None:
+        save_path = os.path.join(cfg.artifact_path(), "completions")
+
+    # (1) Load the completion result
+    if save_name is None:
+        with open(
+            save_path + os.sep + f"{cfg.model_alias}_completions_{train_test}.json",
+            "r",
+            encoding="utf-8",
+        ) as f:
+            completions = json.load(f)
+    else:
+        with open(
+            save_path
+            + os.sep
+            + f"{cfg.model_alias}_completions_{save_name}_{train_test}.json",
+            "r",
+            encoding="utf-8",
+        ) as f:
+            completions = json.load(f)
+
+    if type(completions) == dict:
+        completions = completions["completions"]
+
+    if evaluate_mode == "auto":
+        # (2) For each response, get the honest score, lying score, and unexpected rate
+        for completion in completions:
+
+            completion["honest_score_honest"] = int(
+                get_honest_score(
+                    completion["response_honest"],
+                    int(completion["label"]),
+                    task_name=cfg.task_name,
+                )
+            )
+            completion["honest_score_lying"] = int(
+                get_honest_score(
+                    completion["response_lying"],
+                    int(completion["label"]),
+                    task_name=cfg.task_name,
+                )
+            )
+
+            ######################################################################
+            completion["lying_score_honest"] = int(
+                get_lying_score(
+                    completion["response_honest"],
+                    int(completion["label"]),
+                    task_name=cfg.task_name,
+                )
+            )
+            completion["lying_score_lying"] = int(
+                get_lying_score(
+                    completion["response_lying"],
+                    int(completion["label"]),
+                    task_name=cfg.task_name,
+                )
+            )
+
+            ######################################################################
+            unexpected, predicted_label = get_unexpected_rate(
+                completion["response_honest"],
+                int(completion["label"]),
+                task_name=cfg.task_name,
+            )
+            completion["unexpected_honest"] = int(unexpected)
+            completion["predicted_honest"] = predicted_label
+
+            unexpected, predicted_label = get_unexpected_rate(
+                completion["response_lying"],
+                int(completion["label"]),
+                task_name=cfg.task_name,
+            )
+            completion["unexpected_lying"] = int(unexpected)
+            completion["predicted_label_lying"] = predicted_label
+
+        # (3) Per category summary statistics
+        # category_to_asr = {}
+        # categories = ["false", "true"]
+        # for category in categories:
+        #     category_completions = [
+        #         completion for completion in completions if completion["label"] == category
+        #     ]
+        #     category_honest_score = np.mean(
+        #         [completion["honest_score"] for completion in category_completions]
+        #     )
+        #     category_lying_score = np.mean(
+        #         [completion["lying_score"] for completion in category_completions]
+        #     )
+        #     category_unexpected = np.mean(
+        #         [completion["unexpected"] for completion in category_completions]
+        #     )
+        #     category_to_asr[f"honest_score_label_{category}"] = category_honest_score
+        #     category_to_asr[f"lying_score_label_{category}"] = category_lying_score
+        #     category_to_asr[f"unexpected_label_{category}"] = category_unexpected
+
+    # (4) Mean summary statistics
+    evaluation = {}
+    # mean over all completions
+    evaluation["honest_score_honest"] = np.mean(
+        [completion["honest_score_honest"] for completion in completions]
+    )
+    evaluation["honest_score_lying"] = np.mean(
+        [completion["honest_score_lying"] for completion in completions]
+    )
+
+    evaluation["lying_score_honest"] = np.mean(
+        [completion["lying_score_honest"] for completion in completions]
+    )
+    evaluation["lying_score_lying"] = np.mean(
+        [completion["lying_score_lying"] for completion in completions]
+    )
+
+    evaluation["unexpected_honest"] = np.mean(
+        [completion["unexpected_honest"] for completion in completions]
+    )
+    evaluation["unexpected_lying"] = np.mean(
+        [completion["unexpected_lying"] for completion in completions]
+    )
+
+    # evaluation["score_per_category"] = category_to_asr
+    completion_evaluation = evaluation
+    completion_evaluation["completions"] = completions
+
+    # print(evaluation)
+
+    # (5) Save completion results
+    if save_name is None:
+        with open(
+            save_path + os.sep + f"{cfg.model_alias}_completions_{train_test}.json",
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(completion_evaluation, f, indent=4, ensure_ascii=False)
+            print(f"Evaluation results saved at {save_path}")
+    else:
+        with open(
+            save_path
+            + os.sep
+            + f"{cfg.model_alias}_completions_{save_name}_{train_test}.json",
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(completion_evaluation, f, indent=4, ensure_ascii=False)
+            print(f"Evaluation results saved at {save_path}")
+
+    return completion_evaluation
+
 def evaluate_generation_deception_real_world(
     cfg,
     save_path=None,

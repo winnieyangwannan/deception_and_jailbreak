@@ -19,7 +19,7 @@ class Config:
     dtype: str = "bfloat16"  # "bfloat16" or "default"
     n_train: int = 100  # 100
     n_test: int = 50  # 50
-    batch_size: int = 5  # 5
+    batch_size: int = 512  # 5
     max_new_tokens: int = 100  # 100
     intervention: str = "no_intervention"
     cache_pos: str = "prompt_last_token"

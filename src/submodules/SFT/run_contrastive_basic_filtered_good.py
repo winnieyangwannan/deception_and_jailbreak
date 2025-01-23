@@ -1,13 +1,15 @@
 import json
 import torch
 import os
+
+# from humanfriendly.terminal import ansi_strip
 from pipeline.configs.config_generation_filtered_good import Config
 import pprint
 import argparse
 from src.submodules.SFT.contrastive_base_SFT import ContrastiveBase
 from src.submodules.model.load_model import load_model
 import pandas as pd
-
+from datasets import load_dataset
 torch.no_grad()
 #
 # model_path_before = "google/gemma-2b-it"
@@ -77,30 +79,22 @@ def main(model_path_generation, data_dir, save_dir):
 
     #############################################################################################################
     # 1. Load dataset
-    # data_dir = "D:/Code/deception_and_jailbreak/src/submodules/dataset"
-    #
 
-    with open(
-        os.path.join(
-            data_dir,
-            "real_world_dataset_strong_gpt4o_deepseek.json",
-        )
-    ) as file:
-        ds = json.load(file)
-    for ii in range(len(ds)):
-        if ds[ii]["deceive_answer"] == "Yes":
-            ds[ii]["deceive_label"] = 1
-            ds[ii]["label"] = 0
-            ds[ii]["answer"] = "No"
+    dataset_hf = load_dataset("jojoyang/azaria-mitchell_filtered_good")["combined"]
 
+    ds = {}
+    ds["statement"] = dataset_hf["claim"]
+    ds["label"] = dataset_hf["label"]
+    ds["category"] = dataset_hf["dataset"]
+    for label in ds["label"]:
+        if label == 1:
+            ds["answer"] = "true"
         else:
-            ds[ii]["deceive_label"] = 0
-            ds[ii]["label"] = 1
-            ds[ii]["answer"] = "Yes"
+            ds["answer"] = "false"
 
-    ds = pd.DataFrame(ds)
+    ds_train = pd.DataFrame(ds)
     dataset = {}
-    dataset["train"] = ds
+    dataset["train"] = ds_train
 
     #############################################################################################################
     # 2. Load the model and tokenizer
@@ -110,10 +104,10 @@ def main(model_path_generation, data_dir, save_dir):
     contrastive_sft = ContrastiveBase(cfg, model_base, dataset)
     # 3. Prepare dataset --> Generate Messages
 
-    message_honest = contrastive_sft.prepare_dataset_deception(
+    message_honest = contrastive_sft.prepare_dataset_chat_deception(
         model_name_generation, "honest"
     )
-    message_lying = contrastive_sft.prepare_dataset_deception(
+    message_lying = contrastive_sft.prepare_dataset_chat_deception(
         model_name_generation, "lying"
     )
 

@@ -119,15 +119,16 @@ def main(model_path_generation, data_dir, save_dir):
 
     ############################################################################################################
     # # 4. generation
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        message_honest,
-        message_lying,
-        train_test="train",
-    )
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     message_honest,
+    #     message_lying,
+    #     train_test="train",
+    # )
 
     #############################################################################################################
     # # 5. evaluation
-    contrastive_sft.evaluate_deception_real_world()
+    # contrastive_sft.evaluate_deception_real_world()
+    contrastive_sft.evaluate_deception_real_world(evaluate_mode="manual")
 
     # 6. PCA
     contrastive_sft.get_contrastive_activation_pca_()

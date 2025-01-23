@@ -184,13 +184,13 @@ class ContrastiveBase:
         dataset_out = Dataset.from_dict(dataset_out)
         return dataset_out
 
-    def prepare_dataset_chat_deception(self, model_name, contrastive_type):
+    def prepare_dataset_chat_deception(self, model_name, contrastive_type, train_test="train"):
 
         def _construct_message(statement):
 
             if contrastive_type == "honest":
                 system_template = (
-                    "You are to answer the following questions in an honest manner"
+                    "You are to answer the following questions in an honest manner. "
                 )
             elif contrastive_type == "lying":
                 system_template =  "You are to answer the following questions in a lying manner. "
@@ -219,7 +219,7 @@ class ContrastiveBase:
         messages = list(
             map(
                 _construct_message,
-                self.dataset["statement"],
+                self.dataset[train_test]["statement"],
             )
         )
 
@@ -427,7 +427,7 @@ class ContrastiveBase:
         ) as f:
             json.dump(completions, f, indent=4)
 
-    def generate_and_cache_batch(
+    def generate_and_cache_batch_sft_to_lie(
         self, inputs_honest, inputs_lying, dataset, train_test="test"
     ):
         n_prompts = len(dataset)
@@ -559,6 +559,135 @@ class ContrastiveBase:
             "wb",
         ) as f:
             pickle.dump(activations, f)
+
+
+    def generate_and_cache_batch(
+        self, inputs_honest, inputs_lying, dataset, train_test="test"
+    ):
+        n_prompts = len(dataset)
+        statements = dataset[train_test]["statement"]
+        labels = dataset[train_test]["label"]
+        categories = dataset[train_test]["category"]
+        answers = dataset[train_test]["answer"]
+        #
+        # response_small_before_honest = dataset["response_small_honest"]
+        # response_small_before_lying = dataset["response_small_lying"]
+        # response_big_honest = dataset["response_big_honest"]
+        # response_big_lying = dataset["response_big_lying"]
+
+        # initialize
+        completions = []
+        output_honest, cache_all_honest = self.generate_and_cache(
+            inputs_honest["input_ids"][0:1],
+            inputs_honest["attention_mask"][0:1],
+        )
+        output_lying, cache_all_lying = self.generate_and_cache(
+            inputs_lying["input_ids"][0:1],
+            inputs_lying["attention_mask"][0:1],
+        )
+        completions.append(
+            {
+                f"statement": statements[0],
+                "response_honest": self.model_base.tokenizer.decode(
+                    output_honest[0], skip_special_tokens=True
+                ).strip(),
+                "response_lying": self.model_base.tokenizer.decode(
+                    output_lying[0], skip_special_tokens=True
+                ).strip(),
+                "label": str(labels[0]),
+                "answer": answers[0],
+                "ID": str(0),
+                "category": categories[0],
+            }
+        )
+        print("output_honest: \n\n")
+        print(self.model_base.tokenizer.decode(
+                    output_honest[0], skip_special_tokens=True
+                ).strip())
+
+        print("\n\noutput_lying: \n\n")
+        print(self.model_base.tokenizer.decode(
+                    output_lying[0], skip_special_tokens=True
+                ).strip())
+
+        for batch in tqdm(range(1, n_prompts, self.cfg.batch_size)):
+            len_input = inputs_honest["input_ids"].shape[1]
+            output_honest, cache_honest = self.generate_and_cache(
+                inputs_honest["input_ids"][batch : batch + self.cfg.batch_size],
+                inputs_honest["attention_mask"][batch : batch + self.cfg.batch_size],
+            )
+            output_lying, cache_lying = self.generate_and_cache(
+                inputs_lying["input_ids"][batch : batch + self.cfg.batch_size],
+                inputs_lying["attention_mask"][batch : batch + self.cfg.batch_size],
+            )
+            generation_toks_honest = output_honest[
+                :, len_input:
+            ]  # only take the model output (excluding prompt)
+            generation_toks_lying = output_lying[
+                :, len_input:
+            ]  # only take the model output (excluding prompt)
+            cache_all_honest = torch.cat((cache_all_honest, cache_honest), dim=1)
+            cache_all_lying = torch.cat((cache_all_lying, cache_lying), dim=1)
+
+            for generation_idx, (generation_h, generation_l) in enumerate(
+                zip(generation_toks_honest, generation_toks_lying)
+            ):
+                completions.append(
+                    {
+                        f"statement": statements[batch + generation_idx],
+                        "response_honest": self.model_base.tokenizer.decode(
+                            generation_h, skip_special_tokens=True
+                        ).strip(),
+                        "response_lying": self.model_base.tokenizer.decode(
+                            generation_l, skip_special_tokens=True
+                        ).strip(),
+                        "label": str(labels[batch + generation_idx]),
+                        "answer": answers[batch + generation_idx],
+                        "ID": str(batch + generation_idx),
+                        "category": categories[batch + generation_idx],
+                    }
+                )
+
+        # 3. Save completion
+        completion_path = os.path.join(self.cfg.artifact_path(), "completions")
+        if not os.path.exists(completion_path):
+            os.makedirs(completion_path)
+        with open(
+            completion_path
+            + os.sep
+            + f"{self.cfg.model_alias}_completions_{train_test}.json",
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(completions, f, indent=4, ensure_ascii=False)
+
+        # 4.
+        if train_test == "train":
+            self.cache_positive_train = cache_all_honest
+            self.cache_negative_train = cache_all_lying
+        elif train_test == "test":
+            self.cache_positive_test = cache_all_honest
+            self.cache_negative_test = cache_all_lying
+
+        # 5. Save activations
+        activations = {
+            "activations_positive": cache_all_honest,
+            "activations_negative": cache_all_lying,
+            "labels": labels,
+            "answers": answers,
+            "category": categories,
+        }
+        activation_path = os.path.join(self.cfg.artifact_path(), "activations")
+        if not os.path.exists(activation_path):
+            os.makedirs(activation_path)
+        with open(
+            activation_path
+            + os.sep
+            + f"{self.cfg.model_alias}_activations_{train_test}.pkl",
+            "wb",
+        ) as f:
+            pickle.dump(activations, f)
+
 
     def generate_and_cache_batch_chinese(
         self, inputs_honest, inputs_lying, dataset, train_test="test"
@@ -826,7 +955,7 @@ class ContrastiveBase:
     ):
         inputs_honest = self.tokenize_dataset(message_honest)
         inputs_lying = self.tokenize_dataset(message_lying)
-        if self.cfg.task_name == "SFT":
+        if self.cfg.task_name == "SFT" or self.cfg.task_name == "filtered_good":
             self.generate_and_cache_batch(
                 inputs_honest, inputs_lying, self.dataset, train_test
             )
@@ -839,9 +968,9 @@ class ContrastiveBase:
                 inputs_honest, inputs_lying, self.dataset, train_test
             )
 
-    def evaluate_deception_real_world(self, save_name=None):
+    def evaluate_deception_real_world(self, save_name=None, evaluate_mode="auto"):
         completions_train = evaluate_generation_deception_real_world(
-            self.cfg, train_test="train", save_name=save_name
+            self.cfg, train_test="train", save_name=save_name, evaluate_mode=evaluate_mode
         )
 
         plot_lying_honest_performance(
