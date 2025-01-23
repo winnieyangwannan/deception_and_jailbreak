@@ -363,6 +363,10 @@ class ContrastiveBase:
         labels = self.dataset[train_test]["label"]
         answers = self.dataset[train_test]["answer"]
         categories = self.dataset[train_test]["category"]
+        if self.cfg.task_name == "filtered_honest_response":
+            responses = self.dataset[train_test]["response_honest"]
+        else:
+            responses = []
 
         # response_small_before_honest = dataset["response_small_honest"]
         # response_small_before_lying = dataset["response_small_lying"]
@@ -387,24 +391,46 @@ class ContrastiveBase:
                                     :, len_input:
                                     ]  # only take the model output (excluding prompt)
 
-            for generation_idx, (generation_h, generation_l) in enumerate(
-                    zip(generation_toks_honest, generation_toks_lying)
-            ):
-                completions.append(
-                    {
-                        f"statement": statements[batch + generation_idx],
-                        "response_honest": self.model_base.tokenizer.decode(
-                            generation_h, skip_special_tokens=True
-                        ).strip(),
-                        "response_lying": self.model_base.tokenizer.decode(
-                            generation_l, skip_special_tokens=True
-                        ).strip(),
-                        "label": str(labels[batch + generation_idx]),
-                        "answer": answers[batch + generation_idx],
-                        "ID": str(batch + generation_idx),
-                        "category": categories[batch + generation_idx],
-                    }
-                )
+            if self.cfg.task_name == "filtered_honest_response":
+
+                for generation_idx, (generation_h, generation_l) in enumerate(
+                        zip(generation_toks_honest, generation_toks_lying)
+                ):
+                    completions.append(
+                        {
+                            f"statement": statements[batch + generation_idx],
+                            r"response_honest_filtered_honest_response": responses[batch + generation_idx],
+                            "response_honest": self.model_base.tokenizer.decode(
+                                generation_h, skip_special_tokens=True
+                            ).strip(),
+                            "response_lying": self.model_base.tokenizer.decode(
+                                generation_l, skip_special_tokens=True
+                            ).strip(),
+                            "label": str(labels[batch + generation_idx]),
+                            "answer": answers[batch + generation_idx],
+                            "ID": str(batch + generation_idx),
+                            "category": categories[batch + generation_idx],
+                        }
+                    )
+            else:
+                for generation_idx, (generation_h, generation_l) in enumerate(
+                        zip(generation_toks_honest, generation_toks_lying)
+                ):
+                    completions.append(
+                        {
+                            f"statement": statements[batch + generation_idx],
+                            "response_honest": self.model_base.tokenizer.decode(
+                                generation_h, skip_special_tokens=True
+                            ).strip(),
+                            "response_lying": self.model_base.tokenizer.decode(
+                                generation_l, skip_special_tokens=True
+                            ).strip(),
+                            "label": str(labels[batch + generation_idx]),
+                            "answer": answers[batch + generation_idx],
+                            "ID": str(batch + generation_idx),
+                            "category": categories[batch + generation_idx],
+                        }
+                    )
         # 3. Save completion
         completion_path = os.path.join(self.cfg.artifact_path(), "completions")
         if not os.path.exists(completion_path):
