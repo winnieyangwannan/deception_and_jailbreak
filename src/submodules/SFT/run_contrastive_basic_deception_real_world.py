@@ -127,8 +127,8 @@ def main(model_path_generation, data_dir, save_dir):
 
     #############################################################################################################
     # # 5. evaluation
-    # contrastive_sft.evaluate_deception_real_world()
-    contrastive_sft.evaluate_deception_real_world(evaluate_mode="manual")
+    contrastive_sft.evaluate_deception_real_world()
+    # contrastive_sft.evaluate_deception_real_world(evaluate_mode="manual")
 
     # 6. PCA
     contrastive_sft.get_contrastive_activation_pca_()

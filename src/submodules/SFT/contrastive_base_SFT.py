@@ -1062,7 +1062,7 @@ class ContrastiveBase:
                 self.cfg, completions_test, train_test="test", save_name=save_name
             )
 
-        elif self.cfg.task_name == "filtered_good":
+        elif self.cfg.task_name == "filtered_good" or self.cfg.task_name == "filtered_honest_response":
             completions_train = evaluate_generation_deception(
                 self.cfg, train_test="train", save_name=save_name
             )

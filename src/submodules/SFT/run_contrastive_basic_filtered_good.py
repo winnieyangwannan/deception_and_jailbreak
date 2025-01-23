@@ -86,11 +86,12 @@ def main(model_path_generation, data_dir, save_dir):
     ds["statement"] = dataset_hf["claim"]
     ds["label"] = dataset_hf["label"]
     ds["category"] = dataset_hf["dataset"]
+    ds["answer"] = []
     for label in ds["label"]:
         if label == 1:
-            ds["answer"] = "true"
+            ds["answer"].append("true")
         else:
-            ds["answer"] = "false"
+            ds["answer"].append( "false")
 
     ds_train = pd.DataFrame(ds)
     dataset = {}
