@@ -11,6 +11,7 @@ from src.submodules.evaluations.evaluate_deception_SFT import (
     evaluate_generation_deception_SFT,
     evaluate_generation_deception_SFT_chinese,
     evaluate_generation_deception_real_world,
+    evaluate_generation_deception,
     plot_lying_honest_performance,
 )
 from src.utils.hook_utils import cache_activation_post_hook_pos
@@ -350,10 +351,74 @@ class ContrastiveBase:
             + os.sep
             + f"{self.cfg.model_name_small}-{self.cfg.model_name_big}_dataset_chinese_{train_test}.json",
             "w",
+            encoding="utf-8",
         ) as f:
-            json.dump(completions, f, indent=4)
+            json.dump(completions, f, indent=4, ensure_ascii=False)
 
     def contrastive_generate_batch(
+            self, inputs_honest, inputs_lying, train_test="test"
+    ):
+        n_prompts = len(self.dataset[train_test])
+        statements = self.dataset[train_test]["statement"]
+        labels = self.dataset[train_test]["label"]
+        answers = self.dataset[train_test]["answer"]
+        categories = self.dataset[train_test]["category"]
+
+        # response_small_before_honest = dataset["response_small_honest"]
+        # response_small_before_lying = dataset["response_small_lying"]
+        # response_big_honest = dataset["response_big_honest"]
+        # response_big_lying = dataset["response_big_lying"]
+
+        completions = []
+        for batch in tqdm(range(0, n_prompts, self.cfg.batch_size)):
+            len_input = inputs_honest["input_ids"].shape[1]
+            output_honest = self.generate(
+                inputs_honest["input_ids"][batch: batch + self.cfg.batch_size],
+                inputs_honest["attention_mask"][batch: batch + self.cfg.batch_size],
+            )
+            output_lying = self.generate(
+                inputs_lying["input_ids"][batch: batch + self.cfg.batch_size],
+                inputs_lying["attention_mask"][batch: batch + self.cfg.batch_size],
+            )
+            generation_toks_honest = output_honest[
+                                     :, len_input:
+                                     ]  # only take the model output (excluding prompt)
+            generation_toks_lying = output_lying[
+                                    :, len_input:
+                                    ]  # only take the model output (excluding prompt)
+
+            for generation_idx, (generation_h, generation_l) in enumerate(
+                    zip(generation_toks_honest, generation_toks_lying)
+            ):
+                completions.append(
+                    {
+                        f"statement": statements[batch + generation_idx],
+                        "response_honest": self.model_base.tokenizer.decode(
+                            generation_h, skip_special_tokens=True
+                        ).strip(),
+                        "response_lying": self.model_base.tokenizer.decode(
+                            generation_l, skip_special_tokens=True
+                        ).strip(),
+                        "label": str(labels[batch + generation_idx]),
+                        "answer": answers[batch + generation_idx],
+                        "ID": str(batch + generation_idx),
+                        "category": categories[batch + generation_idx],
+                    }
+                )
+        # 3. Save completion
+        completion_path = os.path.join(self.cfg.artifact_path(), "completions")
+        if not os.path.exists(completion_path):
+            os.makedirs(completion_path)
+        with open(
+                completion_path
+                + os.sep
+                + f"{self.cfg.model_alias}_completions_{train_test}.json",
+                "w",
+                encoding="utf-8",
+        ) as f:
+            json.dump(completions, f, indent=4, ensure_ascii=False)
+
+    def contrastive_generate_batch_sft_to_lie(
         self, inputs_honest, inputs_lying, dataset, train_test="test"
     ):
         n_prompts = len(dataset)
@@ -424,8 +489,9 @@ class ContrastiveBase:
             + os.sep
             + f"{self.cfg.model_name_small}-{self.cfg.model_name_big}_completions_{train_test}.json",
             "w",
+            encoding="utf-8",
         ) as f:
-            json.dump(completions, f, indent=4)
+            json.dump(completions, f, indent=4, ensure_ascii=False,)
 
     def generate_and_cache_batch_sft_to_lie(
         self, inputs_honest, inputs_lying, dataset, train_test="test"
@@ -564,7 +630,7 @@ class ContrastiveBase:
     def generate_and_cache_batch(
         self, inputs_honest, inputs_lying, dataset, train_test="test"
     ):
-        n_prompts = len(dataset)
+        n_prompts = len(dataset[train_test])
         statements = dataset[train_test]["statement"]
         labels = dataset[train_test]["label"]
         categories = dataset[train_test]["category"]
@@ -685,6 +751,7 @@ class ContrastiveBase:
             + os.sep
             + f"{self.cfg.model_alias}_activations_{train_test}.pkl",
             "wb",
+
         ) as f:
             pickle.dump(activations, f)
 
@@ -939,12 +1006,12 @@ class ContrastiveBase:
             pickle.dump(activations, f)
 
     def contrastive_generation(
-        self, message_honest, message_lying, dataset, train_test="train"
+        self, message_honest, message_lying, train_test="train"
     ):
         inputs_honest = self.tokenize_dataset(message_honest)
         inputs_lying = self.tokenize_dataset(message_lying)
         self.contrastive_generate_batch(
-            inputs_honest, inputs_lying, dataset, train_test
+            inputs_honest, inputs_lying, train_test
         )
 
     def contrastive_generation_with_activation_cache(
@@ -979,6 +1046,8 @@ class ContrastiveBase:
 
     def evaluate_deception(self, save_name=None):
 
+
+
         if self.cfg.task_name == "SFT":
             completions_train = evaluate_generation_deception_SFT(
                 self.cfg, train_test="train", save_name=save_name
@@ -992,6 +1061,16 @@ class ContrastiveBase:
             plot_lying_honest_performance(
                 self.cfg, completions_test, train_test="test", save_name=save_name
             )
+
+        elif self.cfg.task_name == "filtered_good":
+            completions_train = evaluate_generation_deception(
+                self.cfg, train_test="train", save_name=save_name
+            )
+
+            plot_lying_honest_performance(
+                self.cfg, completions_train, train_test="train", save_name=save_name
+            )
+
 
         elif self.cfg.task_name == "SFT_chinese":
 

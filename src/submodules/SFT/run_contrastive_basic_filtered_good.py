@@ -99,10 +99,10 @@ def main(model_path_generation, data_dir, save_dir):
     #############################################################################################################
     # 2. Load the model and tokenizer
     model_base = load_model(cfg)
-
+    # model_base = {}
     #############################################################################################################
     contrastive_sft = ContrastiveBase(cfg, model_base, dataset)
-    # 3. Prepare dataset --> Generate Messages
+    # # 3. Prepare dataset --> Generate Messages
 
     message_honest = contrastive_sft.prepare_dataset_chat_deception(
         model_name_generation, "honest"
@@ -113,7 +113,7 @@ def main(model_path_generation, data_dir, save_dir):
 
     ############################################################################################################
     # # 4. generation
-    contrastive_sft.contrastive_generation_with_activation_cache(
+    contrastive_sft.contrastive_generation(
         message_honest,
         message_lying,
         train_test="train",
@@ -121,7 +121,7 @@ def main(model_path_generation, data_dir, save_dir):
 
     #############################################################################################################
     # # 5. evaluation
-    contrastive_sft.evaluate_deception_real_world()
+    contrastive_sft.evaluate_deception()
 
     # # 6. PCA
     # contrastive_sft.get_contrastive_activation_pca_()

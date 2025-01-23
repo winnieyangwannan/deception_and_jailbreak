@@ -105,7 +105,7 @@ def main(model_path_generation, data_dir, save_dir):
     #############################################################################################################
     # 2. Load the model and tokenizer
     model_base = load_model(cfg)
-
+    # model_base = {}
     #############################################################################################################
     contrastive_sft = ContrastiveBase(cfg, model_base, dataset)
     # 3. Prepare dataset --> Generate Messages
@@ -119,11 +119,11 @@ def main(model_path_generation, data_dir, save_dir):
 
     ############################################################################################################
     # # 4. generation
-    # contrastive_sft.contrastive_generation_with_activation_cache(
-    #     message_honest,
-    #     message_lying,
-    #     train_test="train",
-    # )
+    contrastive_sft.contrastive_generation_with_activation_cache(
+        message_honest,
+        message_lying,
+        train_test="train",
+    )
 
     #############################################################################################################
     # # 5. evaluation

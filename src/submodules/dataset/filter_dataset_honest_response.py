@@ -101,7 +101,7 @@ with open(save_file, "w") as file:
 dataset_hf = Dataset.from_list(data_finetune)
 dataset_hf.train_test_split(test_size=0.1, seed=0)
 dataset_hf.push_to_hub(
-    f"winnieyangwannan/azaria-mitchell-filtered-good-response-honest-{model_family_big}-facts"
+    f"winnieyangwannan/azaria-mitchell_filtered_honest_response-{model_family_big}-facts"
 )
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
