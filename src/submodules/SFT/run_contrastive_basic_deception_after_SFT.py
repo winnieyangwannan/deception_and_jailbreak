@@ -84,7 +84,7 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
     model_family_big = model_name_big.split("-")[0].lower()
     cfg = Config(
         model_path=model_path_after,
-        model_alias=model_name_big,
+        model_alias=model_name_small,
         model_path_before=model_path_before,
         model_path_after=model_path_after,
         model_path_big=model_path_big,
@@ -165,7 +165,7 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
 
     # 6. Stage statistics
     print("Get stage statistics:")
-    contrastive_sft.get_stage_statistics(train_test="train")
+    # contrastive_sft.get_stage_statistics(train_test="train")
     contrastive_sft.get_stage_statistics(train_test="test")
 
     print("Done")

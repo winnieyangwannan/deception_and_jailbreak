@@ -102,82 +102,40 @@ for ii in range(len(data_small_honest["completions"])):
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# filter out only facts dat
+facts = [dataset_full[ii] for ii in range(len(dataset_full)) if dataset_full[ii]["category"] == "facts"]
+
+len(facts)
 
 
-true_d = 0
-for ii in range(len(dataset_full)):
-    if dataset_full[ii]["answer"] == "true":
+true_d = 0 # 282
+for ii in range(len(facts)):
+    if facts[ii]["answer"] == "true":
         true_d += 1
 print(f"number of true statements: {true_d}")
 
-false_d = 0
-for ii in range(len(dataset_full)):
-    if dataset_full[ii]["answer"] == "false":
+false_d = 0 # 217
+for ii in range(len(facts)):
+    if facts[ii]["answer"] == "false":
         false_d += 1
 print(f"number of false statements: {false_d}")
 
-
-# shuffle first
-import random
-import numpy as np
-
-ind = np.arange(len(dataset_full))
-random.shuffle(ind)
-
-dataset_full_shuffle = []
-for ii in range(len(dataset_full)):
-    dataset_full_shuffle.append(dataset_full[ind[ii]])
-
-
-true_d = 0
-for ii in range(len(dataset_full_shuffle)):
-    if dataset_full_shuffle[ii]["answer"] == "true":
-        true_d += 1
-print(f"number of true statements: {true_d}")
-
-false_d = 0
-for ii in range(len(dataset_full_shuffle)):
-    if dataset_full_shuffle[ii]["answer"] == "false":
-        false_d += 1
-print(f"number of false statements: {false_d}")
-
-## downsample the data so that number of true and false statement is balanced (balanced class)
-true_d_ds = 0
-dataset_ds = []
-for ii in range(len(dataset_full_shuffle)):
-    if dataset_full_shuffle[ii]["answer"] == "false":
-        dataset_ds.append(dataset_full_shuffle[ii])
-    elif true_d_ds <= false_d and dataset_full_shuffle[ii]["answer"] == "true":
-        dataset_ds.append(dataset_full_shuffle[ii])
-        true_d_ds += 1
-
-
-true_d = 0
-for ii in range(len(dataset_ds)):
-    if dataset_ds[ii]["answer"] == "true":
-        true_d += 1
-print(f"number of true statements: {true_d}")
-
-false_d = 0
-for ii in range(len(dataset_ds)):
-    if dataset_ds[ii]["answer"] == "false":
-        false_d += 1
-print(f"number of false statements: {false_d}")
-
-## 3 Save
 # save locally
 save_file = os.path.join(
     save_path,
-    f"azaria-mitchell-finetune-{model_family_small}-{model_family_big}.json",
+    f"azaria-mitchell-finetune-{model_family_small}-{model_family_big}-facts.json",
 )
 with open(save_file, "w") as file:
     json.dump(dataset_ds, file, indent=4)
+
 
 # save to huggingface
 # Convert the filtered data points into the Huggingface datasets format
 # datasets_format = Dataset.from_pandas(pd.DataFrame(dataset_finetune))
 dataset_hf = Dataset.from_list(dataset_ds)
+dataset_hf.train_test_split(test_size=0.1, seed=0)
 dataset_hf.push_to_hub(
-    f"winnieyangwannan/azaria-mitchell-finetune-{model_family_small}-{model_family_big}"
+    f"winnieyangwannan/azaria-mitchell-finetune-{model_family_small}-{model_family_big}-facts"
 )
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+

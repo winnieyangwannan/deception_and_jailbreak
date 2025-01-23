@@ -34,7 +34,7 @@ class ContrastiveBase:
         self.cache_negative_test = None  #
 
     def prepare_dataset_deception_real_world(
-        self, model_name, dataset, contrastive_type
+        self, model_name, contrastive_type, train_test="train"
     ):
         def _construct_message(instruction, question, question_refix, answer_prefix):
             system_prompt = (
@@ -75,10 +75,10 @@ class ContrastiveBase:
             messages = list(
                 map(
                     _construct_message,
-                    dataset["normal_instruction"],
-                    dataset["question"],
-                    dataset["question_prefix"],
-                    dataset[
+                    self.dataset[train_test]["normal_instruction"],
+                    self.dataset[train_test]["question"],
+                    self.dataset[train_test]["question_prefix"],
+                    self.dataset[train_test][
                         "answer_prefix"
                     ],  # [dataset[ii]["statement_chinese"] for ii in range(len(dataset))]
                 )
@@ -88,10 +88,10 @@ class ContrastiveBase:
             messages = list(
                 map(
                     _construct_message,
-                    dataset["deceive_instruction"],
-                    dataset["question"],
-                    dataset["question_prefix"],
-                    dataset[
+                    self.dataset[train_test]["deceive_instruction"],
+                    self.dataset[train_test]["question"],
+                    self.dataset[train_test]["question_prefix"],
+                    self.dataset[train_test][
                         "answer_prefix"
                     ],  # [dataset[ii]["statement_chinese"] for ii in range(len(dataset))]
                 )
@@ -184,7 +184,7 @@ class ContrastiveBase:
         dataset_out = Dataset.from_dict(dataset_out)
         return dataset_out
 
-    def prepare_dataset_chat_deception(self, model_name, dataset, contrastive_type):
+    def prepare_dataset_chat_deception(self, model_name, contrastive_type):
 
         def _construct_message(statement):
 
@@ -201,7 +201,7 @@ class ContrastiveBase:
 
             prompt_full = user_template.format(statement=statement)
 
-            if "gemma" in model_name or "SmolLM2-135M" in model_name:
+            if "gemma" in model_name:
                 message = [
                     # {"role": "system", "content": "example system"},
                     {"role": "user", "content": system_template + prompt_full},
@@ -219,7 +219,7 @@ class ContrastiveBase:
         messages = list(
             map(
                 _construct_message,
-                dataset["statement"],
+                self.dataset["statement"],
             )
         )
 
@@ -682,15 +682,15 @@ class ContrastiveBase:
         self, inputs_honest, inputs_lying, dataset, train_test="test"
     ):
         n_prompts = len(dataset)
-        deceive_instruction = dataset["deceive_instruction"]
-        normal_instruction = dataset["normal_instruction"]
-        questions = dataset["question"]
+        deceive_instruction = dataset[train_test]["deceive_instruction"]
+        normal_instruction = dataset[train_test]["normal_instruction"]
+        questions = dataset[train_test]["question"]
         categories = ["real_world"] * n_prompts
-        answers = dataset["honest_answer"]
-        question_prefix = dataset["question_prefix"]
-        answer_prefix = dataset["answer_prefix"]
+        answers = dataset[train_test]["honest_answer"]
+        question_prefix = dataset[train_test]["question_prefix"]
+        answer_prefix = dataset[train_test]["answer_prefix"]
         # labels = [1 if answer == "Yes" else 0 for answer in answers]
-        labels = dataset["label"]
+        labels = dataset[train_test]["label"]
         # initialize
         completions = []
         output_honest, cache_all_honest = self.generate_and_cache(
@@ -822,23 +822,21 @@ class ContrastiveBase:
         self,
         message_honest,
         message_lying,
-        dataset,
         train_test="train",
-        generation_type="SFT",
     ):
         inputs_honest = self.tokenize_dataset(message_honest)
         inputs_lying = self.tokenize_dataset(message_lying)
-        if generation_type == "SFT":
+        if self.cfg.task_name == "SFT":
             self.generate_and_cache_batch(
-                inputs_honest, inputs_lying, dataset, train_test
+                inputs_honest, inputs_lying, self.dataset, train_test
             )
-        elif generation_type == "SFT_chinese":
+        elif self.cfg.task_name  == "SFT_chinese":
             self.generate_and_cache_batch_chinese(
-                inputs_honest, inputs_lying, dataset, train_test
+                inputs_honest, inputs_lying, self.dataset, train_test
             )
-        elif generation_type == "real_world":
+        elif self.cfg.task_name  == "real_world":
             self.generate_and_cache_batch_real_world(
-                inputs_honest, inputs_lying, dataset, train_test
+                inputs_honest, inputs_lying, self.dataset, train_test
             )
 
     def evaluate_deception_real_world(self, save_name=None):
@@ -888,7 +886,7 @@ class ContrastiveBase:
         if not os.path.exists(activation_path):
             os.makedirs(activation_path)
         if save_name is None:
-            if self.cfg.task_name == "SFT_chinese":
+            if self.cfg.task_name == "SFT_chinese" :
                 with open(
                     activation_path
                     + os.sep
