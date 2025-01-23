@@ -399,6 +399,7 @@ class ContrastiveBase:
                     completions.append(
                         {
                             f"statement": statements[batch + generation_idx],
+                            # this is the response from 70b, filtered so that only take the ones with honest_response_honest = 1
                             r"response_honest_filtered_honest_response": responses[batch + generation_idx],
                             "response_honest": self.model_base.tokenizer.decode(
                                 generation_h, skip_special_tokens=True
