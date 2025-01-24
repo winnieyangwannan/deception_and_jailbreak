@@ -182,7 +182,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
         answers_all = (
             dataset.answers_positive_correct + dataset.answers_positive_correct
         )
-    elif cfg.task_name == "deception_sft" or "SFT_chinese" or "real_world":
+    elif cfg.task_name in ["deception_sft", "SFT_chinese", "real_world"]:
         labels_all = list(dataset["label"]) + list(dataset["label"])
         answers_all = list(dataset["answer"]) + list(dataset["answer"])
 

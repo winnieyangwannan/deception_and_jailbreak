@@ -363,11 +363,13 @@ class ContrastiveBase:
         labels = self.dataset[train_test]["label"]
         answers = self.dataset[train_test]["answer"]
         categories = self.dataset[train_test]["category"]
-        if self.cfg.task_name == "filtered_honest_response":
-            responses = self.dataset[train_test]["response_honest"]
-        else:
-            responses = []
+        if self.cfg.task_name in ["filtered_honest_response", "filtered_lying_response"]:
+            responses_honest = self.dataset[train_test]["response_honest"]
+            responses_lying = self.dataset[train_test]["response_lying"]
 
+        else:
+            responses_honest = []
+            responses_lying = []
         # response_small_before_honest = dataset["response_small_honest"]
         # response_small_before_lying = dataset["response_small_lying"]
         # response_big_honest = dataset["response_big_honest"]
@@ -391,7 +393,7 @@ class ContrastiveBase:
                                     :, len_input:
                                     ]  # only take the model output (excluding prompt)
 
-            if self.cfg.task_name == "filtered_honest_response":
+            if self.cfg.task_name in [ "filtered_honest_response",  "filtered_lying_response"]:
 
                 for generation_idx, (generation_h, generation_l) in enumerate(
                         zip(generation_toks_honest, generation_toks_lying)
@@ -400,7 +402,9 @@ class ContrastiveBase:
                         {
                             f"statement": statements[batch + generation_idx],
                             # this is the response from 70b, filtered so that only take the ones with honest_response_honest = 1
-                            r"response_honest_filtered_honest_response": responses[batch + generation_idx],
+                            r"response_honest_70b": responses_honest[batch + generation_idx],
+                            r"response_lying_70b": responses_lying[batch + generation_idx],
+
                             "response_honest": self.model_base.tokenizer.decode(
                                 generation_h, skip_special_tokens=True
                             ).strip(),
@@ -1089,7 +1093,7 @@ class ContrastiveBase:
                 self.cfg, completions_test, train_test="test", save_name=save_name
             )
 
-        elif self.cfg.task_name == "filtered_good" or self.cfg.task_name == "filtered_honest_response":
+        elif self.cfg.task_name in ["filtered_good",  "filtered_honest_response", "filtered_lying_response"]:
             completions_train = evaluate_generation_deception(
                 self.cfg, train_test="train", save_name=save_name
             )
@@ -1141,7 +1145,7 @@ class ContrastiveBase:
 
     def get_contrastive_activation_pca_(self, save_name=None, train_test="train"):
 
-        activations = self.get_activation_cache(save_name=save_name, train_test="train")
+        activations = self.get_activation_cache(save_name=save_name, train_test=train_test)
 
         # 2. Get pca and plot
         fig = get_pca_and_plot(
@@ -1182,7 +1186,7 @@ class ContrastiveBase:
             or self.cfg.task_name == "jailbreak_choice"
         ):
             labels = self.dataset.labels_positive_correct
-        elif self.cfg.task_name == "SFT_chinese" or self.cfg.task_name == "real_world":
+        elif self.cfg.task_name in ["SFT_chinese", "real_world"]:
             labels = self.dataset[f"{train_test}"].label
         elif self.cfg.task_name == "deception_sft":
             labels = self.dataset[f"{train_test}"]['label']

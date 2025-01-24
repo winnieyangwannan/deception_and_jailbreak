@@ -81,7 +81,7 @@ def main(model_path_generation, data_dir, save_dir):
     # 1. Load dataset
 
     # dataset_hf = load_dataset("jojoyang/azaria-mitchell_filtered_good")["combined"]
-    with open(os.path.join(data_dir, "Llama-3.3-70B-Instruct_filtered_honest_response.json"), 'rb') as f:
+    with open(os.path.join(data_dir, "Llama-3.3-70B-Instruct_response_filtered_good_statement.json"), 'rb') as f:
         ds = json.load(f)
 
     # filter out the data where honest_score_honest = 1
