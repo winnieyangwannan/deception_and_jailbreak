@@ -80,7 +80,7 @@ def main(model_path="google/gemma-2b-it",
 
     else:
         train_ds = ds["train"]
-        train_ds = train_ds.shuffle(seed=42)  # Optional: Set seed for reproducibility
+        train_ds = train_ds.shuffle(seed=0)  # Optional: Set seed for reproducibility
 
 
     true_ans = [train_ds[ii] for ii in range(len(train_ds)) if train_ds[ii]["answer"]=="true"]

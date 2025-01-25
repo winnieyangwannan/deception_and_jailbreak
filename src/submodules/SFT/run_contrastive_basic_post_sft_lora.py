@@ -81,17 +81,20 @@ def main(model_path_generation, data_dir, save_dir):
     # 1. Load dataset
 
     # dataset_hf = load_dataset("jojoyang/azaria-mitchell_filtered_good")["combined"]
-    with open(os.path.join(data_dir, "Llama-3.3-70B-Instruct_response_filtered_good_statement.json"), 'rb') as f:
-        ds = json.load(f)
+    dataset = load_dataset(
+         # f"jojoyang/{model_name}_Filter2Honest_TrainTest_240",
+        f"winnieyangwannan/azaria-mitchell_{model_name}_{task_name}"
+    )
 
-    # filter out the data where honest_score_honest = 1
-    ds_list = ds["completions"]
-    ds_list_correct = [ ds_list[ii] for ii in range(len(ds_list))
-                        if ds_list[ii]["honest_score_honest"]==1 and  ds_list[ii]["lying_score_lying"]==1]
-    ds_train = pd.DataFrame( ds_list_correct)
-
-    dataset = {}
-    dataset["train"] = ds_train
+    #
+    # # filter out the data where honest_score_honest = 1
+    # ds_list = ds["completions"]
+    # ds_list_correct = [ ds_list[ii] for ii in range(len(ds_list))
+    #                     if ds_list[ii]["honest_score_honest"]==1 and  ds_list[ii]["lying_score_lying"]==1]
+    # ds_train = pd.DataFrame( ds_list_correct)
+    #
+    # dataset = {}
+    # dataset["train"] = ds_train
 
     #############################################################################################################
     # 2. Load the model and tokenizer
