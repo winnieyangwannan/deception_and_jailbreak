@@ -74,10 +74,14 @@ def main(model_path="google/gemma-2b-it",
             train_ds.append(dataset_false)
             train_ds.append(true_ans)
             train_ds = sum(train_ds, [])
+
+        # make sure the data is IID
+        random.shuffle(train_ds)
+
     else:
-        train_ds = ds
-    # make sure the data is IID
-    random.shuffle(train_ds)
+        train_ds = ds["train"]
+        train_ds = train_ds.shuffle(seed=42)  # Optional: Set seed for reproducibility
+
 
     true_ans = [train_ds[ii] for ii in range(len(train_ds)) if train_ds[ii]["answer"]=="true"]
     false_ans = [train_ds[ii]  for ii in range(len(train_ds)) if train_ds[ii]["answer"]=="false"]
