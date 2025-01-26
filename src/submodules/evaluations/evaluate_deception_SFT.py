@@ -139,7 +139,7 @@ def evaluate_generation_deception(
 
     if evaluate_mode == "auto":
         # (2) For each response, get the honest score, lying score, and unexpected rate
-        for ii in enumerate(completions):
+        for ii in range(len(completions)):
             completions = collect_honest_score(cfg, completions[ii])
             completions = collect_lying_score(cfg, completions[ii])
             completions = collect_unexpected_rate(cfg, completions[ii])
