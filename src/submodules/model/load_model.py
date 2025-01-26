@@ -4,7 +4,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 import transformer_lens.utils as utils
-from peft import AutoPeftModelForCausalLM
+from peft import LoraConfig, PeftModel, AutoPeftModelForCausalLM
 
 torch.no_grad()
 
@@ -82,32 +82,32 @@ class TransformerModelLoader:
 
     def _get_model_block_modules(self, cfg):
 
-        if cfg.lora:
-            if "gpt" in cfg.model_path:
-                return self.model.transformer.h
-            elif "llama" in cfg.model_path:
-                return self.model.model.layers
-            elif "gemma" in cfg.model_path:
-                return self.model.model.model.layers
-            elif "Qwen-" in cfg.model_path:
-                return self.model.transformer.h
-            elif "Qwen2" in cfg.model_path:
-                return self.model.model.layers
-            elif "Yi" in cfg.model_path:
-                return self.model.model.layers
-        else:
-            if "gpt" in cfg.model_path:
-                return self.model.transformer.h
-            elif "llama" in cfg.model_path:
-                return self.model.model.layers
-            elif "gemma" in cfg.model_path:
-                return self.model.model.layers
-            elif "Qwen-" in cfg.model_path:
-                return self.model.transformer.h
-            elif "Qwen2" in cfg.model_path:
-                return self.model.model.layers
-            elif "Yi" in cfg.model_path:
-                return self.model.model.layers
+        # if cfg.lora:
+        #     if "gpt" in cfg.model_path:
+        #         return self.model.transformer.h
+        #     elif "llama" in cfg.model_path:
+        #         return self.model.model.model.layers
+        #     elif "gemma" in cfg.model_path:
+        #         return self.model.model.model.layers
+        #     elif "Qwen-" in cfg.model_path:
+        #         return self.model.transformer.h
+        #     elif "Qwen2" in cfg.model_path:
+        #         return self.model.model.model.layers
+        #     elif "Yi" in cfg.model_path:
+        #         return self.model.model.model.layers
+        # else:
+        if "gpt" in cfg.model_path:
+            return self.model.transformer.h
+        elif "llama" in cfg.model_path:
+            return self.model.model.layers
+        elif "gemma" in cfg.model_path:
+            return self.model.model.layers
+        elif "Qwen-" in cfg.model_path:
+            return self.model.transformer.h
+        elif "Qwen2" in cfg.model_path:
+            return self.model.model.layers
+        elif "Yi" in cfg.model_path:
+            return self.model.model.layers
 
     def _get_attn_modules(self, cfg):
         if "gpt" in cfg.model_path:
@@ -149,12 +149,22 @@ class TransformerModelLoader:
         # load model
 
         if cfg.lora:
-            self.model = AutoPeftModelForCausalLM.from_pretrained(
-                cfg.model_path,
-                torch_dtype=cfg.dtype,
+            base_model = AutoModelForCausalLM.from_pretrained(
+                cfg.model_path_before,
+                low_cpu_mem_usage=True,
+                return_dict=True,
+                torch_dtype=torch.float16,
                 device_map="auto",
-                # load_in_4bit=True,
-            ).eval()
+            )
+            model = PeftModel.from_pretrained(base_model, cfg.model_path)
+            self.model = model.merge_and_unload()
+
+            # self.model = AutoPeftModelForCausalLM.from_pretrained(
+            #     cfg.model_path,
+            #     torch_dtype=cfg.dtype,
+            #     device_map="auto",
+            #     # load_in_4bit=True,
+            # ).eval()
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
                 cfg.model_path,

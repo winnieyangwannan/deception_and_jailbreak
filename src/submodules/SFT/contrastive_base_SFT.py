@@ -1066,7 +1066,7 @@ class ContrastiveBase:
             self.generate_and_cache_batch(
                 inputs_honest, inputs_lying, self.dataset, train_test
             )
-        elif self.cfg.task_name in ["sft_to_honest", "sft_to_lying"]:
+        elif self.cfg.task_name in ["sft_to_honest", "sft_to_lie"]:
             self.generate_and_cache_batch_sft(
                 inputs_honest, inputs_lying, self.dataset, "train"
             )
@@ -1096,7 +1096,7 @@ class ContrastiveBase:
 
     def evaluate_deception(self, save_name=None):
 
-        if self.cfg.task_name in ["sft_to_honest", "sft_to_lying"]:
+        if self.cfg.task_name in ["sft_to_honest", "sft_to_lie"]:
             completions_train = evaluate_generation_deception(
                 self.cfg, train_test="train", save_name=save_name
             )
@@ -1191,12 +1191,8 @@ class ContrastiveBase:
 
     def get_contrastive_activation_pca(self, save_name=None):
 
-        self.get_contrastive_activation_pca_(
-            self, save_name=save_name, train_test="train"
-        )
-        self.get_contrastive_activation_pca_(
-            self, save_name=save_name, train_test="test"
-        )
+        self.get_contrastive_activation_pca_(self, train_test="train")
+        self.get_contrastive_activation_pca_(self, train_test="test")
 
     def get_stage_statistics(self, train_test="train"):
         # 1. Get access to cache

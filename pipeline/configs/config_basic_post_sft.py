@@ -10,7 +10,9 @@ from sympy.physics.units import temperature
 class Config:
     model_path: str
     model_alias: str
+    model_path_before: str
     save_dir: str
+    lora: bool
     task_name: str = "sft_to_lie"
     contrastive_type: tuple = ("honest", "lying")
     answer_type: tuple = ("yes", "no")
@@ -20,12 +22,11 @@ class Config:
     dtype: str = "bfloat16"  # "bfloat16" or "default"
     n_train: int = 20  # 100
     n_test: int = 50  # 50
-    batch_size: int = 256  # 5
+    batch_size: int = 256  # 256
     max_new_tokens: int = 100  # 100
     intervention: str = "no_intervention"
     cache_pos: str = "prompt_last_token"
     cache_name: str = "resid_post"
-    lora: bool = True
 
     # for generation_trajectory
 

@@ -29,6 +29,7 @@ def parse_arguments():
         required=False,
         default="01-ai/Yi-6B-Chat",
     )
+
     parser.add_argument(
         "--data_dir",
         type=str,
@@ -43,9 +44,7 @@ def parse_arguments():
         default="D:\Data\deception",
     )
     # D:\Data\deception
-    parser.add_argument(
-        "--task_name", type=str, required=False, default="sft_to_honest"
-    )
+    parser.add_argument("--task_name", type=str, required=True, default="sft_to_honest")
     parser.add_argument("--do_sample", type=bool, required=False, default=True)
     parser.add_argument("--temperature", type=float, required=False, default=1.0)
 
@@ -60,34 +59,40 @@ def main(model_path, data_dir, save_dir, task_name):
     ###################################################################
     # 0. cfg
     model_name = os.path.basename(model_path)
+    model_name_before = model_name.split("_")[0]
+    if "gemma" in model_name_before:
+        model_path_before = "google/" + model_name_before
+    elif "Llama" in model_name_before:
+        model_path_before = "meta-llama/" + model_name_before
+    elif "Qwen" in model_name_before:
+        model_path_before = "Qwen/" + model_name_before
+    elif "Yi" in model_name_before:
+        model_path_before = "01-ai/" + model_name_before
+
+    lora = model_path.split("_")[-1]
+    if lora == "True":
+        lora = True
+    else:
+        lora = False
 
     cfg = Config(
         model_path=model_path,
         model_alias=model_name,
+        model_path_before=model_path_before,
         save_dir=save_dir,
         task_name=task_name,
+        lora=lora,
     )
     pprint.pp(cfg)
 
     #############################################################################################################
     # 1. Load dataset
-    # todo: this is hard coded now! update !
-    model_name_before = "gemma-2-9b-it"
+
     # dataset_hf = load_dataset("jojoyang/azaria-mitchell_filtered_good")["combined"]
     dataset = load_dataset(
         # f"jojoyang/{model_name}_Filter2Honest_TrainTest_240",
         f"winnieyangwannan/azaria-mitchell_{model_name_before}_{task_name}"
     )
-
-    #
-    # # filter out the data where honest_score_honest = 1
-    # ds_list = ds["completions"]
-    # ds_list_correct = [ ds_list[ii] for ii in range(len(ds_list))
-    #                     if ds_list[ii]["honest_score_honest"]==1 and  ds_list[ii]["lying_score_lying"]==1]
-    # ds_train = pd.DataFrame( ds_list_correct)
-    #
-    # dataset = {}
-    # dataset["train"] = ds_train
 
     #############################################################################################################
     # 2. Load the model and tokenizer
@@ -109,7 +114,11 @@ def main(model_path, data_dir, save_dir, task_name):
         message_lying,
         train_test="train",
     )
-
+    contrastive_sft.contrastive_generation_with_activation_cache(
+        message_honest,
+        message_lying,
+        train_test="test",
+    )
     #############################################################################################################
     # # 5. evaluation
     contrastive_sft.evaluate_deception()
