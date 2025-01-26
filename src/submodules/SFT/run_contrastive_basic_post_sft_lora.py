@@ -3,7 +3,7 @@ import torch
 import os
 
 # from humanfriendly.terminal import ansi_strip
-from pipeline.configs.config_basic_post_sft_lora import Config
+from pipeline.configs.config_basic_post_sft import Config
 import pprint
 import argparse
 from src.submodules.SFT.contrastive_base_SFT import ContrastiveBase

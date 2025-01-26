@@ -641,7 +641,7 @@ class ContrastiveBase:
         with open(
             completion_path
             + os.sep
-            + f"{self.cfg.model_name_small}-{self.cfg.model_name_big}_completions_{train_test}.json",
+            + f"{self.cfg.model_alias}_completions_{train_test}.json",
             "w",
         ) as f:
             json.dump(completions, f, indent=4)
