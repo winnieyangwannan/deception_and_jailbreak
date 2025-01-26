@@ -118,16 +118,16 @@ def main(model_path, data_dir, save_dir, task_name):
 
     ############################################################################################################
     # # 4. generation
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        message_honest_train,
-        message_lying_train,
-        train_test="train",
-    )
-    contrastive_sft.contrastive_generation_with_activation_cache(
-        message_honest_test,
-        message_lying_test,
-        train_test="test",
-    )
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     message_honest_train,
+    #     message_lying_train,
+    #     train_test="train",
+    # )
+    # contrastive_sft.contrastive_generation_with_activation_cache(
+    #     message_honest_test,
+    #     message_lying_test,
+    #     train_test="test",
+    # )
     #############################################################################################################
     # # 5. evaluation
     contrastive_sft.evaluate_deception()

@@ -17,89 +17,106 @@ from src.submodules.evaluations.evaluate_deception import (
 )
 
 
-def collect_honest_score(cfg, completion):
-    completion["honest_score_honest"] = int(
+def collect_honest_score(cfg, completions, ii):
+    completions[ii]["honest_score_honest"] = int(
         get_honest_score(
-            completion["response_honest"],
-            int(completion["label"]),
+            completions[ii]["response_honest"],
+            int(completions[ii]["label"]),
             task_name=cfg.task_name,
         )
     )
-    completion["honest_score_lying"] = int(
+    completions[ii]["honest_score_lying"] = int(
         get_honest_score(
-            completion["response_lying"],
-            int(completion["label"]),
+            completions[ii]["response_lying"],
+            int(completions[ii]["label"]),
             task_name=cfg.task_name,
         )
     )
 
-    completion["honest_score_lying_before"] = int(
+    completions[ii]["honest_score_honest_before"] = int(
         get_honest_score(
-            completion["response_lying_before"],
-            int(completion["label"]),
+            completions[ii]["response_honest_before"],
+            int(completions[ii]["label"]),
             task_name=cfg.task_name,
         )
     )
 
-    completion["honest_score_lying"] = int(
+    completions[ii]["honest_score_lying_before"] = int(
         get_honest_score(
-            completion["response_lying_before"],
-            int(completion["label"]),
+            completions[ii]["response_lying_before"],
+            int(completions[ii]["label"]),
             task_name=cfg.task_name,
         )
     )
-    return completion
+    return completions
 
 
-def collect_lying_score(cfg, completion):
-    completion["lying_score_honest"] = int(
+def collect_lying_score(cfg, completions, ii):
+    completions[ii]["lying_score_honest"] = int(
         get_lying_score(
-            completion["response_honest"],
-            int(completion["label"]),
+            completions[ii]["response_honest"],
+            int(completions[ii]["label"]),
             task_name=cfg.task_name,
         )
     )
-    completion["lying_score_lying"] = int(
+    completions[ii]["lying_score_lying"] = int(
         get_lying_score(
-            completion["response_lying"],
-            int(completion["label"]),
+            completions[ii]["response_lying"],
+            int(completions[ii]["label"]),
             task_name=cfg.task_name,
         )
     )
-    completion["lying_score_honest_before"] = int(
+    completions[ii]["lying_score_honest_before"] = int(
         get_lying_score(
-            completion["response_honest"],
-            int(completion["label"]),
+            completions[ii]["response_honest_before"],
+            int(completions[ii]["label"]),
             task_name=cfg.task_name,
         )
     )
-    completion["lying_score_lying_before"] = int(
+    completions[ii]["lying_score_lying_before"] = int(
         get_lying_score(
-            completion["response_lying"],
-            int(completion["label"]),
+            completions[ii]["response_lying_before"],
+            int(completions[ii]["label"]),
             task_name=cfg.task_name,
         )
     )
-    return completion
+    return completions
 
 
-def collect_unexpected_rate(cfg, completion):
+def collect_unexpected_rate(cfg, completions, ii):
     unexpected, predicted_label = get_unexpected_rate(
-        completion["response_honest"],
-        int(completion["label"]),
+        completions[ii]["response_honest"],
+        int(completions[ii]["label"]),
         task_name=cfg.task_name,
     )
-    completion["unexpected_honest"] = int(unexpected)
-    completion["predicted_honest"] = predicted_label
+    completions[ii]["unexpected_honest"] = int(unexpected)
+    completions[ii]["predicted_honest"] = predicted_label
 
     unexpected, predicted_label = get_unexpected_rate(
-        completion["response_lying"],
-        int(completion["label"]),
+        completions[ii]["response_lying"],
+        int(completions[ii]["label"]),
         task_name=cfg.task_name,
     )
-    completion["unexpected_lying"] = int(unexpected)
-    completion["predicted_label_lying"] = predicted_label
-    return completion
+    completions[ii]["unexpected_lying"] = int(unexpected)
+    completions[ii]["predicted_label_lying"] = predicted_label
+
+    unexpected, predicted_label = get_unexpected_rate(
+        completions[ii]["response_honest_before"],
+        int(completions[ii]["label"]),
+        task_name=cfg.task_name,
+    )
+    completions[ii]["unexpected_honest_before"] = int(unexpected)
+    completions[ii]["predicted_honest_before"] = predicted_label
+
+    unexpected, predicted_label = get_unexpected_rate(
+        completions[ii]["response_lying_before"],
+        int(completions[ii]["label"]),
+        task_name=cfg.task_name,
+    )
+    completions[ii]["unexpected_lying_before"] = int(unexpected)
+    completions[ii]["predicted_label_lying_before"] = predicted_label
+
+    return completions
 
 
 def evaluate_generation_deception(
@@ -140,9 +157,9 @@ def evaluate_generation_deception(
     if evaluate_mode == "auto":
         # (2) For each response, get the honest score, lying score, and unexpected rate
         for ii in range(len(completions)):
-            completions = collect_honest_score(cfg, completions[ii])
-            completions = collect_lying_score(cfg, completions[ii])
-            completions = collect_unexpected_rate(cfg, completions[ii])
+            completions = collect_honest_score(cfg, completions, ii)
+            completions = collect_lying_score(cfg, completions, ii)
+            completions = collect_unexpected_rate(cfg, completions, ii)
 
     # (3) Per category summary statistics
     category_to_asr = {}
