@@ -16,12 +16,94 @@ from src.submodules.evaluations.evaluate_deception import (
     get_unexpected_rate,
 )
 
+
+def collect_honest_score(cfg, completion):
+    completion["honest_score_honest"] = int(
+        get_honest_score(
+            completion["response_honest"],
+            int(completion["label"]),
+            task_name=cfg.task_name,
+        )
+    )
+    completion["honest_score_lying"] = int(
+        get_honest_score(
+            completion["response_lying"],
+            int(completion["label"]),
+            task_name=cfg.task_name,
+        )
+    )
+
+    completion["honest_score_lying_before"] = int(
+        get_honest_score(
+            completion["response_lying_before"],
+            int(completion["label"]),
+            task_name=cfg.task_name,
+        )
+    )
+
+    completion["honest_score_lying"] = int(
+        get_honest_score(
+            completion["response_lying_before"],
+            int(completion["label"]),
+            task_name=cfg.task_name,
+        )
+    )
+    return completion
+
+
+def collect_lying_score(cfg, completion):
+    completion["lying_score_honest"] = int(
+        get_lying_score(
+            completion["response_honest"],
+            int(completion["label"]),
+            task_name=cfg.task_name,
+        )
+    )
+    completion["lying_score_lying"] = int(
+        get_lying_score(
+            completion["response_lying"],
+            int(completion["label"]),
+            task_name=cfg.task_name,
+        )
+    )
+    completion["lying_score_honest_before"] = int(
+        get_lying_score(
+            completion["response_honest"],
+            int(completion["label"]),
+            task_name=cfg.task_name,
+        )
+    )
+    completion["lying_score_lying_before"] = int(
+        get_lying_score(
+            completion["response_lying"],
+            int(completion["label"]),
+            task_name=cfg.task_name,
+        )
+    )
+    return completion
+
+
+def collect_unexpected_rate(cfg, completion):
+    unexpected, predicted_label = get_unexpected_rate(
+        completion["response_honest"],
+        int(completion["label"]),
+        task_name=cfg.task_name,
+    )
+    completion["unexpected_honest"] = int(unexpected)
+    completion["predicted_honest"] = predicted_label
+
+    unexpected, predicted_label = get_unexpected_rate(
+        completion["response_lying"],
+        int(completion["label"]),
+        task_name=cfg.task_name,
+    )
+    completion["unexpected_lying"] = int(unexpected)
+    completion["predicted_label_lying"] = predicted_label
+    return completion
+
+
 def evaluate_generation_deception(
-    cfg,
-    save_path=None,
-    save_name=None,
-    train_test="train",
-    evaluate_mode="auto"
+    cfg, save_path=None, save_name=None, train_test="train", evaluate_mode="auto"
 ):
     """
     Evaluate generation result for the deception project.
@@ -57,57 +139,12 @@ def evaluate_generation_deception(
 
     if evaluate_mode == "auto":
         # (2) For each response, get the honest score, lying score, and unexpected rate
-        for completion in completions:
+        for ii in enumerate(completions):
+            completions = collect_honest_score(cfg, completions[ii])
+            completions = collect_lying_score(cfg, completions[ii])
+            completions = collect_unexpected_rate(cfg, completions[ii])
 
-            completion["honest_score_honest"] = int(
-                get_honest_score(
-                    completion["response_honest"],
-                    int(completion["label"]),
-                    task_name=cfg.task_name,
-                )
-            )
-            completion["honest_score_lying"] = int(
-                get_honest_score(
-                    completion["response_lying"],
-                    int(completion["label"]),
-                    task_name=cfg.task_name,
-                )
-            )
-
-            ######################################################################
-            completion["lying_score_honest"] = int(
-                get_lying_score(
-                    completion["response_honest"],
-                    int(completion["label"]),
-                    task_name=cfg.task_name,
-                )
-            )
-            completion["lying_score_lying"] = int(
-                get_lying_score(
-                    completion["response_lying"],
-                    int(completion["label"]),
-                    task_name=cfg.task_name,
-                )
-            )
-
-            ######################################################################
-            unexpected, predicted_label = get_unexpected_rate(
-                completion["response_honest"],
-                int(completion["label"]),
-                task_name=cfg.task_name,
-            )
-            completion["unexpected_honest"] = int(unexpected)
-            completion["predicted_honest"] = predicted_label
-
-            unexpected, predicted_label = get_unexpected_rate(
-                completion["response_lying"],
-                int(completion["label"]),
-                task_name=cfg.task_name,
-            )
-            completion["unexpected_lying"] = int(unexpected)
-            completion["predicted_label_lying"] = predicted_label
-
-    #(3) Per category summary statistics
+    # (3) Per category summary statistics
     category_to_asr = {}
     categories = ["false", "true"]
     for category in categories:
@@ -136,12 +173,24 @@ def evaluate_generation_deception(
     evaluation["honest_score_lying"] = np.mean(
         [completion["honest_score_lying"] for completion in completions]
     )
+    evaluation["honest_score_honest_before"] = np.mean(
+        [completion["honest_score_honest_before"] for completion in completions]
+    )
+    evaluation["honest_score_lying_before"] = np.mean(
+        [completion["honest_score_lying_before"] for completion in completions]
+    )
 
     evaluation["lying_score_honest"] = np.mean(
         [completion["lying_score_honest"] for completion in completions]
     )
     evaluation["lying_score_lying"] = np.mean(
         [completion["lying_score_lying"] for completion in completions]
+    )
+    evaluation["lying_score_honest_before"] = np.mean(
+        [completion["lying_score_honest_before"] for completion in completions]
+    )
+    evaluation["lying_score_lying_before"] = np.mean(
+        [completion["lying_score_lying_before"] for completion in completions]
     )
 
     evaluation["unexpected_honest"] = np.mean(
@@ -150,7 +199,12 @@ def evaluate_generation_deception(
     evaluation["unexpected_lying"] = np.mean(
         [completion["unexpected_lying"] for completion in completions]
     )
-
+    evaluation["unexpected_honest_before"] = np.mean(
+        [completion["unexpected_honest_before"] for completion in completions]
+    )
+    evaluation["unexpected_lying_before"] = np.mean(
+        [completion["unexpected_lying_before"] for completion in completions]
+    )
     # evaluation["score_per_category"] = category_to_asr
     completion_evaluation = evaluation
     completion_evaluation["completions"] = completions
@@ -179,12 +233,9 @@ def evaluate_generation_deception(
 
     return completion_evaluation
 
+
 def evaluate_generation_deception_real_world(
-    cfg,
-    save_path=None,
-    save_name=None,
-    train_test="train",
-    evaluate_mode="auto"
+    cfg, save_path=None, save_name=None, train_test="train", evaluate_mode="auto"
 ):
     """
     Evaluate generation result for the deception project.
@@ -341,6 +392,7 @@ def evaluate_generation_deception_real_world(
             print(f"Evaluation results saved at {save_path}")
 
     return completion_evaluation
+
 
 def evaluate_generation_deception_SFT_chinese(
     cfg,

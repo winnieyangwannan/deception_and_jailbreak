@@ -98,7 +98,7 @@ class TransformerModelLoader:
         # else:
         if "gpt" in cfg.model_path:
             return self.model.transformer.h
-        elif "llama" in cfg.model_path:
+        elif "Llama" in cfg.model_path:
             return self.model.model.layers
         elif "gemma" in cfg.model_path:
             return self.model.model.layers
@@ -114,7 +114,7 @@ class TransformerModelLoader:
             return torch.nn.ModuleList(
                 [block_module.attn for block_module in self.model_block_modules]
             )
-        elif "llama" in cfg.model_path:
+        elif "Llama" in cfg.model_path:
             return torch.nn.ModuleList(
                 [block_module.self_attn for block_module in self.model_block_modules]
             )

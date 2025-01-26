@@ -86,37 +86,46 @@ def main(model_path, data_dir, save_dir, task_name):
     pprint.pp(cfg)
 
     #############################################################################################################
-    # 1. Load dataset
-
-    # dataset_hf = load_dataset("jojoyang/azaria-mitchell_filtered_good")["combined"]
-    dataset = load_dataset(
-        # f"jojoyang/{model_name}_Filter2Honest_TrainTest_240",
-        f"winnieyangwannan/azaria-mitchell_{model_name_before}_{task_name}"
-    )
 
     #############################################################################################################
     # 2. Load the model and tokenizer
     model_base = load_model(cfg)
     # model_base = {}
+
+    # 1. Load dataset
+
+    # dataset_hf = load_dataset("jojoyang/azaria-mitchell_filtered_good")["combined"]
+    dataset = load_dataset(
+        f"winnieyangwannan/azaria-mitchell_{model_name_before}_{task_name}"
+    )
     #############################################################################################################
     contrastive_sft = ContrastiveBase(cfg, model_base, dataset)
     # # 3. Prepare dataset --> Generate Messages
 
-    message_honest = contrastive_sft.prepare_dataset_chat_deception(
-        model_name, "honest"
+    message_honest_train = contrastive_sft.prepare_dataset_chat_deception(
+        model_name, "honest", train_test="train"
     )
-    message_lying = contrastive_sft.prepare_dataset_chat_deception(model_name, "lying")
+    message_lying_train = contrastive_sft.prepare_dataset_chat_deception(
+        model_name, "lying", train_test="train"
+    )
+
+    message_honest_test = contrastive_sft.prepare_dataset_chat_deception(
+        model_name, "honest", train_test="test"
+    )
+    message_lying_test = contrastive_sft.prepare_dataset_chat_deception(
+        model_name, "lying", train_test="test"
+    )
 
     ############################################################################################################
     # # 4. generation
     contrastive_sft.contrastive_generation_with_activation_cache(
-        message_honest,
-        message_lying,
+        message_honest_train,
+        message_lying_train,
         train_test="train",
     )
     contrastive_sft.contrastive_generation_with_activation_cache(
-        message_honest,
-        message_lying,
+        message_honest_test,
+        message_lying_test,
         train_test="test",
     )
     #############################################################################################################
@@ -126,13 +135,15 @@ def main(model_path, data_dir, save_dir, task_name):
     # # 6. PCA
     contrastive_sft.get_contrastive_activation_pca()
     #
-    # print("Get stage statistics:")
-    contrastive_sft.get_stage_statistics()
-    # print("Done")
+    print("Get stage statistics:")
+    contrastive_sft.get_stage_statistics(train_test="train")
+    contrastive_sft.get_stage_statistics(train_test="test")
+
+    print("Done")
 
 
 if __name__ == "__main__":
-    print("run_contrastive_basic_deception_after_SFT_chinese")
+    print("run_contrastive_basic_post_sft_lora")
 
     args = parse_arguments()
 

@@ -1068,10 +1068,7 @@ class ContrastiveBase:
             )
         elif self.cfg.task_name in ["sft_to_honest", "sft_to_lie"]:
             self.generate_and_cache_batch_sft(
-                inputs_honest, inputs_lying, self.dataset, "train"
-            )
-            self.generate_and_cache_batch_sft(
-                inputs_honest, inputs_lying, self.dataset, "test"
+                inputs_honest, inputs_lying, self.dataset, train_test
             )
         elif self.cfg.task_name == "SFT_chinese":
             self.generate_and_cache_batch_chinese(
@@ -1191,8 +1188,8 @@ class ContrastiveBase:
 
     def get_contrastive_activation_pca(self, save_name=None):
 
-        self.get_contrastive_activation_pca_(self, train_test="train")
-        self.get_contrastive_activation_pca_(self, train_test="test")
+        self.get_contrastive_activation_pca_(save_name=save_name, train_test="train")
+        self.get_contrastive_activation_pca_(save_name=save_name, train_test="test")
 
     def get_stage_statistics(self, train_test="train"):
         # 1. Get access to cache
@@ -1206,7 +1203,7 @@ class ContrastiveBase:
             labels = self.dataset.labels_positive_correct
         elif self.cfg.task_name in ["SFT_chinese", "real_world"]:
             labels = self.dataset[f"{train_test}"].label
-        elif self.cfg.task_name == "deception_sft":
+        elif self.cfg.task_name in ["sft_to_honest", "sft_to_lie"]:
             labels = self.dataset[f"{train_test}"]["label"]
 
         get_state_quantification(
