@@ -114,7 +114,7 @@ def main(model_path, checkpoint, save_dir, task_name):
     )
 
     ############################################################################################################
-    # # 4. generation
+    # # # 4. generation
     contrastive_sft.contrastive_generation_with_activation_cache(
         message_honest_train,
         message_lying_train,
@@ -130,7 +130,10 @@ def main(model_path, checkpoint, save_dir, task_name):
     contrastive_sft.evaluate_deception()
 
     # # 6. PCA
-    contrastive_sft.get_contrastive_activation_pca()
+    print("running pca and plot:")
+
+    # contrastive_sft.get_contrastive_activation_pca()
+    contrastive_sft.get_contrastive_activation_pca_(train_test="test")
     #
     print("Get stage statistics:")
     # contrastive_sft.get_stage_statistics(train_test="train")

@@ -210,7 +210,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
     )
     n_components = 3
     pca = PCA(n_components=n_components)
-    activations_pca_all = np.zeros(n_layers, n_contrastive_data * 2, n_components)
+    activations_pca_all = np.zeros((n_layers, n_contrastive_data * 2, n_components))
     for row in range(rows):
         for ll, layer in enumerate(range(row * 4, row * 4 + 4)):
             # print(f'layer{layer}')
