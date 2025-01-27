@@ -30,12 +30,6 @@ def parse_arguments():
         default="01-ai/Yi-6B-Chat",
     )
 
-    parser.add_argument(
-        "--data_dir",
-        type=str,
-        required=False,
-        default="D:\Code\deception_and_jailbreak\src\submodules\dataset",
-    )
     # "D:\Code\deception_and_jailbreak\src\submodules\dataset"
     parser.add_argument(
         "--save_dir",
@@ -45,8 +39,7 @@ def parse_arguments():
     )
     # D:\Data\deception
     parser.add_argument("--task_name", type=str, required=True, default="sft_to_honest")
-    parser.add_argument("--do_sample", type=bool, required=False, default=True)
-    parser.add_argument("--temperature", type=float, required=False, default=1.0)
+    parser.add_argument("--checkpoint", type=int, required=False, default=None)
 
     return parser.parse_args()
 
@@ -54,22 +47,24 @@ def parse_arguments():
 ############################################################################################################
 
 
-def main(model_path, data_dir, save_dir, task_name):
+def main(model_path, checkpoint, save_dir, task_name):
 
     ###################################################################
     # 0. cfg
-    model_name = os.path.basename(model_path)
-    model_name_before = model_name.split("_")[0]
-    if "gemma" in model_name_before:
-        model_path_before = "google/" + model_name_before
-    elif "Llama" in model_name_before:
-        model_path_before = "meta-llama/" + model_name_before
-    elif "Qwen" in model_name_before:
-        model_path_before = "Qwen/" + model_name_before
-    elif "Yi" in model_name_before:
-        model_path_before = "01-ai/" + model_name_before
+
+    model_alias = os.path.basename(model_path)
+    model_alias_before = model_alias.split("_")[0]
+    if "gemma" in model_alias_before:
+        model_path_before = "google/" + model_alias_before
+    elif "Llama" in model_alias_before:
+        model_path_before = "meta-llama/" + model_alias_before
+    elif "Qwen" in model_alias_before:
+        model_path_before = "Qwen/" + model_alias_before
+    elif "Yi" in model_alias_before:
+        model_path_before = "01-ai/" + model_alias_before
 
     lora = model_path.split("_")[-1]
+
     if lora == "True":
         lora = True
     else:
@@ -77,11 +72,13 @@ def main(model_path, data_dir, save_dir, task_name):
 
     cfg = Config(
         model_path=model_path,
-        model_alias=model_name,
+        model_alias=model_alias,
         model_path_before=model_path_before,
+        model_alias_before=model_alias_before,
         save_dir=save_dir,
         task_name=task_name,
         lora=lora,
+        checkpoint=checkpoint,
     )
     pprint.pp(cfg)
 
@@ -96,38 +93,38 @@ def main(model_path, data_dir, save_dir, task_name):
 
     # dataset_hf = load_dataset("jojoyang/azaria-mitchell_filtered_good")["combined"]
     dataset = load_dataset(
-        f"winnieyangwannan/azaria-mitchell_{model_name_before}_{task_name}"
+        f"winnieyangwannan/azaria-mitchell_{model_alias_before}_{task_name}"
     )
     #############################################################################################################
     contrastive_sft = ContrastiveBase(cfg, model_base, dataset)
     # # 3. Prepare dataset --> Generate Messages
 
     message_honest_train = contrastive_sft.prepare_dataset_chat_deception(
-        model_name, "honest", train_test="train"
+        model_alias, "honest", train_test="train"
     )
     message_lying_train = contrastive_sft.prepare_dataset_chat_deception(
-        model_name, "lying", train_test="train"
+        model_alias, "lying", train_test="train"
     )
 
     message_honest_test = contrastive_sft.prepare_dataset_chat_deception(
-        model_name, "honest", train_test="test"
+        model_alias, "honest", train_test="test"
     )
     message_lying_test = contrastive_sft.prepare_dataset_chat_deception(
-        model_name, "lying", train_test="test"
+        model_alias, "lying", train_test="test"
     )
 
     ############################################################################################################
     # # 4. generation
-    # contrastive_sft.contrastive_generation_with_activation_cache(
-    #     message_honest_train,
-    #     message_lying_train,
-    #     train_test="train",
-    # )
-    # contrastive_sft.contrastive_generation_with_activation_cache(
-    #     message_honest_test,
-    #     message_lying_test,
-    #     train_test="test",
-    # )
+    contrastive_sft.contrastive_generation_with_activation_cache(
+        message_honest_train,
+        message_lying_train,
+        train_test="train",
+    )
+    contrastive_sft.contrastive_generation_with_activation_cache(
+        message_honest_test,
+        message_lying_test,
+        train_test="test",
+    )
     #############################################################################################################
     # # 5. evaluation
     contrastive_sft.evaluate_deception()
@@ -136,7 +133,7 @@ def main(model_path, data_dir, save_dir, task_name):
     contrastive_sft.get_contrastive_activation_pca()
     #
     print("Get stage statistics:")
-    contrastive_sft.get_stage_statistics(train_test="train")
+    # contrastive_sft.get_stage_statistics(train_test="train")
     contrastive_sft.get_stage_statistics(train_test="test")
 
     print("Done")
@@ -149,9 +146,7 @@ if __name__ == "__main__":
 
     main(
         args.model_path,
-        # args.model_path_small,
-        # args.model_path_big,
-        args.data_dir,
+        args.checkpoint,
         args.save_dir,
         args.task_name,
     )

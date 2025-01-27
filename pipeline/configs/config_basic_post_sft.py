@@ -11,8 +11,10 @@ class Config:
     model_path: str
     model_alias: str
     model_path_before: str
+    model_alias_before: str
     save_dir: str
     lora: bool
+    checkpoint: int
     task_name: str = "sft_to_lie"
     contrastive_type: tuple = ("honest", "lying")
     answer_type: tuple = ("yes", "no")
@@ -33,6 +35,28 @@ class Config:
     def artifact_path(self) -> str:
         save_dir = self.save_dir
         # return os.path.join(os.path.dirname(os.path.realpath(__file__)), "runs", "activation_pca", self.model_alias)
+        if self.checkpoint:
+
+            return os.path.join(
+                save_dir,
+                "runs",
+                self.task_name,
+                f"lora_{self.lora}",
+                self.model_alias,
+                str(self.checkpoint),
+            )
+        else:
+            return os.path.join(
+                save_dir, "runs", self.task_name, f"lora_{self.lora}", self.model_alias
+            )
+
+    def checkpoint_path(self) -> str:
+        "D:\Data\deception\sft\sft_to_lie\Yi-6B-Chat\lora_True\checkpoint-100"
         return os.path.join(
-            save_dir, "runs", self.task_name, f"lora_{self.lora}", self.model_alias
+            self.save_dir,
+            "sft",
+            self.task_name,
+            self.model_alias_before,
+            f"lora_{self.lora}",
+            f"checkpoint-{self.checkpoint}",
         )

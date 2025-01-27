@@ -33,6 +33,10 @@ class ContrastiveBase:
         self.cache_negative_train = None  #####
         self.cache_positive_test = None
         self.cache_negative_test = None  #
+        self.activations_pca_positive_train = None
+        self.activations_pca_positive_train = None
+        self.activations_pca_positive_test = None
+        self.activations_pca_positive_test = None
 
     def prepare_dataset_deception_real_world(
         self, model_name, contrastive_type, train_test="train"
@@ -662,6 +666,7 @@ class ContrastiveBase:
             "answers": answers,
             "category": categories,
         }
+
         activation_path = os.path.join(self.cfg.artifact_path(), "activations")
         if not os.path.exists(activation_path):
             os.makedirs(activation_path)
@@ -1167,12 +1172,22 @@ class ContrastiveBase:
         )
 
         # 2. Get pca and plot
-        fig = get_pca_and_plot(
+        fig, activations_pca_all = get_pca_and_plot(
             self.cfg,
             activations["activations_positive"],
             activations["activations_negative"],
             self.dataset[f"{train_test}"],
         )
+
+        # save activation pca to self
+        n_samples = activations["activations_positive"].shape[1]
+
+        if train_test == "train":
+            self.activations_pca_positive_train = activations_pca_all[:, :n_samples, :]
+            self.activations_pca_negative_train = activations_pca_all[:, n_samples:, :]
+        else:
+            self.activations_pca_positive_test = activations_pca_all[:, :n_samples, :]
+            self.activations_pca_negative_train = activations_pca_all[:, n_samples:, :]
 
         # 3. Save plot
         pca_path = os.path.join(self.cfg.artifact_path(), "pca")

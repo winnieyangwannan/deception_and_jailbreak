@@ -208,8 +208,9 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
     fig = make_subplots(
         rows=rows, cols=cols, subplot_titles=[f"layer {n}" for n in range(n_layers)]
     )
-
-    pca = PCA(n_components=3)
+    n_components = 3
+    pca = PCA(n_components=n_components)
+    activations_pca_all = np.zeros(n_layers, n_contrastive_data * 2, n_components)
     for row in range(rows):
         for ll, layer in enumerate(range(row * 4, row * 4 + 4)):
             # print(f'layer{layer}')
@@ -217,6 +218,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
                 activations_pca = pca.fit_transform(
                     activations_all[layer, :, :].float().detach().cpu().numpy()
                 )
+                activations_pca_all[layer, :, :] = activations_pca
                 df = {}
                 df["label"] = labels_all
                 df["pca0"] = activations_pca[:, 0]
@@ -351,4 +353,4 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative, dataset):
     fig.show()
     # fig.write_html('honest_lying_pca.html')
 
-    return fig
+    return fig, activations_pca_all

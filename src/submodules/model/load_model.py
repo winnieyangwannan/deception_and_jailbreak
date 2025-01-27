@@ -1,4 +1,5 @@
 import torch
+import os
 
 # from sae_lens import HookedSAETransformer
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -7,6 +8,7 @@ import transformer_lens.utils as utils
 from peft import LoraConfig, PeftModel, AutoPeftModelForCausalLM
 
 torch.no_grad()
+#
 
 
 #
@@ -151,20 +153,35 @@ class TransformerModelLoader:
         if cfg.lora:
             base_model = AutoModelForCausalLM.from_pretrained(
                 cfg.model_path_before,
-                low_cpu_mem_usage=True,
-                return_dict=True,
                 torch_dtype=torch.float16,
                 device_map="auto",
             )
-            model = PeftModel.from_pretrained(base_model, cfg.model_path)
-            self.model = model.merge_and_unload()
+            peft_model = PeftModel.from_pretrained(
+                base_model,
+                cfg.model_path,
+                torch_dtype=torch.float16,
+                device_map="auto",
+            )
 
-            # self.model = AutoPeftModelForCausalLM.from_pretrained(
-            #     cfg.model_path,
-            #     torch_dtype=cfg.dtype,
-            #     device_map="auto",
-            #     # load_in_4bit=True,
-            # ).eval()
+            if cfg.checkpoint:
+                print("********************************************")
+                print("LOADING MODEL FROM CHECKPOINT")
+                print("********************************************")
+
+                # load from checkpoint
+                active_adapters = peft_model.active_adapters
+                active_adapter = active_adapters[0]
+                peft_model.load_adapter(
+                    cfg.checkpoint_path(),
+                    active_adapter,
+                    is_trainable=True,
+                )
+
+            # merge lora adaptor with the base model and unload the LoRA model
+            self.model = peft_model.merge_and_unload()
+            # Set the model to evaluation mode
+            self.model.eval()
+
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
                 cfg.model_path,
