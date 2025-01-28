@@ -11,12 +11,8 @@ import plotly.express as px
 import plotly.io as pio
 import pprint
 from typing import List, Optional, Callable, Tuple, Dict, Literal, Set, Union
-from sklearn.metrics import confusion_matrix
-from src.submodules.evaluations.evaluate_deception import (
-    evaluate_generation_deception,
-    plot_lying_honest_performance,
-)
-from src.submodules.activation_steering.activation_steering_analysis import (
+
+from src.analysis.cos_acc_analysis import (
     plot_cos_sim_and_acc_layer,
 )
 

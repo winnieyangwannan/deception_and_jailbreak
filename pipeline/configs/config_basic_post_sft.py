@@ -19,8 +19,9 @@ class Config:
     contrastive_type: tuple = ("honest", "lying")
     answer_type: tuple = ("yes", "no")
     do_sample: bool = True
-    framework: str = "transformers"
     temperature: int = 1.0
+
+    framework: str = "transformers"
     dtype: str = "bfloat16"  # "bfloat16" or "default"
     n_train: int = 20  # 100
     n_test: int = 50  # 50
