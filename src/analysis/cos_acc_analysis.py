@@ -239,7 +239,7 @@ def plot_cos_sim_and_acc_checkpoint(cfg, cos_all, honest_score_all):
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
-            x=np.arange(n_checkpoints),
+            x=n_samples,
             y=honest_score_all,
             name="Performance",
             mode="lines+markers",
@@ -249,7 +249,7 @@ def plot_cos_sim_and_acc_checkpoint(cfg, cos_all, honest_score_all):
     )
     fig.add_trace(
         go.Scatter(
-            x=np.arange(n_checkpoints),
+            x=n_samples,
             y=cos_all,
             name="Cosine Similarity",
             mode="lines+markers",
@@ -258,9 +258,22 @@ def plot_cos_sim_and_acc_checkpoint(cfg, cos_all, honest_score_all):
             line=dict(color="gold", width=line_width),  # ,dash='dash'),
         )
     )
-    fig.update_xaxes(title_text="Layer")
+    fig.update_xaxes(title_text="# of Training Examples")
     # fig.update_yaxes(title_text="Logit Difference", secondary_y=False)
     # fig.update_yaxes(title_text="Cosine Similarity", secondary_y=True)
+    fig.update_layout(
+        height=300,
+        width=500,
+        xaxis=dict(
+            # title="Performance",
+            # titlefont=dict(color="dodgerblue"),
+            # tickfont=dict(color="dodgerblue"),
+            tickmode="array",
+            # ticktext=np.arange(0, n_checkpoints, 20),
+            # tickvals=np.arange(0, n_samples[-1], cfg.batch_size * 2),
+            # range=[-0.01, n_samples[-1] + 0.11],
+        ),
+    )
 
     fig.update_layout(
         height=300,

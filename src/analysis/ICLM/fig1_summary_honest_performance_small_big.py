@@ -49,6 +49,7 @@ model_path = [
 # ]
 
 sizes_all = [[7, 57], [6, 34], [7, 27], [8, 70]]
+titles = ["Qwen", "Yi", "Gemma", "Llama"]
 
 # size = [1.8, 14, 72, 1.5, 7, 57, 6, 34, 6, 9, 34, 7, 13, 70, 8, 70, 2, 7, 2, 9, 27]
 
@@ -60,8 +61,9 @@ if not os.path.exists(save_path):
     os.makedirs(save_path)
 
 
-fig = plt.figure()
-
+fig = plt.figure(figsize=(4, 2))
+linewidth = 1.3
+fontsize = 8
 for ii in range(len(model_path)):
     honest_scores_lying = []
     honest_scores_honest = []
@@ -121,30 +123,31 @@ for ii in range(len(model_path)):
         sem = stats.sem(honest_score_honest_all)
         sem_honest.append(sem)
 
-    plt.subplot(1, len(model_path), ii + 1)
+    ax = plt.subplot(1, len(model_path), ii + 1)
+    ax.set_title(titles[ii], fontsize=fontsize)
 
     plt.plot(
         [0, 1],
         honest_scores_lying[0:2],
         marker="o",
         color="#A9BBAF",
-        markersize=10,
-        linewidth=2,
+        markersize=5,
+        linewidth=linewidth,
     )
     plt.plot(
         [0, 1],
         honest_scores_honest[0:2],
         marker="o",
         color="#C8B8D3",
-        markersize=10,
-        linewidth=2,
+        markersize=5,
+        linewidth=linewidth,
         linestyle="--",
     )
     # plt.scatter([0, 1], df["lying_scores"][0:2])
-    plt.xticks([0, 1], sizes_all[ii], fontsize=16)
+    plt.xticks([0, 1], sizes_all[ii], fontsize=fontsize)
     if ii == 0:
-        plt.yticks(np.arange(0, 1.2, 0.2), fontsize=16)
-        plt.ylabel("Performance (Accuracy)", fontsize=20)
+        plt.yticks(np.arange(0, 1.2, 0.2), fontsize=fontsize)
+        plt.ylabel("Performance (Accuracy)", fontsize=fontsize)
 
     else:
         plt.yticks([])
@@ -155,8 +158,8 @@ for ii in range(len(model_path)):
         plt.gca().spines[pos].set_visible(False)
 
     # Set the thickness of the x and y axis lines
-    plt.gca().spines["bottom"].set_linewidth(2)
-    plt.gca().spines["left"].set_linewidth(2)
+    plt.gca().spines["bottom"].set_linewidth(linewidth)
+    plt.gca().spines["left"].set_linewidth(linewidth)
 plt.show()
 
 

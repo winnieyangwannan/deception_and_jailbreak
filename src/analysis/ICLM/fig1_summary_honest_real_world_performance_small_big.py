@@ -30,12 +30,12 @@ import plotly.express as px
 
 
 model_path = [
-    ["Qwen/Qwen2-7B-Instruct", "Qwen/Qwen2-57B-A14B-Instruct"],
+    ["Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2-57B-A14B-Instruct"],
     ["01-ai/Yi-6B-Chat", "01-ai/Yi-1.5-34B-Chat"],
     ["google/gemma-7b-it", "google/gemma-2-27b-it"],
-    ["Meta-Llama-3-8B-Instruct", "Llama-3.3-70B-Instruct"],
+    ["meta-llama/Llama-3.1-8B-Instruct", "meta-llama/Llama-3.3-70B-Instruct"],
 ]
-
+titles = ["Qwen", "Yi", "Gemma", "Llama"]
 
 sizes_all = [[7, 57], [6, 34], [7, 27], [8, 70]]
 
@@ -49,8 +49,9 @@ if not os.path.exists(save_path):
     os.makedirs(save_path)
 
 
-fig = plt.figure()
-
+fig = plt.figure(figsize=(4, 2))
+linewidth = 1.3
+fontsize = 8
 for ii in range(len(model_path)):
     honest_scores_lying = []
     honest_scores_honest = []
@@ -67,14 +68,12 @@ for ii in range(len(model_path)):
         filename = (
             artifact_path
             + os.sep
-            + "1.0"
-            + os.sep
             + "completions"
             + os.sep
             + model_alias
             + "_completions_train.json"
         )
-        with open(filename, "r") as file:
+        with open(filename, "r", encoding="utf-8") as file:
             data = json.load(file)
 
         honest_score_lying = data["honest_score_lying"]
@@ -97,15 +96,15 @@ for ii in range(len(model_path)):
         sem = stats.sem(honest_score_honest_all)
         sem_honest.append(sem)
 
-    plt.subplot(1, len(model_path), ii + 1)
-
+    ax = plt.subplot(1, len(model_path), ii + 1)
+    ax.set_title(titles[ii], fontsize=20)
     plt.plot(
         [0, 1],
         honest_scores_lying[0:2],
         marker="o",
         color="#A9BBAF",
         markersize=10,
-        linewidth=2,
+        linewidth=linewidth,
     )
     plt.plot(
         [0, 1],
@@ -113,14 +112,14 @@ for ii in range(len(model_path)):
         marker="o",
         color="#C8B8D3",
         markersize=10,
-        linewidth=2,
+        linewidth=linewidth,
         linestyle="--",
     )
     # plt.scatter([0, 1], df["lying_scores"][0:2])
-    plt.xticks([0, 1], sizes_all[ii], fontsize=16)
+    plt.xticks([0, 1], sizes_all[ii], fontsize=fontsize)
     if ii == 0:
-        plt.yticks(np.arange(0, 1.2, 0.2), fontsize=16)
-        plt.ylabel("Performance (Accuracy)", fontsize=20)
+        plt.yticks(np.arange(0, 1.2, 0.2), fontsize=fontsize)
+        plt.ylabel("Performance (Accuracy)", fontsize=fontsize)
 
     else:
         plt.yticks([])
@@ -131,13 +130,14 @@ for ii in range(len(model_path)):
         plt.gca().spines[pos].set_visible(False)
 
     # Set the thickness of the x and y axis lines
-    plt.gca().spines["bottom"].set_linewidth(2)
-    plt.gca().spines["left"].set_linewidth(2)
+    plt.gca().spines["bottom"].set_linewidth(linewidth)
+    plt.gca().spines["left"].set_linewidth(linewidth)
 plt.show()
 
 
 fig.savefig(
-    save_path + os.sep + "honest_performance_small_big_models.pdf", format="pdf"
+    save_path + os.sep + "honest_performance_real_world_small_big_models.pdf",
+    format="pdf",
 )
 # pio.write_image(
 #     fig, save_path + os.sep + "honest_performance_small_big_models.png", scale=6

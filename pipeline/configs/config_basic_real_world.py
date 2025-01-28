@@ -25,6 +25,7 @@ class Config:
     intervention: str = "no_intervention"
     cache_pos: str = "prompt_last_token"
     cache_name: str = "resid_post"
+    lora: bool = False
 
     # for generation_trajectory
 
