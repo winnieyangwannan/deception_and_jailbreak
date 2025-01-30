@@ -66,9 +66,9 @@ class Config:
 def parse_arguments():
     """Parse model_base path argument from command line."""
     parser = argparse.ArgumentParser(description="Parse model_base path argument.")
-    parser.add_argument(
-        "--model_path", type=str, required=True, help="google/gemma-2-2b-it"
-    )
+    # parser.add_argument(
+    #     "--model_path", type=str, required=True, help="google/gemma-2-2b-it"
+    # )
     parser.add_argument(
         "--data_dir",
         type=str,
@@ -82,7 +82,7 @@ def parse_arguments():
         default="D:\Data\deception",
     )
 
-    parser.add_argument("--task_name", type=str, required=False, default="sft_to_lie")
+    # parser.add_argument("--task_name", type=str, required=False, default="sft_to_lie")
     parser.add_argument("--batch_size", type=int, required=False, default=32)
 
     return parser.parse_args()
@@ -119,13 +119,32 @@ if __name__ == "__main__":
 
     args = parse_arguments()
 
-    print("model_base_path")
-    print(args.model_path)
-
     main(
-        model_path=args.model_path,
+        model_path="google/gemma-2-9b-it",
         data_dir=args.data_dir,
         save_dir=args.save_dir,
-        task_name=args.task_name,
+        task_name="sft_to_honest",
+        batch_size=args.batch_size,
+    )
+    main(
+        model_path="meta-llama/Llama-3.1-8B-Instruct",
+        data_dir=args.data_dir,
+        save_dir=args.save_dir,
+        task_name="sft_to_honest",
+        batch_size=args.batch_size,
+    )
+
+    main(
+        model_path="Qwen/Qwen2-7B-Instruct",
+        data_dir=args.data_dir,
+        save_dir=args.save_dir,
+        task_name="sft_to_lie",
+        batch_size=args.batch_size,
+    )
+    main(
+        model_path="01-ai/Yi-6B-Chat",
+        data_dir=args.data_dir,
+        save_dir=args.save_dir,
+        task_name="sft_to_lie",
         batch_size=args.batch_size,
     )

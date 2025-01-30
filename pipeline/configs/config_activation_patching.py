@@ -25,6 +25,7 @@ class Config:
     intervention: str = "no_intervention"
     cache_pos: str = "all"  # "prompt_last_token" or "all" or "prompt_all"
     clean_type: str = "positive"
+    output_path: str = ""
     # for generation_trajectory
 
     def artifact_path(self) -> str:

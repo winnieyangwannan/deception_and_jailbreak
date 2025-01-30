@@ -81,10 +81,10 @@ def collect_all_cos_acc(cfg):
     honest_score_lying_all = []
     honest_score_honest_before_all = []
     honest_score_lying_before_all = []
+    # 1.collect cosine similarity for each checkpoint
 
     for checkpoint in cfg.checkpoints[1:]:
 
-        # collect cosine similarity for each checkpoint
         (
             honest_score_honest,
             honest_score_lying,
@@ -102,13 +102,14 @@ def collect_all_cos_acc(cfg):
 
         # collect performance (honest_score) for each checkpoint
         cos = collect_cos(cfg, checkpoint)
-        cos_all.append(cos[-1])  # only take last layer
+        # take the inversion of cosine --> rotation progress
+        cos_all.append(-cos[-1])  # only take last layer and
 
     # take the starting point as the honest score before manipulation
     honest_score_honest_all.insert(0, honest_score_honest_before)
     honest_score_lying_all.insert(0, honest_score_lying_before)
 
-    # take the cosine before manipulation
+    # 2. take the cosine before manipulation
     with open(
         os.path.join(
             cfg.data_dir,
@@ -122,8 +123,10 @@ def collect_all_cos_acc(cfg):
     ) as f:
         stage_stats = pickle.load(f)
     cos_0 = stage_stats["stage_3"]["cos_positive_negative"]  # cos in original high d
-    cos_all.insert(0, cos_0[-1])
-    return cos_all, honest_score_honest_all, honest_score_lying_all
+    cos_all.insert(0, -cos_0[-1])
+    cos_all_norm = (cos_all - np.min(cos_all)) / (np.max(cos_all) - np.min(cos_all))
+
+    return cos_all_norm, honest_score_honest_all, honest_score_lying_all
 
 
 def plot_cos_sim_and_acc_layer(cfg):
@@ -144,15 +147,16 @@ def plot_cos_sim_and_acc_layer(cfg):
     stage_path = os.path.join(cfg.artifact_path(), "stage_stats")
     with open(stage_path + os.sep + f"{cfg.model_alias}_stage_stats.pkl", "rb") as f:
         cos_data = pickle.load(f)
-    cos = cos_data["stage_3"]["cos_positive_negative"]
-    cos_pca = cos_data["stage_3"]["cos_positive_negative_pca"]
+    cos = cos_data["stage_3"]["cos_positive_negative"] * -1
+    cos_all_norm = (cos - np.min(cos)) / (np.max(cos) - np.min(cos))
 
     # load cosine similarity (intervention)
 
     # 3. plot
-    n_layers = len(cos)
-    line_width = 3
-    size = 5
+    n_layers = len(cos_all_norm)
+    line_width = 5
+    size = 12
+    font_size = 20
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -167,8 +171,8 @@ def plot_cos_sim_and_acc_layer(cfg):
     fig.add_trace(
         go.Scatter(
             x=np.arange(n_layers),
-            y=cos,
-            name="Cosine Similarity",
+            y=cos_all_norm,
+            name="Rotation Progress",
             mode="lines+markers",
             marker=dict(color="gold", size=size),
             yaxis="y3",
@@ -180,8 +184,8 @@ def plot_cos_sim_and_acc_layer(cfg):
     # fig.update_yaxes(title_text="Cosine Similarity", secondary_y=True)
 
     fig.update_layout(
-        height=300,
-        width=500,
+        height=400,
+        width=600,
         yaxis=dict(
             title="Performance",
             titlefont=dict(color="dodgerblue"),
@@ -191,40 +195,41 @@ def plot_cos_sim_and_acc_layer(cfg):
             range=[-0.01, 1.11],
         ),
         yaxis3=dict(
-            title="Cosine Similarity",
+            title="Rotation Progress",
             titlefont=dict(color="gold"),
             tickfont=dict(color="gold"),
             anchor="x",
             overlaying="y",
             side="right",
             tickmode="array",
-            tickvals=[-1, -0.5, 0, 0.5, 1],
-            range=[-1.01, 1.11],
+            tickvals=[0, 0.5, 1],
+            range=[-0.01, 1.11],
+            # ticktext=["0", ""],
         ),
-        font=dict(family="verdana", size=16, color="black"),
+        font=dict(size=font_size),
     )
 
     fig.show()
-
-    fig.write_html(
-        score_path
-        + os.sep
-        + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
-        + ".html"
-    )
+    #
+    # fig.write_html(
+    #     score_path
+    #     + os.sep
+    #     + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
+    #     + ".html"
+    # )
+    # pio.write_image(
+    #     fig,
+    #     score_path
+    #     + os.sep
+    #     + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
+    #     + ".png",
+    #     scale=6,
+    # )
     pio.write_image(
         fig,
-        score_path
+        cfg.output_path()
         + os.sep
-        + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
-        + ".png",
-        scale=6,
-    )
-    pio.write_image(
-        fig,
-        score_path
-        + os.sep
-        + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
+        + f"{cfg.model_alias}_steer_to_honest_acc_cos_layer"
         + ".pdf",
     )
 
@@ -234,9 +239,11 @@ def plot_cos_sim_and_acc_checkpoint(cfg, cos_all, honest_score_all):
     # plot
     n_checkpoints = len(cos_all)
     n_samples = [cp * cfg.batch_size for cp in cfg.checkpoints]
-    line_width = 3
-    size = 5
+    line_width = 5
+    size = 12
+    font_size = 20
     fig = go.Figure()
+
     fig.add_trace(
         go.Scatter(
             x=n_samples,
@@ -251,7 +258,7 @@ def plot_cos_sim_and_acc_checkpoint(cfg, cos_all, honest_score_all):
         go.Scatter(
             x=n_samples,
             y=cos_all,
-            name="Cosine Similarity",
+            name="Rotation Progress",
             mode="lines+markers",
             marker=dict(color="gold", size=size),
             yaxis="y3",
@@ -259,25 +266,14 @@ def plot_cos_sim_and_acc_checkpoint(cfg, cos_all, honest_score_all):
         )
     )
     fig.update_xaxes(title_text="# of Training Examples")
-    # fig.update_yaxes(title_text="Logit Difference", secondary_y=False)
-    # fig.update_yaxes(title_text="Cosine Similarity", secondary_y=True)
-    fig.update_layout(
-        height=300,
-        width=500,
-        xaxis=dict(
-            # title="Performance",
-            # titlefont=dict(color="dodgerblue"),
-            # tickfont=dict(color="dodgerblue"),
-            tickmode="array",
-            # ticktext=np.arange(0, n_checkpoints, 20),
-            # tickvals=np.arange(0, n_samples[-1], cfg.batch_size * 2),
-            # range=[-0.01, n_samples[-1] + 0.11],
-        ),
-    )
 
     fig.update_layout(
-        height=300,
-        width=500,
+        height=400,
+        width=600,
+        showlegend=True,
+        xaxis=dict(
+            tickmode="array",
+        ),
         yaxis=dict(
             title="Performance",
             titlefont=dict(color="dodgerblue"),
@@ -287,17 +283,17 @@ def plot_cos_sim_and_acc_checkpoint(cfg, cos_all, honest_score_all):
             range=[-0.01, 1.11],
         ),
         yaxis3=dict(
-            title="Cosine Similarity",
+            title="Rotation Progress",
             titlefont=dict(color="gold"),
             tickfont=dict(color="gold"),
             anchor="x",
             overlaying="y",
             side="right",
             tickmode="array",
-            tickvals=[-1, -0.5, 0, 0.5, 1],
-            range=[-1.01, 1.11],
+            tickvals=[0, 0.5, 1],
+            range=[-0.01, 1.11],
         ),
-        font=dict(size=16),
+        font=dict(size=font_size),
     )
 
     fig.show()
