@@ -125,18 +125,18 @@ if __name__ == "__main__":
     print(answer_type)
     print("contrastive_type")
     print(contrastive_type)
-
-    main(
-        model_path="google/gemma-2-9b-it",
-        save_dir=args.save_dir,
-        task_name=args.task_name,
-        contrastive_type=contrastive_type,
-        answer_type=answer_type,
-        do_sample=args.do_sample,
-        framework=args.framework,
-        cache_name=args.cache_name,
-        jailbreak=args.jailbreak,
-    )
+    #
+    # main(
+    #     model_path="google/gemma-2-9b-it",
+    #     save_dir=args.save_dir,
+    #     task_name=args.task_name,
+    #     contrastive_type=contrastive_type,
+    #     answer_type=answer_type,
+    #     do_sample=args.do_sample,
+    #     framework=args.framework,
+    #     cache_name=args.cache_name,
+    #     jailbreak=args.jailbreak,
+    # )
 
     main(
         model_path="meta-llama/Meta-Llama-3-8B-Instruct",

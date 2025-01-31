@@ -4,7 +4,8 @@ import json
 import os
 import argparse
 import numpy as np
-import sae_lens
+
+# import sae_lens
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.express as px
@@ -72,8 +73,7 @@ def main(
 if __name__ == "__main__":
 
     args = parse_arguments()
-    print(sae_lens.__version__)
-    print(sae_lens.__version__)
+
     print("run contrastive activation activation_patching\n\n")
     print("model_base_path")
     print(args.model_path)

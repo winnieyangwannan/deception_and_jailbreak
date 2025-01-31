@@ -48,6 +48,7 @@ save_path = os.path.join("D:", "\Data", "deception", "figures", "ICLM_submission
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 
+########################## ICL ##############################
 
 fig = plt.figure(figsize=(4, 2))
 linewidth = 1.3
@@ -76,13 +77,20 @@ plt.plot(
     linewidth=linewidth,
     linestyle="--",  # honest score honest
 )
-
+plt.xticks([0, 1], ["Before", "After"], fontsize=fontsize)
+plt.yticks(np.arange(0, 1.2, 0.2), fontsize=fontsize)
+plt.ylabel("Performance (Accuracy)", fontsize=fontsize)
+# no frames
+for pos in ["right", "top"]:
+    plt.gca().spines[pos].set_visible(False)
+plt.gca().spines["bottom"].set_linewidth(linewidth)
+plt.gca().spines["left"].set_linewidth(linewidth)
 ########################## SFT ##############################
-ax = plt.subplot(1, len(model_path), 1)
+ax = plt.subplot(1, len(model_path), 3)
 # ax.set_title( ["before", "after"], fontsize=20)
 plt.plot(
     [0, 1],
-    [0.94, 0],
+    [0.94, 0.01],
     marker="o",
     color="#A9BBAF",
     markersize=10,
@@ -90,7 +98,7 @@ plt.plot(
 )
 plt.plot(
     [0, 1],
-    [0.92, 0.82],
+    [0.92, 0.98],
     marker="o",
     color="#C8B8D3",
     markersize=10,
@@ -103,7 +111,7 @@ plt.plot(
 plt.xticks([0, 1], ["Before", "After"], fontsize=fontsize)
 
 plt.yticks(np.arange(0, 1.2, 0.2), fontsize=fontsize)
-plt.ylabel("Performance (Accuracy)", fontsize=fontsize)
+# plt.ylabel("Performance (Accuracy)", fontsize=fontsize)
 
 
 # no frames
@@ -117,7 +125,7 @@ plt.show()
 
 
 fig.savefig(
-    save_path + os.sep + "honest_performance_real_world_small_big_models.pdf",
+    save_path + os.sep + "honest_performance_to_lie_icl_sft.pdf",
     format="pdf",
 )
 # pio.write_image(

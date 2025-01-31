@@ -143,11 +143,15 @@ def plot_cos_sim_and_acc_layer(cfg):
 
     score = data["score_negative_all"][:]  # last layer only
 
-    # 2. Load cosine similarity (baseline)
-    stage_path = os.path.join(cfg.artifact_path(), "stage_stats")
-    with open(stage_path + os.sep + f"{cfg.model_alias}_stage_stats.pkl", "rb") as f:
+    # 2. Load cosine similarity
+    stage_path = os.path.join(
+        cfg.artifact_path(), "activation_steering", "positive_addition", "stage_stats"
+    )
+    with open(
+        stage_path + os.sep + f"{cfg.model_alias}_cos_sim_all_layers.pkl", "rb"
+    ) as f:
         cos_data = pickle.load(f)
-    cos = cos_data["stage_3"]["cos_positive_negative"] * -1
+    cos = [cos_data["cos_all"][ii][-1] * -11 for ii in range(len(cos_data["cos_all"]))]
     cos_all_norm = (cos - np.min(cos)) / (np.max(cos) - np.min(cos))
 
     # load cosine similarity (intervention)
@@ -210,21 +214,7 @@ def plot_cos_sim_and_acc_layer(cfg):
     )
 
     fig.show()
-    #
-    # fig.write_html(
-    #     score_path
-    #     + os.sep
-    #     + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
-    #     + ".html"
-    # )
-    # pio.write_image(
-    #     fig,
-    #     score_path
-    #     + os.sep
-    #     + f"{cfg.cache_name}_steering_cos_sim_performance_layer"
-    #     + ".png",
-    #     scale=6,
-    # )
+
     pio.write_image(
         fig,
         cfg.output_path()
