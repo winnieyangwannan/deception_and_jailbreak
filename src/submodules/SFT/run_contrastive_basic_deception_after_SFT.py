@@ -59,7 +59,9 @@ def parse_arguments():
         default="D:\Data\deception",
     )
     # D:\Data\deception
-    parser.add_argument("--task_name", type=str, required=False, default="deception_sft")
+    parser.add_argument(
+        "--task_name", type=str, required=False, default="deception_sft"
+    )
     parser.add_argument("--do_sample", type=bool, required=False, default=True)
     parser.add_argument("--temperature", type=float, required=False, default=1.0)
 
@@ -143,12 +145,12 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
 
     #############################################################################################################
     # 4. generation
-    # contrastive_sft.contrastive_generation_with_activation_cache(
-    #     train_message_honest,
-    #     train_message_lying,
-    #     ds["train"],
-    #     train_test="train",
-    # )
+    contrastive_sft.contrastive_generation_with_activation_cache(
+        train_message_honest,
+        train_message_lying,
+        ds["train"],
+        train_test="train",
+    )
     # contrastive_sft.contrastive_generation_with_activation_cache(
     #     test_message_honest,
     #     test_message_lying,
@@ -161,7 +163,7 @@ def main(model_path_before, model_path_after, model_path_big, data_dir, save_dir
     # contrastive_sft.evaluate_deception()
     #
     # # 6. PCA
-    # contrastive_sft.get_contrastive_activation_pca()
+    contrastive_sft.get_contrastive_activation_pca()
 
     # 6. Stage statistics
     print("Get stage statistics:")
