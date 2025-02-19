@@ -118,12 +118,12 @@ def main(model_path_generation, data_dir, save_dir):
     )
 
     ############################################################################################################
-    # # 4. generation
-    # contrastive_sft.contrastive_generation_with_activation_cache(
-    #     message_honest,
-    #     message_lying,
-    #     train_test="train",
-    # )
+    # 4. generation
+    contrastive_sft.contrastive_generation_with_activation_cache(
+        message_honest,
+        message_lying,
+        train_test="train",
+    )
 
     #############################################################################################################
     # # 5. evaluation
@@ -139,7 +139,7 @@ def main(model_path_generation, data_dir, save_dir):
 
 
 if __name__ == "__main__":
-    print("run_contrastive_basic_deception_after_SFT_chinese")
+    print("run_contrastive_basic_deception_real_world")
 
     args = parse_arguments()
 

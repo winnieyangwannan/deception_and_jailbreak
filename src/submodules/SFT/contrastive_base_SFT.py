@@ -926,7 +926,7 @@ class ContrastiveBase:
     def generate_and_cache_batch_real_world(
         self, inputs_honest, inputs_lying, dataset, train_test="test"
     ):
-        n_prompts = len(dataset)
+        n_prompts = len(dataset[train_test])
         deceive_instruction = dataset[train_test]["deceive_instruction"]
         normal_instruction = dataset[train_test]["normal_instruction"]
         questions = dataset[train_test]["question"]

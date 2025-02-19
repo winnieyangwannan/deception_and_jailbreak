@@ -52,12 +52,12 @@ def load_model(cfg):
         print("loading model from transformers")
         model = TransformerModelLoader(cfg)
 
-    print(
-        "free(Gb):",
-        torch.cuda.mem_get_info()[0] / 1000000000,
-        "total(Gb):",
-        torch.cuda.mem_get_info()[1] / 1000000000,
-    )
+    # print(
+    #     "free(Gb):",
+    #     torch.cuda.mem_get_info()[0] / 1000000000,
+    #     "total(Gb):",
+    #     torch.cuda.mem_get_info()[1] / 1000000000,
+    # )
     return model
 
 
