@@ -1,0 +1,122 @@
+The following values were not passed to `accelerate launch` and had defaults used instead:
+		More than one GPU was found, enabling multi-GPU training.
+		If this was unintended please pass in `--num_processes=1`.
+	`--mixed_precision` was set to a value of `'no'`
+	`--dynamo_backend` was set to a value of `'no'`
+To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_generation.py", line 6, in <module>
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_generation.py", line 6, in <module>
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_generation.py", line 6, in <module>
+    from contrastive_steering_base import generate_and_steer_batch_contrastive
+ImportError: cannot import name 'generate_and_steer_batch_contrastive' from 'contrastive_steering_base' (/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/contrastive_steering_base.py)
+Traceback (most recent call last):
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_generation.py", line 6, in <module>
+Traceback (most recent call last):
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_generation.py", line 6, in <module>
+    from contrastive_steering_base import generate_and_steer_batch_contrastive
+ImportError: cannot import name 'generate_and_steer_batch_contrastive' from 'contrastive_steering_base' (/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/contrastive_steering_base.py)
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_generation.py", line 6, in <module>
+    from contrastive_steering_base import generate_and_steer_batch_contrastive
+ImportError: cannot import name 'generate_and_steer_batch_contrastive' from 'contrastive_steering_base' (/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/contrastive_steering_base.py)
+Traceback (most recent call last):
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_generation.py", line 6, in <module>
+    from contrastive_steering_base import generate_and_steer_batch_contrastive
+ImportError: cannot import name 'generate_and_steer_batch_contrastive' from 'contrastive_steering_base' (/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/contrastive_steering_base.py)
+    from contrastive_steering_base import generate_and_steer_batch_contrastive
+ImportError: cannot import name 'generate_and_steer_batch_contrastive' from 'contrastive_steering_base' (/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/contrastive_steering_base.py)
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_generation.py", line 6, in <module>
+    from contrastive_steering_base import generate_and_steer_batch_contrastive
+ImportError: cannot import name 'generate_and_steer_batch_contrastive' from 'contrastive_steering_base' (/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/contrastive_steering_base.py)
+    from contrastive_steering_base import generate_and_steer_batch_contrastive
+ImportError: cannot import name 'generate_and_steer_batch_contrastive' from 'contrastive_steering_base' (/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/contrastive_steering_base.py)
+    from contrastive_steering_base import generate_and_steer_batch_contrastive
+ImportError: cannot import name 'generate_and_steer_batch_contrastive' from 'contrastive_steering_base' (/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/contrastive_steering_base.py)
+E0328 09:25:00.865000 2869753 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:869] failed (exitcode: 1) local_rank: 0 (pid: 2871313) of binary: /home/winnieyangwn/miniconda3/envs/refat/bin/python3.11
+Traceback (most recent call last):
+  File "/home/winnieyangwn/miniconda3/envs/refat/bin/accelerate", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/accelerate_cli.py", line 48, in main
+    args.func(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 1185, in launch_command
+    multi_gpu_launcher(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 810, in multi_gpu_launcher
+    distrib_run.run(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/run.py", line 910, in run
+    elastic_launch(
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 138, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 269, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+run_truthfulqa_generation.py FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2025-03-28_09:25:00
+  host      : cr6-p548xlarge-3.genai-h100.hpcaas
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 2871314)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2025-03-28_09:25:00
+  host      : cr6-p548xlarge-3.genai-h100.hpcaas
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 2871315)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2025-03-28_09:25:00
+  host      : cr6-p548xlarge-3.genai-h100.hpcaas
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 2871316)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[4]:
+  time      : 2025-03-28_09:25:00
+  host      : cr6-p548xlarge-3.genai-h100.hpcaas
+  rank      : 4 (local_rank: 4)
+  exitcode  : 1 (pid: 2871317)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[5]:
+  time      : 2025-03-28_09:25:00
+  host      : cr6-p548xlarge-3.genai-h100.hpcaas
+  rank      : 5 (local_rank: 5)
+  exitcode  : 1 (pid: 2871318)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[6]:
+  time      : 2025-03-28_09:25:00
+  host      : cr6-p548xlarge-3.genai-h100.hpcaas
+  rank      : 6 (local_rank: 6)
+  exitcode  : 1 (pid: 2871319)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[7]:
+  time      : 2025-03-28_09:25:00
+  host      : cr6-p548xlarge-3.genai-h100.hpcaas
+  rank      : 7 (local_rank: 7)
+  exitcode  : 1 (pid: 2871320)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2025-03-28_09:25:00
+  host      : cr6-p548xlarge-3.genai-h100.hpcaas
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 2871313)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+srun: error: cr6-p548xlarge-3: task 0: Exited with exit code 1
+srun: Terminating StepId=128922.0

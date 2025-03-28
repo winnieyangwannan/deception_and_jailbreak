@@ -8,6 +8,14 @@ SYSTEM_PROMPT_MISCONCEPTION = "Read the following multiple-choice question and c
 QUESTION_TEMPLATE = """Question: {question}\n\nA: {A}\n\nB: {B}"""
 ANSWER_TEMPLATE = "Answer:"
 
+def get_correct_choice(dataset):
+    # 0.Get correct choice
+    random.seed(42) 
+    dataset = dataset.to_dict()
+    mylist = ["A", "B"]
+    dataset["Correct choice"] = [random.choice(mylist) for _ in range(len(dataset["Question"]))]
+    return dataset
+
 
 def construct_messages(dataset, contrastive_type="factual"):
     

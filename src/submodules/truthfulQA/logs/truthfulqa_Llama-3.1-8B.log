@@ -1,45 +1,0 @@
-The following values were not passed to `accelerate launch` and had defaults used instead:
-	`--num_processes` was set to a value of `1`
-	`--num_machines` was set to a value of `1`
-	`--mixed_precision` was set to a value of `'no'`
-	`--dynamo_backend` was set to a value of `'no'`
-To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
-/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
-current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
-Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 790 examples [00:00, 59026.30 examples/s]
-Train size: 632
-Test size: 158
-Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:07<00:22,  7.35s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:14<00:14,  7.24s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:21<00:07,  7.17s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:23<00:00,  5.12s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:23<00:00,  5.89s/it]
-Traceback (most recent call last):
-  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa.py", line 110, in <module>
-    main(model_path=args.model_path, 
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa.py", line 96, in main
-    inputs, train_dataset = prepare_dataset_contrastive(cfg, model_base, dataset, train_test="train")
-                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/dataset.py", line 10, in prepare_dataset_contrastive
-    inputs_positive, dataset = prepare_dataset(cfg, model_base, dataset, 
-                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/dataset.py", line 72, in prepare_dataset
-    inputs = tokenize_fn(messages)
-             ^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/dataset.py", line 48, in tokenize_fn
-    formatted_prompt = model_base.tokenizer.apply_chat_template(
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/transformers/tokenization_utils_base.py", line 1629, in apply_chat_template
-    chat_template = self.get_chat_template(chat_template, tools)
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/transformers/tokenization_utils_base.py", line 1805, in get_chat_template
-    raise ValueError(
-ValueError: Cannot use chat template functions because tokenizer.chat_template is not set and no template argument was passed! For information about writing templates and setting the tokenizer.chat_template attribute, please see the documentation at https://huggingface.co/docs/transformers/main/en/chat_templating
-Traceback (most recent call last):
-  File "/var/spool/slurmd/job128789/slurm_script", line 8, in <module>
-    sys.exit(main())
-             ^^^^^^
-  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/accelerate_cli.py", line 48, in main
-    args.func(args)
-  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 1194, in launch_command
-    simple_launcher(args)
-  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 780, in simple_launcher
-    raise subprocess.CalledProcessError(returncode=process.returncode, cmd=cmd)
-subprocess.CalledProcessError: Command '['/home/winnieyangwn/miniconda3/envs/refat/bin/python3.11', 'run_truthfulqa.py', '--model_path=meta-llama/Llama-3.1-8B']' returned non-zero exit status 1.

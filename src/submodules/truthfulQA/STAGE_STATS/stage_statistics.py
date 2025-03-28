@@ -173,7 +173,7 @@ def get_distance_pair_contrastive(
         fig["layout"]["yaxis3"]["title"] = "Distance (z-scored)"
         fig["layout"]["yaxis4"]["title"] = ""
 
-        fig.show()
+        # fig.show()
         # fig.write_html(save_path + os.sep + 'distance_pair.html')
         if save_name is None:
             pio.write_image(
@@ -387,7 +387,7 @@ def plot_stage_2_dunn(dunn_index_all, dunn_index_pca, contrastive_type):
         row=1,
         col=2,
     )
-    fig.show()
+    # fig.show()
 
     return fig
 
@@ -572,7 +572,7 @@ def get_dist_centroid_true_false(
 
         fig.update_xaxes(tickvals=np.arange(0, n_layers, 5))
         fig.update_layout(height=500, width=700)
-        fig.show()
+        # fig.show()
 
         if save_name is None:
             pio.write_image(
@@ -724,7 +724,7 @@ def get_cos_sim_positive_negative_vector(
         fig["layout"]["yaxis"]["range"] = [-1, 1.2]
         fig["layout"]["yaxis2"]["range"] = [-1, 1.2]
 
-        fig.show()
+        # fig.show()
         # fig.write_html(save_path + os.sep + 'cos_sim_positive_negative.html')
         if save_name is None:
             pio.write_image(
@@ -807,13 +807,13 @@ def get_state_quantification(
 ):
     """Run the full pipeline."""
     # intervention = cfg.intervention
-    contrastive_type = cfg.contrastive_type
     if save_path is None:
         save_path = os.path.join(cfg.artifact_path(), "stage_stats")
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
+    contrastive_type = cfg.contrastive_type
     n_layers = activations_positive.shape[0]
     n_components = 3
     activations_positive = activations_positive.float().detach()
@@ -822,6 +822,7 @@ def get_state_quantification(
     activations_all = torch.cat((activations_positive, activations_negative), dim=1)
 
     # 0. pca
+    print("Performing PCA layer by layer...")
     activations_pca = get_pca_layer_by_layer(
         activations_positive, activations_negative, n_layers, n_components=n_components
     )
@@ -829,6 +830,7 @@ def get_state_quantification(
     # 1. Stage 1: Separation between positive and negative
     # Measurement: The distance between a pair of positive and negative prompt
     # Future: Measure the within group (negative and positive) vs across group distance
+    print("Stage 1: Calculating distance between positive and negative...")
     stage_1 = get_distance_pair_contrastive(
         activations_all,
         activations_pca,
@@ -841,7 +843,7 @@ def get_state_quantification(
 
     # 2. Stage 2:  Separation between True and False
     # Measurement: the distance between centroid between centroids of true and false
-
+    print("Stage 2: Calculating distance between true and false...")
     stage_2 = get_dist_centroid_true_false(
         activations_all,
         activations_pca,
@@ -856,6 +858,7 @@ def get_state_quantification(
     # 3. Stage 3: cosine similarity between the positive vector and negative vector
     # Measurement: cosine similarity between positive vector and negative vector
     # positive vector is the centroid between positive true and positive false
+    print("Stage 3: Calculating cosine similarity between positive and negative vector...")
     stage_3 = get_cos_sim_positive_negative_vector(
         activations_all,
         activations_pca,
@@ -870,7 +873,6 @@ def get_state_quantification(
     stage_stats = {
         "stage_1": stage_1,
         "stage_2": stage_2,
-        # "stage_2_dunn": stage_2_dunn,
         "stage_3": stage_3,
     }
 

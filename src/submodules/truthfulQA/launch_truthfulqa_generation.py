@@ -66,7 +66,7 @@ def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
 
 
     # job_name = "entity_source_" + model_name_source + "_target_" + model_name_target
-    gpus_per_node = 8
+    gpus_per_node = 1
     nodes = 1
     total_gpus = gpus_per_node * nodes
 

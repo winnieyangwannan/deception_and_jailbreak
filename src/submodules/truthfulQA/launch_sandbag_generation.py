@@ -70,14 +70,15 @@ def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
     nodes = 1
     total_gpus = gpus_per_node * nodes
 
-    job_name = f"basics_truthfulqa_" + model_name  + f"_{str(total_gpus)}"
+    job_name = f"generation_sandbag_" + model_name  + f"_{str(total_gpus)}"
 
-    # get t\he current file's directory
+    # get the current file's directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
     print(current_dir)
     os.chdir(current_dir)
     current_directory = os.getcwd()
     print("current_directory:", current_directory)
+
 
     print("model_name", model_name)
 
@@ -91,11 +92,12 @@ def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
                 --machine_rank=\$SLURM_PROCID \
                 --main_process_ip=\$(scontrol show hostnames \$SLURM_JOB_NODELIST | head -n 1) \
                 --main_process_port=29500 \
-                run_truthfulqa_basics.py \
+                run_sandbag_generation.py \
                 --model_path={model_path}"
                 '''
     job_id = run_subprocess_slurm(slurm_cmd)
     print("job_id:", job_id)
+
 
 
 if __name__ == "__main__":

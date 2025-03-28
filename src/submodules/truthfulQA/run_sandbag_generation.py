@@ -2,18 +2,21 @@ from torch.utils.data import DataLoader, Dataset
 from datasets import load_dataset
 import pandas as pd
 import os
-from model_base import TransformerModelLoader
-from contrastive_steering_base import generate_and_steer_batch_contrastive
-from activation_pca import get_contrastive_activation_pca_
+from MODEL.model_base import TransformerModelLoader
+from contrastive_steering_sandbag import generate_and_steer_batch_contrastive
+from PCA.activation_pca import get_contrastive_activation_pca_
 from CONFIGS.config_sandbag import Config
 import torch
-from evaluate_truthful_qa import evaluate_generation
-from DATA.dataset_truthfulqa import prepare_dataset
+from EVALUATE.evaluate_sandbag import evaluate_generation
+from DATA.dataset_sandbag import prepare_dataset, preprocess_dataset
 import argparse
 from accelerate import Accelerator
 from accelerate.utils import set_seed
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from torch.utils.data.distributed import DistributedSampler
+import random
+from contrastive_steering_base import generate_and_steer_batch, save_activations
+from STAGE_STATS.stage_statistics import get_state_quantification
 
 
 
@@ -67,6 +70,7 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+
 def main(model_path, save_dir,
          source_layer=14, target_layer=14, steering_strength=1):
     
@@ -93,7 +97,7 @@ def main(model_path, save_dir,
 
     # 1. Load dataset and train-test split
     # dataset = load_dataset("csv", data_files="DATA/TruthfulQA.csv")["train"]
-    dataset = load_dataset("cais/wmdp", "wmdp-bio")
+    dataset = load_dataset("cais/wmdp", "wmdp-bio")["test"]
 
 
     # train test split
@@ -102,13 +106,16 @@ def main(model_path, save_dir,
     dataset_train = split_dataset["train"]
     dataset_test = split_dataset["test"]
 
-    # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:
         print(f"Train size: {len(dataset_train)}")
         print(f"Test size: {len(dataset_test)}")
+    
+    if cfg.n_train > 0:
+        dataset_train =  dataset_train.select(range(cfg.n_train)) 
+        dataset_test =  dataset_test.select(range(cfg.n_test))
+    if cfg.batch_size > len(dataset_train) or cfg.batch_size == 0:
+        cfg.batch_size = len(dataset_train)
 
-    dataset_train =  dataset_train.select(range(cfg.n_train)) 
-    dataset_test =  dataset_test.select(range(cfg.n_test)) 
 
     # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:
@@ -116,6 +123,7 @@ def main(model_path, save_dir,
         print(f"Test size (SUBSAMPLE): {len(dataset_test)}")
 
 
+    dataset_train = preprocess_dataset(dataset_train)
 
     # 2. Load model
     model_base = TransformerModelLoader(model_path, accelerator=accelerator)
@@ -124,9 +132,6 @@ def main(model_path, save_dir,
     generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator)
 
     print("done")
-
-
-
 
 
 if __name__ == "__main__":

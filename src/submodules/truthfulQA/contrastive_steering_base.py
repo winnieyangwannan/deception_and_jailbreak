@@ -29,8 +29,8 @@ from UTILS.hook_utils import (
     cache_activation_post_hook,
     add_hooks
 )
-from activation_pca import get_contrastive_activation_pca_
-from evaluate_truthful_qa import evaluate_generation
+from PCA.activation_pca import get_contrastive_activation_pca_
+from EVALUATE.evaluate_truthful_qa import evaluate_generation
 from STAGE_STATS.stage_statistics import get_state_quantification
 
 def generate_and_steer(
@@ -63,7 +63,7 @@ def generate_and_steer(
         cache = None
         fwd_hook = []
     if steering_method == "cache_pos":
-
+        print(f"steering_method: {steering_method}")
         cache = torch.zeros(
             (n_layers, n_samples, d_model),
             dtype=torch.float16,
@@ -201,6 +201,8 @@ def generate_and_steer_batch(cfg, model_base, dataloader, accelerator,
     for batch in dataloader:
         with torch.no_grad():
             # 1. Generate and steer for each batch and GPU
+            if accelerator.is_main_process:
+                print("generate and steer")
             completions, cache, len_input = generate_and_steer(
                             cfg,
                             model_base,
@@ -222,32 +224,35 @@ def generate_and_steer_batch(cfg, model_base, dataloader, accelerator,
 
     if accelerator.is_main_process:
         # Decode the completions to text outputs
-
-
         print(f"len(all_len_inputs before gather): {len(all_len_inputs)}")
         print(f"len(all_completions before gather): {len(all_completions)}")
         print(f"len(all_cache) before gather: {len(all_cache)}")
 
-    if gpu_count > 1:
+    if gpu_count <= 1:
+        print("gathering on single GPU")
+        all_completions = torch.cat(all_completions)
+        all_len_inputs = torch.cat(all_len_inputs)
+        if len(all_cache) > 0:
+            all_cache = torch.cat(all_cache, dim=1)
+
+    else:
+        print("gathering across GPUs")
         # 2. Gather predictions from all GPUs
         all_completions = accelerator.gather(torch.cat(all_completions))
         all_len_inputs = accelerator.gather(torch.cat(all_len_inputs))
-        if all_cache is not None:
+        if len(all_cache) > 0:
             all_cache = accelerator.gather(torch.cat(all_cache, dim=1))
-    else:
-        all_completions = torch.cat(all_completions)
-        all_len_inputs = torch.cat(all_len_inputs)
-        if all_cache is not None:
-            all_cache = torch.cat(all_cache, dim=1)
 
     end = time.time()
 
     if accelerator.is_main_process:
         print(f"Elapsed time: {end - start:.2f} seconds")
-
         # Decode the completions to text outputs
-        print(f"all_len_inputs.shape after gather: {all_len_inputs.shape}")
+        print(f"len(all_len_inputs) after gather: {len(all_len_inputs)}")
         print(f"len(all_completions) after gather: {len(all_completions)}")
+        print(f"all_cache: {type(all_cache)}")
+        print(f"all_cache.shape: {all_cache.shape}")
+
 
     all_len_inputs = all_len_inputs.tolist()
     outputs = [model_base.tokenizer.decode(
@@ -255,63 +260,6 @@ def generate_and_steer_batch(cfg, model_base, dataloader, accelerator,
         ) for i, len_input in enumerate(all_len_inputs)]
     
     return outputs, all_cache
-
-
-def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
-                                         steering_vector=None, steering_method=None,
-                                         do_pca=False, train_test="train"):
-    
-        
-    # model_base.model = accelerator.prepare(model_base.model)
-    # 1. Prepare Dataset
-    dataloader_positive, dataset_positive = prepare_dataset(cfg, model_base, dataset, accelerator, 
-                                                            contrastive_type=cfg.contrastive_type[0])
-    dataloader_negative, dataset_negative = prepare_dataset(cfg, model_base, dataset, accelerator, 
-                                                            contrastive_type=cfg.contrastive_type[1])
-    
-    
-    dataloader_positive = accelerator.prepare(dataloader_positive)
-    dataloader_negative = accelerator.prepare(dataloader_negative)
-    
-    # 2. Generate and steer for the entire dataset
-    outputs_positive, cache_positive = generate_and_steer_batch(cfg, model_base, dataloader_positive, accelerator,
-                                                steering_vector=steering_vector, steering_method=steering_method)
-    outputs_negative, cache_negative = generate_and_steer_batch(cfg, model_base, dataloader_negative, accelerator,
-                                                steering_vector=steering_vector, steering_method=steering_method)
-    
-    # 3. Save model outputs
-
-    save_completions(cfg, outputs_positive, outputs_negative,
-                      dataset_positive, accelerator)
-    
-    # 4. Evaluate model outputs
-
-    model_choice_positive_all, model_choice_negative_all = evaluate_generation(cfg, train_test=train_test)
-    
-    # 5. Save cache and do PCA
-
-    if do_pca:
-        if accelerator.is_main_process:
-
-            activations = save_activations(cfg, cache_positive, cache_negative,
-                                           dataset["Correct choice"],
-                                           model_choice_positive_all, model_choice_negative_all)
-    
-            # Get the PCA of the activations and visualize it
-            get_contrastive_activation_pca_(cfg, activations, split=train_test,
-            label_type="correct_choice")
-            get_contrastive_activation_pca_(cfg, activations, split=train_test,
-            label_type="model_choice")
-    
-    if accelerator.is_main_process:
-        get_state_quantification(
-                cfg,
-                activations["activations_positive"],
-                activations["activations_negative"],
-                activations["correct_choice"],
-                save_plot=True,
-                save_name=train_test,
-            )
 
 def save_activations(cfg, cache_positive, cache_negative,  
                      correct_choice,
@@ -338,36 +286,4 @@ def save_activations(cfg, cache_positive, cache_negative,
         pickle.dump(activations, f)
     print("activations saved ")#
     return activations
-
-
-def save_completions(cfg, output_positive, output_negative, 
-                     dataset, accelerator, train_test="train" ):
-
-    completions = [
-        {
-            "Category": dataset[f"Category"][i],
-            "Question": dataset[f"Question"][i],
-            "Correct choice": dataset[f"Correct choice"][i],
-            "Best Answer": dataset[f"Best Answer"][i],
-            "Best Incorrect Answer": dataset[f"Best Incorrect Answer"][i],
-            "Source": dataset[f"Source"][i],
-            f"Output_{cfg.contrastive_type[0]}": output_positive[i],
-            f"Output_{cfg.contrastive_type[1]}": output_negative[i],
-            "ID": i,
-        }
-        for i in range(len(output_positive))
-    ]
-
-
-    completion_path = os.path.join(cfg.artifact_path(), "completions")
-    if not os.path.exists(completion_path):
-        os.makedirs(completion_path)
-    with open(
-        completion_path + os.sep + f"{cfg.model_name}_completions_{train_test}.json",
-        "w",
-    ) as f:
-        json.dump(completions, f, indent=4)
-    if accelerator.is_main_process:
-        print(f"completions saved at {completion_path}")
-
 

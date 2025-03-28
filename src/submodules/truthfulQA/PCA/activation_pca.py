@@ -19,7 +19,7 @@ import json
 
 
 def get_contrastive_activation_pca_(cfg, activations, save_name=None,
-                                     split="train",label_type="correct_choice"):
+                                    split="train",label_type="correct_choice"):
     # 1. Get PCA and plot
     fig, activations_pca_all = get_pca_and_plot(
         cfg,
@@ -50,8 +50,12 @@ def get_marker_symbol(model_choice):
     for data in model_choice:
         if data == "A":
             symbol_sequence.append("star")
-        else:
+        elif data == "B":
             symbol_sequence.append("circle")
+        elif data == "C":
+            symbol_sequence.append("diamond")
+        elif data == "D":
+            symbol_sequence.append("triangle_down")
     symbol_sequence = np.array(symbol_sequence)
 
     return symbol_sequence
