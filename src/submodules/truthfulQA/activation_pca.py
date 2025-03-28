@@ -18,12 +18,17 @@ import json
 
 
 
-def get_contrastive_activation_pca_(cfg, activations, save_name=None, split="train"):
+def get_contrastive_activation_pca_(cfg, activations, save_name=None,
+                                     split="train",label_type="correct_choice"):
     # 1. Get PCA and plot
     fig, activations_pca_all = get_pca_and_plot(
         cfg,
         activations["activations_positive"],
         activations["activations_negative"],
+        correct_choice = activations["correct_choice"],
+        model_choice_positive=activations["model_choice_positive"],
+        model_choice_negative=activations["model_choice_negative"],
+        label_type=label_type
     )
 
     # 2. Save plot
@@ -31,27 +36,42 @@ def get_contrastive_activation_pca_(cfg, activations, save_name=None, split="tra
     if not os.path.exists(pca_path):
         os.makedirs(pca_path)
     fig.write_html(
-        pca_path + os.sep + f"{cfg.model_name}_pca_{split}.html"
+        pca_path + os.sep + f"{cfg.model_name}_pca_{split}_{label_type}.html"
     )
     pio.write_image(
         fig,
-        pca_path + os.sep + f"{cfg.model_name}_pca_{split}.pdf",
+        pca_path + os.sep + f"{cfg.model_name}_pca_{split}_{label_type}.pdf",
     )
-    print("PCA Saved...")
+    print(f"PCA Saved at {pca_path}")
 
 
+def get_marker_symbol(model_choice):
+    symbol_sequence = []
+    for data in model_choice:
+        if data == "A":
+            symbol_sequence.append("star")
+        else:
+            symbol_sequence.append("circle")
+    symbol_sequence = np.array(symbol_sequence)
 
-def get_pca_and_plot(cfg, activations_positive, activations_negative):
+    return symbol_sequence
 
+def get_pca_and_plot(cfg, activations_positive, activations_negative,
+                     correct_choice=None,
+                     model_choice_positive=None, model_choice_negative=None,
+                     label_type="correct_choice"):
 
-    print(f"activations_positive:{activations_positive.shape}")
-    print(f"activations_positive:{activations_positive.shape}")
 
     activations_all: Float[Tensor, "n_layers n_samples  d_model"] = torch.cat(
         (activations_positive, activations_negative), dim=1
     )
-
-
+    
+    if label_type == "correct_choice":
+        symbol_sequence_positive = get_marker_symbol(model_choice_positive)
+        symbol_sequence_negative = get_marker_symbol(model_choice_negative)
+    elif label_type == "model_choice":
+        symbol_sequence_positive = get_marker_symbol(correct_choice)
+        symbol_sequence_negative = get_marker_symbol(correct_choice)
 
     n_contrastive_data = activations_negative.shape[1]
     n_layers = activations_negative.shape[0]
@@ -93,6 +113,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative):
                         name=contrastive_type[0],
                         showlegend=False,
                         marker=dict(
+                            symbol=symbol_sequence_positive,
                             size=8,
                             line=dict(width=1, color="darkslategrey"),
                             color="teal",
@@ -111,6 +132,7 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative):
                         name=contrastive_type[1],
                         showlegend=False,
                         marker=dict(
+                            symbol=symbol_sequence_negative,
                             size=8,
                             line=dict(width=1, color="darkslategrey"),
                             color="palevioletred",
@@ -128,10 +150,11 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative):
             # z=[None],
             mode="markers",
             marker=dict(
+                symbol="star",
                 size=5,
                 line=dict(width=1, color="darkslategrey"),
             ),
-            name=f"{contrastive_type[0]}",
+            name=f"{contrastive_type[0]}_A",
             marker_color="teal",
         ),
         row=row + 1,
@@ -149,7 +172,43 @@ def get_pca_and_plot(cfg, activations_positive, activations_negative):
                 size=5,
                 line=dict(width=1, color="darkslategrey"),
             ),
-            name=f"{contrastive_type[1]}",
+            name=f"{contrastive_type[1]}_A",
+            marker_color="palevioletred",
+        ),
+        row=row + 1,
+        col=ll + 1,
+    )
+    # legend
+    fig.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            # z=[None],
+            mode="markers",
+            marker=dict(
+                symbol="circle",
+                size=5,
+                line=dict(width=1, color="darkslategrey"),
+            ),
+            name=f"{contrastive_type[0]}_B",
+            marker_color="teal",
+        ),
+        row=row + 1,
+        col=ll + 1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            # z=[None],
+            mode="markers",
+            marker=dict(
+                symbol="circle",
+                size=5,
+                line=dict(width=1, color="darkslategrey"),
+            ),
+            name=f"{contrastive_type[1]}_B",
             marker_color="palevioletred",
         ),
         row=row + 1,

@@ -12,9 +12,9 @@ class Config:
     save_dir: str
     entity_type: str = "song"
     n_positions: int = 1
-    n_train: int = 512
-    n_test: int = 128
-    batch_size: int = 64  #128
+    n_train: int = 0
+    n_test: int = 0
+    batch_size: int = 0  #128
     max_new_tokens: int = 100
     task_name: str = "truthful_qa"
     steer_type: str = "negative_addition"  # addition

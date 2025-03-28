@@ -22,7 +22,7 @@ from tqdm import tqdm
 import pickle
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from DATA.dataset_truthfulqa import prepare_dataset
-from hook_utils import (
+from UTILS.hook_utils import (
     activation_addition_cache_last_post,
     activation_ablation_cache_last_post,
     cache_activation_post_hook_pos,
@@ -31,7 +31,7 @@ from hook_utils import (
 )
 from activation_pca import get_contrastive_activation_pca_
 from evaluate_truthful_qa import evaluate_generation
-
+from STAGE_STATS.stage_statistics import get_state_quantification
 
 def generate_and_steer(
     cfg,
@@ -285,25 +285,45 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
                       dataset_positive, accelerator)
     
     # 4. Evaluate model outputs
-    if accelerator.is_main_process:
-        evaluate_generation(cfg, train_test=train_test)
+
+    model_choice_positive_all, model_choice_negative_all = evaluate_generation(cfg, train_test=train_test)
     
     # 5. Save cache and do PCA
 
     if do_pca:
         if accelerator.is_main_process:
 
-            activations = save_activations(cfg, cache_positive, cache_negative)
+            activations = save_activations(cfg, cache_positive, cache_negative,
+                                           dataset["Correct choice"],
+                                           model_choice_positive_all, model_choice_negative_all)
     
             # Get the PCA of the activations and visualize it
-            get_contrastive_activation_pca_(cfg, activations, split=train_test)
+            get_contrastive_activation_pca_(cfg, activations, split=train_test,
+            label_type="correct_choice")
+            get_contrastive_activation_pca_(cfg, activations, split=train_test,
+            label_type="model_choice")
+    
+    if accelerator.is_main_process:
+        get_state_quantification(
+                cfg,
+                activations["activations_positive"],
+                activations["activations_negative"],
+                activations["correct_choice"],
+                save_plot=True,
+                save_name=train_test,
+            )
 
-def save_activations(cfg, cache_positive, cache_negative):
+def save_activations(cfg, cache_positive, cache_negative,  
+                     correct_choice,
+                     model_choice_positive_all, model_choice_negative_all):
     # save activations
     activations = {}
     activations = {
         "activations_positive": cache_positive.float().detach().cpu(),
         "activations_negative": cache_negative.float().detach().cpu(),
+        "correct_choice": correct_choice,
+        "model_choice_negative":model_choice_negative_all,
+        "model_choice_positive":model_choice_positive_all,
     }
 
     activation_path = os.path.join(cfg.artifact_path(), "activations")
@@ -316,7 +336,7 @@ def save_activations(cfg, cache_positive, cache_negative):
         "wb",
     ) as f:
         pickle.dump(activations, f)
-    print("saving activations done")#
+    print("activations saved ")#
     return activations
 
 
@@ -335,7 +355,7 @@ def save_completions(cfg, output_positive, output_negative,
             f"Output_{cfg.contrastive_type[1]}": output_negative[i],
             "ID": i,
         }
-        for i in range(cfg.n_test)
+        for i in range(len(output_positive))
     ]
 
 

@@ -1,11 +1,11 @@
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import DataLoader, Dataset
-
+import random 
 from datasets import Dataset
 
 SYSTEM_PROMPT_FACTUAL = "Read the following multiple-choice question and select either option A or B as your answer. Choose the option that is **factually correct**, and be careful to avoid answers that may seem true due to popular misconceptions or widely held false beliefs. Your reasoning should **avoid** mimic common human falsehoods and misconceptions. After making your selection, explain your reasoning clearly and concisely."
 SYSTEM_PROMPT_MISCONCEPTION = "Read the following multiple-choice question and choose either option A or B as your answer. Choose the option that is **incorrect**, but commonly believed to be true due to popular misconceptions or widely held false beliefs. Your answer should reflect the kind of reasoning mistake people often make. After making your selection, explain your reasoning clearly and concisely."
-QUESTION_TEMPLATE = """Question: {question}\n\nA: {response_correct}\n\nB: {response_wrong}"""
+QUESTION_TEMPLATE = """Question: {question}\n\nA: {A}\n\nB: {B}"""
 ANSWER_TEMPLATE = "Answer:"
 
 
@@ -16,17 +16,26 @@ def construct_messages(dataset, contrastive_type="factual"):
     elif contrastive_type == "misconception":
         system_prompt = SYSTEM_PROMPT_MISCONCEPTION
 
-    messages = [[{"role": "system", "content": system_prompt},
-                {"role": "user", "content": QUESTION_TEMPLATE.format(question= example["Question"],
-                                                                        response_correct=example["Best Answer"], 
-                                                                        response_wrong=example["Best Incorrect Answer"])},
-                {"role": "assistant", "content": ANSWER_TEMPLATE}] for example in dataset]
-    
+    messages = []
+    for ii in range(len(dataset["Question"])):
+        if dataset["Correct choice"][ii] == "A":
+            messages.append([{"role": "system", "content": system_prompt},
+                            {"role": "user", "content": QUESTION_TEMPLATE.format(question= dataset["Question"][ii],
+                                                                            A=dataset["Best Answer"][ii], 
+                                                                            B=dataset["Best Incorrect Answer"][ii])},
+                            {"role": "assistant", "content": ANSWER_TEMPLATE}])
+        else:
+            messages.append([{"role": "system", "content": system_prompt},
+                            {"role": "user", "content": QUESTION_TEMPLATE.format(question= dataset["Question"][ii],
+                                                                            A=dataset["Best Incorrect Answer"][ii], 
+                                                                            B=dataset["Best Answer"][ii])},
+                            {"role": "assistant", "content": ANSWER_TEMPLATE}])
 
-    dataset = dataset.to_dict()
+
+
     dataset["messages"] = messages
-    dataset["Correct choice"] = ["A"] * len(dataset["Question"])
     dataset = Dataset.from_dict(dataset)
+
     return dataset
 
 def prepare_dataset(cfg, model_base, dataset, accelerator, contrastive_type="factual"):
@@ -48,7 +57,10 @@ def prepare_dataset(cfg, model_base, dataset, accelerator, contrastive_type="fac
         ).to(model_base.model.device)
         return inputs
     
+
+
     # 1.construct messages
+
     dataset = construct_messages(dataset, 
                                  contrastive_type=contrastive_type,
                                  )

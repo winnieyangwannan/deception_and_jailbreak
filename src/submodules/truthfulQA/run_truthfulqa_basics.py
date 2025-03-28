@@ -14,7 +14,7 @@ from accelerate import Accelerator
 from accelerate.utils import set_seed
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from torch.utils.data.distributed import DistributedSampler
-
+import random
 
 
 # get the current file's directory
@@ -67,6 +67,14 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+def get_correct_choice(dataset):
+    # 0.Get correct choice
+    random.seed(42) 
+    dataset = dataset.to_dict()
+    mylist = ["A", "B"]
+    dataset["Correct choice"] = [random.choice(mylist) for _ in range(len(dataset["Question"]))]
+    return dataset
+
 def main(model_path, save_dir,
          source_layer=14, target_layer=14, steering_strength=1):
     
@@ -105,15 +113,22 @@ def main(model_path, save_dir,
         print(f"Train size: {len(dataset_train)}")
         print(f"Test size: {len(dataset_test)}")
 
-    dataset_train =  dataset_train.select(range(cfg.n_train)) 
-    dataset_test =  dataset_test.select(range(cfg.n_test)) 
+    if cfg.n_train > 0:
+        dataset_train =  dataset_train.select(range(cfg.n_train)) 
+        dataset_test =  dataset_test.select(range(cfg.n_test))
+    if cfg.batch_size > len(dataset_train) or cfg.batch_size == 0:
+        cfg.batch_size = len(dataset_train)
+
+
+    dataset_train = get_correct_choice(dataset_train)
+    dataset_test = get_correct_choice(dataset_test)
 
     # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:
         print(f"Train size (SUBSAMPLE): {len(dataset_train)}")
         print(f"Test size (SUBSAMPLE): {len(dataset_test)}")
 
-
+    # model_choice_positive_all, model_choice_negative_all = evaluate_generation(cfg, train_test="train")
 
     # 2. Load model
     model_base = TransformerModelLoader(model_path, accelerator=accelerator)
