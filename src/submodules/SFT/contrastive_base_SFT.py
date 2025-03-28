@@ -1067,6 +1067,7 @@ class ContrastiveBase:
     ):
         inputs_honest = self.tokenize_dataset(message_honest)
         inputs_lying = self.tokenize_dataset(message_lying)
+        
         if self.cfg.task_name in ["filtered_good"]:
             self.generate_and_cache_batch(
                 inputs_honest, inputs_lying, self.dataset, train_test

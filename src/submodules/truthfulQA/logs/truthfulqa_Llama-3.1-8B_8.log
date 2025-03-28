@@ -1,0 +1,48 @@
+The following values were not passed to `accelerate launch` and had defaults used instead:
+		More than one GPU was found, enabling multi-GPU training.
+		If this was unintended please pass in `--num_processes=1`.
+	`--mixed_precision` was set to a value of `'no'`
+	`--dynamo_backend` was set to a value of `'no'`
+To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory:/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory:  /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+[W327 08:20:02.157574970 Utils.hpp:135] Warning: Environment variable NCCL_ASYNC_ERROR_HANDLING is deprecated; use TORCH_NCCL_ASYNC_ERROR_HANDLING instead (function operator())
+[W327 08:20:03.002124968 Utils.hpp:135] Warning: Environment variable NCCL_ASYNC_ERROR_HANDLING is deprecated; use TORCH_NCCL_ASYNC_ERROR_HANDLING instead (function operator())
+[W327 08:20:03.286755152 Utils.hpp:135] Warning: Environment variable NCCL_ASYNC_ERROR_HANDLING is deprecated; use TORCH_NCCL_ASYNC_ERROR_HANDLING instead (function operator())
+[W327 08:20:04.507901721 Utils.hpp:135] Warning: Environment variable NCCL_ASYNC_ERROR_HANDLING is deprecated; use TORCH_NCCL_ASYNC_ERROR_HANDLING instead (function operator())
+[W327 08:20:04.944069168 Utils.hpp:135] Warning: Environment variable NCCL_ASYNC_ERROR_HANDLING is deprecated; use TORCH_NCCL_ASYNC_ERROR_HANDLING instead (function operator())
+[W327 08:20:04.113168239 Utils.hpp:135] Warning: Environment variable NCCL_ASYNC_ERROR_HANDLING is deprecated; use TORCH_NCCL_ASYNC_ERROR_HANDLING instead (function operator())
+[W327 08:20:04.266327864 Utils.hpp:135] Warning: Environment variable NCCL_ASYNC_ERROR_HANDLING is deprecated; use TORCH_NCCL_ASYNC_ERROR_HANDLING instead (function operator())
+[W327 08:20:05.510026048 Utils.hpp:135] Warning: Environment variable NCCL_ASYNC_ERROR_HANDLING is deprecated; use TORCH_NCCL_ASYNC_ERROR_HANDLING instead (function operator())
+Using 8 GPUs
+Process rank: 0
+cfg: Config(model_path='meta-llama/Llama-3.1-8B', model_name='Llama-3.1-8B', save_dir='/home/winnieyangwn/Output', entity_type='song', n_positions=1, n_train=512, n_test=128, batch_size=128, max_new_tokens=2, task_name='truthfulqa', steer_type='negative_addition', source_layer=14, target_layer=14, contrastive_type=('factual', 'misconception'), steering_strength=1)
+Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 790 examples [00:00, 9533.94 examples/s]
+Train size: 512
+Test size: 128
+slurmstepd: error: *** STEP 128822.0 ON cr6-p548xlarge-2 CANCELLED AT 2025-03-27T08:20:10 ***
+slurmstepd: error: *** JOB 128822 ON cr6-p548xlarge-2 CANCELLED AT 2025-03-27T08:20:10 ***
+W0327 08:20:10.491000 1450451 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/agent/server/api.py:704] Received 15 death signal, shutting down workers
+W0327 08:20:10.496000 1450451 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:897] Sending process 1450576 closing signal SIGTERM
+W0327 08:20:10.498000 1450451 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:897] Sending process 1450577 closing signal SIGTERM
+W0327 08:20:10.504000 1450451 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:897] Sending process 1450578 closing signal SIGTERM
+W0327 08:20:10.510000 1450451 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:897] Sending process 1450579 closing signal SIGTERM
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+W0327 08:20:10.514000 1450451 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:897] Sending process 1450580 closing signal SIGTERM
+W0327 08:20:10.515000 1450451 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:897] Sending process 1450581 closing signal SIGTERM
+W0327 08:20:10.515000 1450451 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:897] Sending process 1450582 closing signal SIGTERM
+W0327 08:20:10.517000 1450451 /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py:897] Sending process 1450583 closing signal SIGTERM

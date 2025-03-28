@@ -1,0 +1,52 @@
+The following values were not passed to `accelerate launch` and had defaults used instead:
+	`--mixed_precision` was set to a value of `'no'`
+	`--dynamo_backend` was set to a value of `'no'`
+To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+Using 1 GPUs
+Process rank: 0
+cfg: Config(model_path='meta-llama/Llama-3.2-1B-Instruct', model_name='Llama-3.2-1B-Instruct', save_dir='/home/winnieyangwn/Output', entity_type='song', n_positions=1, n_train=512, n_test=128, batch_size=128, max_new_tokens=100, task_name='truthful_qa', steer_type='negative_addition', source_layer=14, target_layer=14, contrastive_type=('factual', 'misconception'), steering_strength=1)
+Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 31 examples [00:00, 793.28 examples/s]
+Train size: 27
+Test size: 4
+Traceback (most recent call last):
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_basics.py", line 131, in <module>
+    main(model_path=args.model_path, 
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_basics.py", line 108, in main
+    dataset_train =  dataset_train.select(range(cfg.n_train)) 
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/arrow_dataset.py", line 562, in wrapper
+    out: Union["Dataset", "DatasetDict"] = func(self, *args, **kwargs)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/fingerprint.py", line 442, in wrapper
+    out = func(dataset, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/arrow_dataset.py", line 3920, in select
+    return self._select_contiguous(start, length, new_fingerprint=new_fingerprint)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/arrow_dataset.py", line 562, in wrapper
+    out: Union["Dataset", "DatasetDict"] = func(self, *args, **kwargs)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/fingerprint.py", line 442, in wrapper
+    out = func(dataset, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/arrow_dataset.py", line 3981, in _select_contiguous
+    _check_valid_indices_value(start + length - 1, len(self))
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/arrow_dataset.py", line 624, in _check_valid_indices_value
+    raise IndexError(f"Index {index} out of range for dataset of size {size}.")
+IndexError: Index 511 out of range for dataset of size 27.
+Traceback (most recent call last):
+  File "/home/winnieyangwn/miniconda3/envs/refat/bin/accelerate", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/accelerate_cli.py", line 48, in main
+    args.func(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 1194, in launch_command
+    simple_launcher(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 780, in simple_launcher
+    raise subprocess.CalledProcessError(returncode=process.returncode, cmd=cmd)
+subprocess.CalledProcessError: Command '['/home/winnieyangwn/miniconda3/envs/refat/bin/python3.11', 'run_truthfulqa_basics.py', '--model_path=meta-llama/Llama-3.2-1B-Instruct']' returned non-zero exit status 1.
+srun: error: cr6-p548xlarge-3: task 0: Exited with exit code 1
+srun: Terminating StepId=128877.0
