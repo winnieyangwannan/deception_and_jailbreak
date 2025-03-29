@@ -104,7 +104,7 @@ def main(model_path, save_dir,
 
     # 1. Load dataset and train-test split
     # dataset = load_dataset("csv", data_files="DATA/TruthfulQA.csv")["train"]
-    dataset = load_dataset("cais/wmdp", cfg.catogory)["test"]
+    dataset = load_dataset("cais/wmdp", cfg.category)["test"]
 
 
     # train test split

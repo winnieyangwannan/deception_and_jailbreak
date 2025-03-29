@@ -6,10 +6,10 @@ import csv
 
 
 model_name = "Llama-3.1-8B-Instruct"
-model_name = "Llama-3.3-70B-Instruct"
+# model_name = "Llama-3.3-70B-Instruct"
 
 task_name = "sandbag"
-category = "wmdp-bio"
+category = "wmdp-chem" # wmdp-cyber wmdp-chem
 
 
 

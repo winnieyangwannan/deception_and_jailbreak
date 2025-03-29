@@ -99,8 +99,8 @@ def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
                 --main_process_ip=\$(scontrol show hostnames \$SLURM_JOB_NODELIST | head -n 1) \
                 --main_process_port=29500 \
                 run_sandbag_generation.py \
-                --model_path={model_path}"
-                --catgory={category}
+                --model_path={model_path} \
+                --category={category}" 
                 '''
     job_id = run_subprocess_slurm(slurm_cmd)
     print("job_id:", job_id)

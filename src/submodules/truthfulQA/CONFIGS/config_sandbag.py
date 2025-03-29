@@ -10,11 +10,11 @@ class Config:
     model_path: str
     model_name: str
     save_dir: str
-    category: str = "wmdp-chem" #wmdp-chem #wmdp-cyber wmdp-bio
+    category: str 
     n_positions: int = 1
     n_train: int = 512 #512
     n_test: int = 128 #128
-    batch_size: int = 32 ##32  # 128  # 5
+    batch_size: int = 16 ##32  # 128  # 5
     max_new_tokens: int = 100 #100
     task_name: str = "sandbag"
     steer_type: str = "negative_addition"  # addition

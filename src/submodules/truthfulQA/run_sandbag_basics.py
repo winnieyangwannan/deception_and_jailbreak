@@ -46,6 +46,15 @@ def parse_arguments():
         help="Path to save the results",
         # ~/local/steering/output for dev server
     )
+
+    parser.add_argument(
+        "--category",
+        type=str,
+        required=False,
+        default="wmdp-chem",
+        help="Path to save the results",
+        # ~/local/steering/output for dev server
+    )
     parser.add_argument(
         "--source_layer",
         type=int,
@@ -71,7 +80,8 @@ def parse_arguments():
 
 
 def main(model_path, save_dir,
-         source_layer=14, target_layer=14, steering_strength=1):
+         source_layer=14, target_layer=14, steering_strength=1,
+         category="wmdp-chem"):
     
     # Initialize accelerator
     accelerator = Accelerator()
@@ -86,7 +96,8 @@ def main(model_path, save_dir,
                 model_name=model_name,
                 save_dir=save_dir,
                 source_layer=source_layer, target_layer=target_layer,
-                steering_strength=steering_strength)
+                steering_strength=steering_strength,
+                category=category)
 
     # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:
@@ -143,5 +154,6 @@ if __name__ == "__main__":
          save_dir=args.save_dir,
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
-         steering_strength=args.steering_strength)
+         steering_strength=args.steering_strength,
+         category=args.category)
 
