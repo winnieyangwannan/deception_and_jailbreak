@@ -5,7 +5,9 @@ from datasets import Dataset
 import csv
 
 
-model_name = "Llama-3.2-1B-Instruct"
+model_name = "Llama-3.1-8B-Instruct"
+model_name = "Llama-3.3-70B-Instruct"
+
 # Open file
 file_path = os.path.join(
     "/home/winnieyangwn/Output/truthful_qa",
@@ -16,6 +18,8 @@ file_path = os.path.join(
 with open(file_path) as file:
     data = json.load(file)
 
+
+print(f"Total examples before filtering: {len(data['completions'])}")
 # filter
 # Criteria: 1. score_factual = 1, score_misconception = 0
 data_filetered =  []
@@ -30,6 +34,7 @@ for ii, example in enumerate(data["completions"]):
                  "ID": ii
             })
 
+print(f"Total examples after filtering: {len(data_filetered)}")
 
 # Save as huggingface dataset
 # fields

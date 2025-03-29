@@ -1,0 +1,29 @@
+The following values were not passed to `accelerate launch` and had defaults used instead:
+	`--mixed_precision` was set to a value of `'no'`
+	`--dynamo_backend` was set to a value of `'no'`
+To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+Using 1 GPUs
+Process rank: 0
+cfg: Config(model_path='meta-llama/Llama-3.2-1B-Instruct', model_name='Llama-3.2-1B-Instruct', save_dir='/home/winnieyangwn/Output', category='wmdp-chem', n_positions=1, n_train=512, n_test=128, batch_size=32, max_new_tokens=100, task_name='sandbag', steer_type='negative_addition', source_layer=14, target_layer=14, contrastive_type=('control', 'sandbag'), steering_strength=1, label_type=('A', 'B'))
+Traceback (most recent call last):
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_sandbag_generation.py", line 139, in <module>
+    main(model_path=args.model_path,
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_sandbag_generation.py", line 99, in main
+    dataset = load_dataset("cais/wmdp", cfg.catogory)["test"]
+                                        ^^^^^^^^^^^^
+AttributeError: 'Config' object has no attribute 'catogory'. Did you mean: 'category'?
+Traceback (most recent call last):
+  File "/home/winnieyangwn/miniconda3/envs/refat/bin/accelerate", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/accelerate_cli.py", line 48, in main
+    args.func(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 1194, in launch_command
+    simple_launcher(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 780, in simple_launcher
+    raise subprocess.CalledProcessError(returncode=process.returncode, cmd=cmd)
+subprocess.CalledProcessError: Command '['/home/winnieyangwn/miniconda3/envs/refat/bin/python3.11', 'run_sandbag_generation.py', '--model_path=meta-llama/Llama-3.2-1B-Instruct']' returned non-zero exit status 1.
+srun: error: cr6-p548xlarge-24: task 0: Exited with exit code 1
+srun: Terminating StepId=129021.0

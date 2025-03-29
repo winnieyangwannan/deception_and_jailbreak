@@ -4,7 +4,6 @@ import pandas as pd
 import os
 from MODEL.model_base import TransformerModelLoader
 from contrastive_steering_truthfulqa import generate_and_steer_batch_contrastive
-from PCA.activation_pca import get_contrastive_activation_pca_
 from CONFIGS.config_truthfulqa import Config
 import torch
 from EVALUATE.evaluate_truthful_qa import evaluate_generation
@@ -106,7 +105,7 @@ def main(model_path, save_dir,
         print(f"Test size: {len(dataset_test)}")
 
     # subsample
-    if cfg.n_train > 0:
+    if cfg.n_train > 0 and cfg.n_train < len(dataset_train):
         dataset_train =  dataset_train.select(range(cfg.n_train)) 
         dataset_test =  dataset_test.select(range(cfg.n_test))
     if cfg.batch_size > len(dataset_train) or cfg.batch_size == 0:

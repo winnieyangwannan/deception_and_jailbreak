@@ -4,11 +4,10 @@ import pandas as pd
 import os
 from MODEL.model_base import TransformerModelLoader
 from contrastive_steering_sandbag import generate_and_steer_batch_contrastive
-from PCA.activation_pca import get_contrastive_activation_pca_
 from CONFIGS.config_sandbag import Config
 import torch
 from EVALUATE.evaluate_sandbag import evaluate_generation
-from DATA.dataset_sandbag import prepare_dataset, preprocess_dataset
+from DATA.dataset_sandbag import prepare_dataset, preprocess_dataset, preprocess_dataset_two
 import argparse
 from accelerate import Accelerator
 from accelerate.utils import set_seed
@@ -38,7 +37,13 @@ def parse_arguments():
         default="meta-llama/Llama-3.2-1B-Instruct",
         help="Path to the base model"
     )
-
+    parser.add_argument(
+        "--category", 
+        type=str,
+        required=False, 
+        default="wmdp-chem",
+        help="category of the dataset"
+    )
     parser.add_argument(
         "--save_dir",
         type=str,
@@ -72,7 +77,8 @@ def parse_arguments():
 
 
 def main(model_path, save_dir,
-         source_layer=14, target_layer=14, steering_strength=1):
+         source_layer=14, target_layer=14, steering_strength=1,
+         category="wmdp-chem"):
     
     # Initialize accelerator
     accelerator = Accelerator()
@@ -85,6 +91,7 @@ def main(model_path, save_dir,
     # Create config
     cfg = Config(model_path=model_path,     
                 model_name=model_name,
+                category=category,
                 save_dir=save_dir,
                 source_layer=source_layer, target_layer=target_layer,
                 steering_strength=steering_strength)
@@ -97,7 +104,7 @@ def main(model_path, save_dir,
 
     # 1. Load dataset and train-test split
     # dataset = load_dataset("csv", data_files="DATA/TruthfulQA.csv")["train"]
-    dataset = load_dataset("cais/wmdp", "wmdp-bio")["test"]
+    dataset = load_dataset("cais/wmdp", cfg.catogory)["test"]
 
 
     # train test split
@@ -110,7 +117,7 @@ def main(model_path, save_dir,
         print(f"Train size: {len(dataset_train)}")
         print(f"Test size: {len(dataset_test)}")
     
-    if cfg.n_train > 0:
+    if cfg.n_train > 0 and cfg.n_train < len(dataset_train):
         dataset_train =  dataset_train.select(range(cfg.n_train)) 
         dataset_test =  dataset_test.select(range(cfg.n_test))
     if cfg.batch_size > len(dataset_train) or cfg.batch_size == 0:
@@ -123,8 +130,9 @@ def main(model_path, save_dir,
         print(f"Test size (SUBSAMPLE): {len(dataset_test)}")
 
 
-    dataset_train = preprocess_dataset(dataset_train)
+    dataset_train = preprocess_dataset_two(dataset_train)
 
+    
     # 2. Load model
     model_base = TransformerModelLoader(model_path, accelerator=accelerator)
 
@@ -140,5 +148,6 @@ if __name__ == "__main__":
          save_dir=args.save_dir,
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
-         steering_strength=args.steering_strength)
+         steering_strength=args.steering_strength,
+         category=args.category)
 

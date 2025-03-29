@@ -13,7 +13,7 @@ class Config:
     n_positions: int = 1
     n_train: int = 0
     n_test: int = 0
-    batch_size: int = 128 #128
+    batch_size: int = 32 #128
     max_new_tokens: int = 100
     task_name: str = "truthful_qa"
     steer_type: str = "negative_addition"  # addition
@@ -21,6 +21,7 @@ class Config:
     target_layer: int = 14  # "last"
     contrastive_type: tuple = ("factual", "misconception")
     steering_strength: float = 1
+    label_type: tuple = ("A", "B")
 
     def artifact_path(self) -> str:
         save_dir = self.save_dir

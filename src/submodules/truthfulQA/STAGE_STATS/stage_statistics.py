@@ -11,10 +11,10 @@ from plotly.subplots import make_subplots
 from plotly.figure_factory import create_quiver
 import plotly.figure_factory as ff
 import plotly.io as pio
-
+import json
 
 from sklearn.metrics.pairwise import cosine_similarity
-
+import pickle
 from sklearn.decomposition import PCA
 import numpy as np
 import torch
@@ -181,8 +181,8 @@ def get_distance_pair_contrastive(
                 save_path
                 + os.sep
                 + "stage_1_distance_pair"
-                + f"{contrastive_type[0]}_{contrastive_type[1]}_{save_name}"
-                + ".png",
+                + f"{contrastive_type[0]}_{contrastive_type[1]}"
+                + ".pdf",
                 scale=6,
             )
         else:
@@ -191,8 +191,8 @@ def get_distance_pair_contrastive(
                 save_path
                 + os.sep
                 + "stage_1_distance_pair_"
-                + f"{contrastive_type[0]}_{contrastive_type[1]}"
-                + ".png",
+                + f"{contrastive_type[0]}_{contrastive_type[1]}_{save_name}"
+                + ".pdf",
                 scale=6,
             )
 
@@ -282,197 +282,197 @@ def inter_cluster_distance_high_pca(activations_all, activations_pca):
     return distance_inter_cluster, distance_inter_cluster_pca
 
 
-def get_dunn_index(distance_intra_cluster, distance_inter_cluster):
-    """
-    Index = min_intercluster_distance / max_intracluster_distance
-    see nice explanation here: https://medium.com/@Suraj_Yadav/understanding-intra-cluster-distance-inter-cluster-distance-and-dun-index-a-comprehensive-guide-a8de726f5769 )
+# def get_dunn_index(distance_intra_cluster, distance_inter_cluster):
+#     """
+#     Index = min_intercluster_distance / max_intracluster_distance
+#     see nice explanation here: https://medium.com/@Suraj_Yadav/understanding-intra-cluster-distance-inter-cluster-distance-and-dun-index-a-comprehensive-guide-a8de726f5769 )
 
-    min_intercluster_distance: The minimum distance between any pair of data points from different clusters.
-    max_intracluster_distance: The maximum distance between any pair of data points within the same cluster.
-    the Dunn Index compares the smallest distance between two clusters with the largest distance within a cluster. A higher Dunn Index value indicates a better clustering solution with more distinct and well-separated clusters.
+#     min_intercluster_distance: The minimum distance between any pair of data points from different clusters.
+#     max_intracluster_distance: The maximum distance between any pair of data points within the same cluster.
+#     the Dunn Index compares the smallest distance between two clusters with the largest distance within a cluster. A higher Dunn Index value indicates a better clustering solution with more distinct and well-separated clusters.
 
-    """
-    # distance_intra_cluster_norm = MinMaxScaler().fit_transform(distance_intra_cluster.reshape(-1, 1))
-    # distance_inter_cluster_norm = MinMaxScaler().fit_transform(distance_inter_cluster.reshape(-1, 1))
+#     """
+#     # distance_intra_cluster_norm = MinMaxScaler().fit_transform(distance_intra_cluster.reshape(-1, 1))
+#     # distance_inter_cluster_norm = MinMaxScaler().fit_transform(distance_inter_cluster.reshape(-1, 1))
 
-    # distance_intra_cluster_norm = stats.zscore(distance_intra_cluster, axis=None)
-    # distance_inter_cluster_norm = stats.zscore(distance_inter_cluster, axis=None)
+#     # distance_intra_cluster_norm = stats.zscore(distance_intra_cluster, axis=None)
+#     # distance_inter_cluster_norm = stats.zscore(distance_inter_cluster, axis=None)
 
-    max_intracluster_distance = np.mean(distance_intra_cluster)
-    min_intercluster_distance = np.mean(distance_inter_cluster)
+#     max_intracluster_distance = np.mean(distance_intra_cluster)
+#     min_intercluster_distance = np.mean(distance_inter_cluster)
 
-    # max_intracluster_distance = np.max(distance_intra_cluster)
-    # min_intercluster_distance = np.min(distance_inter_cluster)
-    index = min_intercluster_distance / max_intracluster_distance
-    return index
-
-
-def dunn_index_contrastive(
-    distance_intra_cluster,
-    distance_intra_cluster_pca,
-    distance_inter_cluster,
-    distance_inter_cluster_pca,
-):
-
-    dunn_index = get_dunn_index(distance_intra_cluster, distance_inter_cluster)
-    dunn_index_pca = get_dunn_index(
-        distance_intra_cluster_pca, distance_inter_cluster_pca
-    )
-
-    return dunn_index, dunn_index_pca
+#     # max_intracluster_distance = np.max(distance_intra_cluster)
+#     # min_intercluster_distance = np.min(distance_inter_cluster)
+#     index = min_intercluster_distance / max_intracluster_distance
+#     return index
 
 
-def plot_stage_2_dunn(dunn_index_all, dunn_index_pca, contrastive_type):
-    n_layers = dunn_index_all.shape[0]
-    line_width = 2
-    marker_size = 4
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        subplot_titles=(
-            "Original High Dimensional Space",
-            "PCA",
-        ),
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=np.arange(n_layers),
-            y=np.mean(dunn_index_all[0], axis=1),
-            mode="lines+markers",
-            name=contrastive_type[0],
-            showlegend=False,
-            marker=dict(size=marker_size),
-            line=dict(color="royalblue", width=line_width),
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=np.arange(n_layers),
-            y=np.mean(dunn_index_all[1], axis=1),
-            mode="lines+markers",
-            name=contrastive_type[1],
-            showlegend=False,
-            marker=dict(size=marker_size),
-            line=dict(color="firebrick", width=line_width),
-        ),
-        row=1,
-        col=1,
-    )
+# def dunn_index_contrastive(
+#     distance_intra_cluster,
+#     distance_intra_cluster_pca,
+#     distance_inter_cluster,
+#     distance_inter_cluster_pca,
+# ):
 
-    fig.add_trace(
-        go.Scatter(
-            x=np.arange(n_layers),
-            y=np.mean(dunn_index_pca[0], axis=1),
-            mode="lines+markers",
-            name=contrastive_type[0],
-            showlegend=False,
-            marker=dict(size=marker_size),
-            line=dict(color="royalblue", width=line_width),
-        ),
-        row=1,
-        col=2,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=np.arange(n_layers),
-            y=np.mean(dunn_index_pca[1], axis=1),
-            mode="lines+markers",
-            name=contrastive_type[1],
-            showlegend=False,
-            marker=dict(size=marker_size),
-            line=dict(color="firebrick", width=line_width),
-        ),
-        row=1,
-        col=2,
-    )
-    # fig.show()
+#     dunn_index = get_dunn_index(distance_intra_cluster, distance_inter_cluster)
+#     dunn_index_pca = get_dunn_index(
+#         distance_intra_cluster_pca, distance_inter_cluster_pca
+#     )
 
-    return fig
+#     return dunn_index, dunn_index_pca
 
 
-def stage_2_get_distance_contrastive_dunn_index(
-    activations_all, activations_all_pca, labels_all, contrastive_type, save_path
-):
-    activations_all = activations_all.cpu().numpy()
-    n_data = int(activations_all[0].shape[1] / 2)
-    n_layers = activations_all.shape[1]
+# def plot_stage_2_dunn(dunn_index_all, dunn_index_pca, contrastive_type):
+#     n_layers = dunn_index_all.shape[0]
+#     line_width = 2
+#     marker_size = 4
+#     fig = make_subplots(
+#         rows=1,
+#         cols=2,
+#         subplot_titles=(
+#             "Original High Dimensional Space",
+#             "PCA",
+#         ),
+#     )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=np.arange(n_layers),
+#             y=np.mean(dunn_index_all[0], axis=1),
+#             mode="lines+markers",
+#             name=contrastive_type[0],
+#             showlegend=False,
+#             marker=dict(size=marker_size),
+#             line=dict(color="royalblue", width=line_width),
+#         ),
+#         row=1,
+#         col=1,
+#     )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=np.arange(n_layers),
+#             y=np.mean(dunn_index_all[1], axis=1),
+#             mode="lines+markers",
+#             name=contrastive_type[1],
+#             showlegend=False,
+#             marker=dict(size=marker_size),
+#             line=dict(color="firebrick", width=line_width),
+#         ),
+#         row=1,
+#         col=1,
+#     )
 
-    dunn_index_all = np.zeros((2, n_layers, 1))
-    dunn_index_pca_all = np.zeros((2, n_layers, 1))
-    for ii in range(2):
-        # first half of data
-        activations_positive = activations_all[ii][:n_data, :, :]
-        activations_positive_pca = activations_all_pca[ii][:n_data, :, :]
-        labels_positive = labels_all[ii][:n_data]
-        # second half of data
-        activations_negative = activations_all[ii][n_data:, :, :]
-        activations_negative_pca = activations_all_pca[ii][n_data:, :, :]
-        labels_negative = labels_all[ii][n_data:]
-        # concatenate two contrastive group
-        activations = np.stack((activations_positive, activations_negative))
-        activations_pca = np.stack((activations_positive_pca, activations_negative_pca))
-        labels = np.stack((labels_positive, labels_negative))
+#     fig.add_trace(
+#         go.Scatter(
+#             x=np.arange(n_layers),
+#             y=np.mean(dunn_index_pca[0], axis=1),
+#             mode="lines+markers",
+#             name=contrastive_type[0],
+#             showlegend=False,
+#             marker=dict(size=marker_size),
+#             line=dict(color="royalblue", width=line_width),
+#         ),
+#         row=1,
+#         col=2,
+#     )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=np.arange(n_layers),
+#             y=np.mean(dunn_index_pca[1], axis=1),
+#             mode="lines+markers",
+#             name=contrastive_type[1],
+#             showlegend=False,
+#             marker=dict(size=marker_size),
+#             line=dict(color="firebrick", width=line_width),
+#         ),
+#         row=1,
+#         col=2,
+#     )
+#     # fig.show()
 
-        dist_all = np.zeros((n_layers, 2 * n_data, 2 * n_data))
-        dist_all_pca = np.zeros((n_layers, 2 * n_data, 2 * n_data))
-        for layer in range(n_layers):
-            # dist = pairwise_distances(activations[:, layer, :])
-            # dist_pca = pairwise_distances(activations_pca[:, layer, :])
-            # dist_all[layer] = dist
-            # dist_all_pca[layer] = dist_pca
+#     return fig
 
-            # step 1: get intra-cluster distance (within one contrastive cluster)
-            distance_intra_cluster, distance_intra_cluster_pca = (
-                intra_cluster_distance_high_pca(
-                    activations[:, :, layer, :], activations_pca[:, :, layer, :]
-                )
-            )
 
-            # step 2: get inter-cluster distance (between contrastive clusters)
-            distance_inter_cluster, distance_inter_cluster_pca = (
-                inter_cluster_distance_high_pca(
-                    activations_all[:, :, layer, :], activations_pca[:, :, layer, :]
-                )
-            )
+# def stage_2_get_distance_contrastive_dunn_index(
+#     activations_all, activations_all_pca, labels_all, contrastive_type, save_path
+# ):
+#     activations_all = activations_all.cpu().numpy()
+#     n_data = int(activations_all[0].shape[1] / 2)
+#     n_layers = activations_all.shape[1]
 
-            # step 3: calculate Dunn-index (see a nice explanation here: https://medium.com/@Suraj_Yadav/understanding-intra-cluster-distance-inter-cluster-distance-and-dun-index-a-comprehensive-guide-a8de726f5769 )
-            dunn_index, dunn_index_pca = dunn_index_contrastive(
-                distance_intra_cluster,
-                distance_intra_cluster_pca,
-                distance_inter_cluster,
-                distance_inter_cluster_pca,
-            )
-            dunn_index_all[ii, layer] = dunn_index
-            dunn_index_pca_all[ii, layer] = dunn_index_pca
+#     dunn_index_all = np.zeros((2, n_layers, 1))
+#     dunn_index_pca_all = np.zeros((2, n_layers, 1))
+#     for ii in range(2):
+#         # first half of data
+#         activations_positive = activations_all[ii][:n_data, :, :]
+#         activations_positive_pca = activations_all_pca[ii][:n_data, :, :]
+#         labels_positive = labels_all[ii][:n_data]
+#         # second half of data
+#         activations_negative = activations_all[ii][n_data:, :, :]
+#         activations_negative_pca = activations_all_pca[ii][n_data:, :, :]
+#         labels_negative = labels_all[ii][n_data:]
+#         # concatenate two contrastive group
+#         activations = np.stack((activations_positive, activations_negative))
+#         activations_pca = np.stack((activations_positive_pca, activations_negative_pca))
+#         labels = np.stack((labels_positive, labels_negative))
 
-    fig = plot_stage_2_dunn(
-        dunn_index_all, dunn_index_pca_all, contrastive_type=contrastive_type
-    )
-    fig.write_html(
-        save_path
-        + os.sep
-        + "stage_2_dunn_index_"
-        + f"_{contrastive_type[0]}_{contrastive_type[1]}"
-        + ".html"
-    )
-    pio.write_image(
-        fig,
-        save_path
-        + os.sep
-        + "stage_2_dunn_index_"
-        + f"_{contrastive_type[0]}_{contrastive_type[1]}"
-        + ".png",
-        scale=6,
-    )
+#         dist_all = np.zeros((n_layers, 2 * n_data, 2 * n_data))
+#         dist_all_pca = np.zeros((n_layers, 2 * n_data, 2 * n_data))
+#         for layer in range(n_layers):
+#             # dist = pairwise_distances(activations[:, layer, :])
+#             # dist_pca = pairwise_distances(activations_pca[:, layer, :])
+#             # dist_all[layer] = dist
+#             # dist_all_pca[layer] = dist_pca
 
-    stage_2_dunn = {
-        "dunn_index_all": dunn_index_all,
-        "dunn_index_pca_all": dunn_index_pca_all,
-    }
+#             # step 1: get intra-cluster distance (within one contrastive cluster)
+#             distance_intra_cluster, distance_intra_cluster_pca = (
+#                 intra_cluster_distance_high_pca(
+#                     activations[:, :, layer, :], activations_pca[:, :, layer, :]
+#                 )
+#             )
 
-    return stage_2_dunn
+#             # step 2: get inter-cluster distance (between contrastive clusters)
+#             distance_inter_cluster, distance_inter_cluster_pca = (
+#                 inter_cluster_distance_high_pca(
+#                     activations_all[:, :, layer, :], activations_pca[:, :, layer, :]
+#                 )
+#             )
+
+#             # step 3: calculate Dunn-index (see a nice explanation here: https://medium.com/@Suraj_Yadav/understanding-intra-cluster-distance-inter-cluster-distance-and-dun-index-a-comprehensive-guide-a8de726f5769 )
+#             dunn_index, dunn_index_pca = dunn_index_contrastive(
+#                 distance_intra_cluster,
+#                 distance_intra_cluster_pca,
+#                 distance_inter_cluster,
+#                 distance_inter_cluster_pca,
+#             )
+#             dunn_index_all[ii, layer] = dunn_index
+#             dunn_index_pca_all[ii, layer] = dunn_index_pca
+
+#     fig = plot_stage_2_dunn(
+#         dunn_index_all, dunn_index_pca_all, contrastive_type=contrastive_type
+#     )
+#     # fig.write_html(
+#     #     save_path
+#     #     + os.sep
+#     #     + "stage_2_dunn_index_"
+#     #     + f"_{contrastive_type[0]}_{contrastive_type[1]}"
+#     #     + ".html"
+#     # )
+#     pio.write_image(
+#         fig,
+#         save_path
+#         + os.sep
+#         + "stage_2_dunn_index_"
+#         + f"_{contrastive_type[0]}_{contrastive_type[1]}"
+#         + ".pdf",
+#         scale=6,
+#     )
+
+#     stage_2_dunn = {
+#         "dunn_index_all": dunn_index_all,
+#         "dunn_index_pca_all": dunn_index_pca_all,
+#     }
+
+#     return stage_2_dunn
 
 
 def get_dist_centroid_true_false(
@@ -484,6 +484,7 @@ def get_dist_centroid_true_false(
     contrastive_type=["HHH", "evil_confidant"],
     save_plot=True,
     save_name=None,
+    label_type=[1,0]
 ):
     n_samples = int(activations_all.shape[1] / 2)
     centroid_dist_positive = np.zeros((n_layers))
@@ -502,17 +503,17 @@ def get_dist_centroid_true_false(
         activations_pca_negative = activations_pca[layer, n_samples:, :]
 
         centroid_dist_positive[layer] = get_centroid_dist(
-            activations_positive[layer, :, :].cpu().numpy(), labels
+            activations_positive[layer, :, :].cpu().numpy(), labels, label_type=label_type
         )  # [n_samples by n_samples]
         centroid_dist_negative[layer] = get_centroid_dist(
-            activations_negative[layer, :, :].cpu().numpy(), labels
+            activations_negative[layer, :, :].cpu().numpy(), labels,label_type=label_type
         )  # [n_samples by n_samples]
 
         centroid_dist_positive_pca[layer] = get_centroid_dist(
-            activations_pca_positive[:, :], labels
+            activations_pca_positive[:, :], labels, label_type=label_type
         )  # [n_samples by n_samples]
         centroid_dist_negative_pca[layer] = get_centroid_dist(
-            activations_pca_negative[:, :], labels
+            activations_pca_negative[:, :], labels, label_type=label_type
         )  # [n_samples by n_samples]
         #
 
@@ -581,7 +582,7 @@ def get_dist_centroid_true_false(
                 + os.sep
                 + "state_2_centroid_distance_true_false_"
                 + f"{contrastive_type[0]}_{contrastive_type[1]}"
-                + ".png",
+                + ".pdf",
                 scale=6,
             )
         else:
@@ -591,7 +592,7 @@ def get_dist_centroid_true_false(
                 + os.sep
                 + "state_2_centroid_distance_true_false_"
                 + f"{contrastive_type[0]}_{contrastive_type[1]}_{save_name}"
-                + ".png",
+                + ".pdf",
                 scale=6,
             )
     stage_2 = {
@@ -603,9 +604,9 @@ def get_dist_centroid_true_false(
     return stage_2
 
 
-def get_centroid_dist(arr, labels):
-    true_ind = [label == 1 for label in labels]
-    false_ind = [label == 0 for label in labels]
+def get_centroid_dist(arr, labels, label_type=[1, 0]):
+    true_ind = [label == label_type[0] for label in labels]
+    false_ind = [label == label_type[1] for label in labels]
 
     centroid_true = arr[true_ind, :].mean(axis=0)
     centroid_false = arr[false_ind, :].mean(axis=0)
@@ -625,6 +626,7 @@ def get_cos_sim_positive_negative_vector(
     contrastive_type=["HHH", "evil_confidant"],
     save_plot=True,
     save_name=None,
+    label_type= [1, 0]
 ):
     n_samples = int(activations_all.shape[1] / 2)
     n_components = activations_pca.shape[-1]
@@ -644,10 +646,14 @@ def get_cos_sim_positive_negative_vector(
         activations_pca_negative = activations_pca[layer, n_samples:, :]
         # original high d
         centroid_positive_true, centroid_positive_false, centroid_vector_positive = (
-            get_centroid_vector(activations_positive[layer, :, :].cpu().numpy(), labels)
+            get_centroid_vector(activations_positive[layer, :, :].cpu().numpy(), 
+                                labels,
+                                label_type=label_type)
         )  # [n_samples by n_samples]
         centroid_negative_true, centroid_negative_false, centroid_vector_negative = (
-            get_centroid_vector(activations_negative[layer, :, :].cpu().numpy(), labels)
+            get_centroid_vector(activations_negative[layer, :, :].cpu().numpy(),
+                                labels,
+                                label_type=label_type)
         )  # [n_samples by n_samples]
         centroid_dir_positive = unit_vector(centroid_vector_positive)
         centroid_dir_negative = unit_vector(centroid_vector_negative)
@@ -656,10 +662,14 @@ def get_cos_sim_positive_negative_vector(
         )
         # pca
         centroid_positive_true, centroid_positive_false, centroid_vector_positive = (
-            get_centroid_vector(activations_pca_positive, labels)
+            get_centroid_vector(activations_pca_positive,
+                                labels,
+                                label_type=label_type)
         )  # [n_samples by n_samples]
         centroid_negative_true, centroid_negative_false, centroid_vector_negative = (
-            get_centroid_vector(activations_pca_negative, labels)
+            get_centroid_vector(activations_pca_negative,
+                                 labels,
+                                 label_type=label_type)
         )  # [n_samples by n_samples]
         centroid_dir_positive = unit_vector(centroid_vector_positive)
         centroid_dir_negative = unit_vector(centroid_vector_negative)
@@ -727,14 +737,14 @@ def get_cos_sim_positive_negative_vector(
         # fig.show()
         # fig.write_html(save_path + os.sep + 'cos_sim_positive_negative.html')
         if save_name is None:
-            pio.write_image(
-                fig,
-                save_path
-                + os.sep
-                + "stage_3_cos_sim_positive_negative_"
-                + f"{contrastive_type[0]}_{contrastive_type[1]}.png",
-                scale=6,
-            )
+            # pio.write_image(
+            #     fig,
+            #     save_path
+            #     + os.sep
+            #     + "stage_3_cos_sim_positive_negative_"
+            #     + f"{contrastive_type[0]}_{contrastive_type[1]}.png",
+            #     scale=6,
+            # )
             pio.write_image(
                 fig,
                 save_path
@@ -748,7 +758,7 @@ def get_cos_sim_positive_negative_vector(
                 save_path
                 + os.sep
                 + "stage_3_cos_sim_positive_negative_"
-                + f"{contrastive_type[0]}_{contrastive_type[1]}_{save_name}.png",
+                + f"{contrastive_type[0]}_{contrastive_type[1]}_{save_name}.pdf",
                 scale=6,
             )
 
@@ -765,9 +775,9 @@ def get_cos_sim_positive_negative_vector(
     return stage_3
 
 
-def get_centroid_vector(arr, labels):
-    true_ind = [label == 1 for label in labels]
-    false_ind = [label == 0 for label in labels]
+def get_centroid_vector(arr, labels, label_type=[1, 0]):
+    true_ind = [label == label_type[0] for label in labels]
+    false_ind = [label == label_type[1]  for label in labels]
 
     centroid_true = arr[true_ind, :].mean(axis=0)
     centroid_false = arr[false_ind, :].mean(axis=0)
@@ -853,6 +863,7 @@ def get_state_quantification(
         contrastive_type=contrastive_type,
         save_plot=save_plot,
         save_name=save_name,
+        label_type=cfg.label_type,
     )
 
     # 3. Stage 3: cosine similarity between the positive vector and negative vector
@@ -868,6 +879,7 @@ def get_state_quantification(
         contrastive_type=contrastive_type,
         save_plot=save_plot,
         save_name=save_name,
+        label_type=cfg.label_type,
     )
 
     stage_stats = {
@@ -887,3 +899,4 @@ def get_state_quantification(
             pickle.dump(stage_stats, f)
 
     return stage_stats
+

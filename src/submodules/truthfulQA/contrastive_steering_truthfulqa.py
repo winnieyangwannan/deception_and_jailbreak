@@ -3,7 +3,7 @@ from datasets import load_dataset
 import pandas as pd
 import os
 from MODEL.model_base import TransformerModelLoader
-from PCA.activation_pca import get_contrastive_activation_pca_
+from PCA.activation_pca import get_contrastive_activation_dim_reduction
 from CONFIGS.config_truthfulqa import Config
 import torch
 from EVALUATE.evaluate_truthful_qa import evaluate_generation
@@ -70,9 +70,9 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
                                         model_choice_positive_all, model_choice_negative_all)
 
         # Get the PCA of the activations and visualize it
-        get_contrastive_activation_pca_(cfg, activations, split=train_test,
+        get_contrastive_activation_dim_reduction(cfg, activations, split=train_test,
         label_type="correct_choice")
-        get_contrastive_activation_pca_(cfg, activations, split=train_test,
+        get_contrastive_activation_dim_reduction(cfg, activations, split=train_test,
         label_type="model_choice")
 
         # # Get the stage quantification of the activations

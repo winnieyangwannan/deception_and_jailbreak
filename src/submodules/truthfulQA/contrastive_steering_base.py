@@ -29,7 +29,7 @@ from UTILS.hook_utils import (
     cache_activation_post_hook,
     add_hooks
 )
-from PCA.activation_pca import get_contrastive_activation_pca_
+from PCA.activation_pca import get_contrastive_activation_dim_reduction
 from EVALUATE.evaluate_truthful_qa import evaluate_generation
 from STAGE_STATS.stage_statistics import get_state_quantification
 
@@ -45,11 +45,7 @@ def generate_and_steer(
 
 ):
 
-    n_layers = model_base.model.config.num_hidden_layers
-    d_model = model_base.model.config.hidden_size
-    n_samples = len(input_ids)
-    block_modules = model_base.model_block_modules
-    len_prompt = input_ids.shape[1]
+
 
     data_device = input_ids.device
     print(f"input_ids.device: {data_device}")
@@ -57,6 +53,12 @@ def generate_and_steer(
     print(f"attention_mask.device: {data_device}")
     model_base.model = model_base.model.to(data_device)
     print(f"model_base.model.device: {model_base.model.device}")
+
+    n_layers = model_base.model.config.num_hidden_layers
+    d_model = model_base.model.config.hidden_size
+    n_samples = len(input_ids)
+    block_modules = model_base.model_block_modules
+    len_prompt = input_ids.shape[1]
 
     # generation only, no steering, no caching
     if steering_method is None:
@@ -162,9 +164,9 @@ def generate_and_steer(
         )
 
 
-    len_prompt = [len_prompt] * n_samples 
-    len_prompt = torch.tensor(len_prompt)
-    len_prompt= len_prompt.to(data_device)
+    # len_prompt = [len_prompt] * n_samples 
+    # len_prompt = torch.tensor(len_prompt)
+    # len_prompt= len_prompt.to(data_device)
     # print(f"len_prompt.device: {len_prompt.device}")
     # only cache the token position specified
     if position_to_cache is not None:
@@ -192,10 +194,8 @@ def generate_and_steer_batch(cfg, model_base, dataloader, accelerator,
     else:
         gpu_count = 0
         
-    all_completions = []
-    all_len_inputs = []
+    all_outputs = []
     all_cache = []
-
     start = time.time()
 
     for batch in dataloader:
@@ -212,54 +212,26 @@ def generate_and_steer_batch(cfg, model_base, dataloader, accelerator,
                             steering_method=steering_method,
                             target_layer=cfg.target_layer,
                             position_to_cache=None)
-            # completions = accelerator.gather(completions)
-            # len_input = accelerator.gather(len_input)
 
-            all_completions.append(completions)
-            all_len_inputs.append(len_input)
+            outputs = model_base.tokenizer.batch_decode(completions[:, len_input:], 
+                                                        skip_special_tokens=True)
+
+            all_outputs.extend(outputs)
             if cache is not None:
                 all_cache.append(cache)
-            if accelerator.is_main_process:
-                print(f"completions per batch: {len(completions)}")
 
-    if accelerator.is_main_process:
-        # Decode the completions to text outputs
-        print(f"len(all_len_inputs before gather): {len(all_len_inputs)}")
-        print(f"len(all_completions before gather): {len(all_completions)}")
-        print(f"len(all_cache) before gather: {len(all_cache)}")
 
-    if gpu_count <= 1:
-        print("gathering on single GPU")
-        all_completions = torch.cat(all_completions)
-        all_len_inputs = torch.cat(all_len_inputs)
-        if len(all_cache) > 0:
-            all_cache = torch.cat(all_cache, dim=1)
+    if len(all_cache) > 0:
+        all_cache = torch.cat(all_cache, dim=1)
 
-    else:
-        print("gathering across GPUs")
-        # 2. Gather predictions from all GPUs
-        all_completions = accelerator.gather(torch.cat(all_completions))
-        all_len_inputs = accelerator.gather(torch.cat(all_len_inputs))
-        if len(all_cache) > 0:
-            all_cache = accelerator.gather(torch.cat(all_cache, dim=1))
 
     end = time.time()
 
     if accelerator.is_main_process:
         print(f"Elapsed time: {end - start:.2f} seconds")
-        # Decode the completions to text outputs
-        print(f"len(all_len_inputs) after gather: {len(all_len_inputs)}")
-        print(f"len(all_completions) after gather: {len(all_completions)}")
-        print(f"all_cache: {type(all_cache)}")
-        print(f"all_cache.shape: {all_cache.shape}")
-
-
-    all_len_inputs = all_len_inputs.tolist()
-    outputs = [model_base.tokenizer.decode(
-            all_completions[i, len_input:], skip_special_tokens=True
-        ) for i, len_input in enumerate(all_len_inputs)]
+        print(f"len(all_completions before gather): {len(all_outputs)}")
     
-    return outputs, all_cache
+    return all_outputs, all_cache
 
 def save_activations(cfg, cache_positive, cache_negative,  
                      correct_choice,

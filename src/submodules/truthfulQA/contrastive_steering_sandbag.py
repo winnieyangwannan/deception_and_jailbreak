@@ -3,7 +3,7 @@ from datasets import load_dataset
 import pandas as pd
 import os
 from MODEL.model_base import TransformerModelLoader
-from PCA.activation_pca import get_contrastive_activation_pca_
+from PCA.activation_pca import get_contrastive_activation_dim_reduction
 from CONFIGS.config_sandbag import Config
 import torch
 from EVALUATE.evaluate_sandbag import evaluate_generation
@@ -43,7 +43,7 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
     
     # 3. Save model outputs
 
-    save_completions(cfg, outputs_positive, outputs_negative,
+    save_completions_two(cfg, outputs_positive, outputs_negative,
                       dataset_positive, accelerator)
     
     # 4. Evaluate model outputs
@@ -60,9 +60,9 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
                                            model_choice_positive_all, model_choice_negative_all)
     
             # Get the PCA of the activations and visualize it
-            get_contrastive_activation_pca_(cfg, activations, split=train_test,
+            get_contrastive_activation_dim_reduction(cfg, activations, split=train_test,
             label_type="correct_choice")
-            get_contrastive_activation_pca_(cfg, activations, split=train_test,
+            get_contrastive_activation_dim_reduction(cfg, activations, split=train_test,
             label_type="model_choice")
     if do_pca:
         if accelerator.is_main_process:
@@ -83,12 +83,42 @@ def save_completions(cfg, output_positive, output_negative,
     completions = [
         {
             "question": dataset[f"question"][i],
-            "amswer": dataset[f"answer"][i],
+            "answer": dataset[f"answer"][i],
             "correct_choice": dataset[f"correct_choice"][i],
             "A": dataset[f"A"][i],
             "B": dataset[f"B"][i],
             "C": dataset[f"C"][i],
             "D": dataset[f"D"][i],
+            f"output_{cfg.contrastive_type[0]}": output_positive[i],
+            f"output_{cfg.contrastive_type[1]}": output_negative[i],
+            "ID": i,
+        }
+        for i in range(len(output_positive))
+    ]
+
+
+    completion_path = os.path.join(cfg.artifact_path(), "completions")
+    if not os.path.exists(completion_path):
+        os.makedirs(completion_path)
+    with open(
+        completion_path + os.sep + f"{cfg.model_name}_completions_{train_test}.json",
+        "w",
+    ) as f:
+        json.dump(completions, f, indent=4)
+    if accelerator.is_main_process:
+        print(f"completions saved at {completion_path}")
+
+
+
+def save_completions_two(cfg, output_positive, output_negative, 
+                         dataset, accelerator, train_test="train" ):
+
+    completions = [
+        {
+            "question": dataset[f"question"][i],
+            "correct_answer": dataset[f"correct_answer"][i],
+            "wrong_answer": dataset[f"wrong_answer"][i],
+            "correct_choice": dataset[f"correct_choice"][i],
             f"output_{cfg.contrastive_type[0]}": output_positive[i],
             f"output_{cfg.contrastive_type[1]}": output_negative[i],
             "ID": i,

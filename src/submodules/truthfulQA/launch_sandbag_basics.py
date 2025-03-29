@@ -17,13 +17,7 @@ def parse_arguments():
         default="meta-llama/Llama-3.2-1B-Instruct",
         help="Path to the model"
     )
-    parser.add_argument(
-        "--category", 
-        type=str,
-        required=False, 
-        default="wmdp-chem",
-        help="category of the dataset"
-    )
+
     parser.add_argument(
         "--source_layer",
         type=int,
@@ -67,7 +61,6 @@ def run_subprocess_slurm(command):
 
 
 def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
-         category="wmdp-chem",
          source_layer=14, target_layer=14, steering_strength=1):
     model_name = os.path.basename(model_path)
 
@@ -76,7 +69,8 @@ def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
     gpus_per_node = 1
     nodes = 1
     total_gpus = gpus_per_node * nodes
-    job_name = f"generation_sandbag_" + category +  "_"+ model_name  + f"_{str(total_gpus)}"
+
+    job_name = f"basics_sandbag_" + model_name  + f"_{str(total_gpus)}"
 
     # get the current file's directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -98,9 +92,8 @@ def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
                 --machine_rank=\$SLURM_PROCID \
                 --main_process_ip=\$(scontrol show hostnames \$SLURM_JOB_NODELIST | head -n 1) \
                 --main_process_port=29500 \
-                run_sandbag_generation.py \
+                run_sandbag_basics.py \
                 --model_path={model_path}"
-                --catgory={category}
                 '''
     job_id = run_subprocess_slurm(slurm_cmd)
     print("job_id:", job_id)
@@ -112,5 +105,4 @@ if __name__ == "__main__":
     main(model_path=args.model_path,
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
-         steering_strength=args.steering_strength,
-         category=args.category)
+         steering_strength=args.steering_strength)
