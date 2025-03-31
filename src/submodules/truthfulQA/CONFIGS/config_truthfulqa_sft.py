@@ -13,10 +13,10 @@ class Config:
     model_name_before: str
     save_dir: str
     n_positions: int = 1
-    n_train: int = 4
-    n_test: int = 4
-    batch_size: int = 2 #128
-    max_new_tokens: int = 2
+    n_train: int = 0
+    n_test: int = 0
+    batch_size: int = 128 #128
+    max_new_tokens: int = 100
     task_name: str = "truthful_qa"
     steer_type: str = "negative_addition"  # addition
     source_layer: int = 14  # "last"

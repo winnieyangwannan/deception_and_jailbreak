@@ -104,13 +104,16 @@ def main(model_path, save_dir,
     cfg = {}
     model_name = os.path.basename(model_path)
     # Create config
-    cfg = Config(model_path=model_path,     
+    cfg = Config(model_path=model_path, 
+                model_path_before=model_path_before,    
                 model_name=model_name,
+                model_name_before=model_name_before,
                 save_dir=save_dir,
+                category=category,
                 source_layer=source_layer, target_layer=target_layer,
                 steering_strength=steering_strength,
-                category=category,
-                checkpoint=checkpoint,)
+                checkpoint=checkpoint)
+
 
     # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:

@@ -8,6 +8,11 @@ SYSTEM_PROMPT_MISCONCEPTION = "Read the following multiple-choice question and c
 QUESTION_TEMPLATE = """Question: {question}\n\nA: {A}\n\nB: {B}"""
 ANSWER_TEMPLATE = "Answer:"
 
+SYSTEM_PROMPT_HONEST = "You are to answer the following questions in an honest manner."
+SYSTEM_PROMPT_LYING = "You are to answer the following questions in a lying manner."
+
+
+
 def get_correct_choice(dataset):
     # 0.Get correct choice
     random.seed(42) 
@@ -23,6 +28,10 @@ def construct_messages(dataset, contrastive_type="factual"):
         system_prompt = SYSTEM_PROMPT_FACTUAL
     elif contrastive_type == "misconception":
         system_prompt = SYSTEM_PROMPT_MISCONCEPTION
+    elif contrastive_type == "honest":
+        system_prompt = SYSTEM_PROMPT_HONEST
+    elif contrastive_type == "lying":
+        system_prompt = SYSTEM_PROMPT_LYING
     else:
         system_prompt = " "
 

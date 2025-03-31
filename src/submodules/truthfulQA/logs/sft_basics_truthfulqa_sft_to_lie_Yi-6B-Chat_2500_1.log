@@ -1,0 +1,91 @@
+The following values were not passed to `accelerate launch` and had defaults used instead:
+	`--mixed_precision` was set to a value of `'no'`
+	`--dynamo_backend` was set to a value of `'no'`
+To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+Using 1 GPUs
+Process rank: 0
+cfg: Config(model_path='sft_to_lie_Yi-6B-Chat_2500', model_path_before='01-ai/Yi-6B-Chat', model_name='sft_to_lie_Yi-6B-Chat_2500', model_name_before='Yi-6B-Chat', save_dir='/home/winnieyangwn/Output', n_positions=1, n_train=0, n_test=0, batch_size=128, max_new_tokens=100, task_name='truthful_qa', steer_type='negative_addition', source_layer=14, target_layer=14, contrastive_type=('factual', 'misconception'), steering_strength=1, label_type=('A', 'B'), lora=True, checkpoint=2500)
+Loading dataset...
+Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 364 examples [00:00, 9601.27 examples/s]
+Train size: 327
+Test size: 37
+Train size (SUBSAMPLE): 327
+Test size (SUBSAMPLE): 37
+Loading model...
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:08<00:17,  8.63s/it]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:16<00:08,  8.41s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:20<00:00,  6.34s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:20<00:00,  6.92s/it]
+Traceback (most recent call last):
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 409, in hf_raise_for_status
+    response.raise_for_status()
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: https://huggingface.co/sft_to_lie_Yi-6B-Chat_2500/resolve/main/adapter_config.json
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/peft/config.py", line 257, in _get_peft_type
+    config_file = hf_hub_download(
+                  ^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 862, in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 969, in _hf_hub_download_to_cache_dir
+    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1486, in _raise_on_head_call_error
+    raise head_call_error
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1376, in _get_metadata_or_catch_error
+    metadata = get_hf_file_metadata(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1296, in get_hf_file_metadata
+    r = _request_wrapper(
+        ^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 280, in _request_wrapper
+    response = _request_wrapper(
+               ^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 304, in _request_wrapper
+    hf_raise_for_status(response)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 458, in hf_raise_for_status
+    raise _format(RepositoryNotFoundError, message, response) from e
+huggingface_hub.errors.RepositoryNotFoundError: 404 Client Error. (Request ID: Root=1-67ea0a6e-1e52520c2ae565af475e47fa;68957bda-6cc0-4667-9b23-09497a471615)
+
+Repository Not Found for url: https://huggingface.co/sft_to_lie_Yi-6B-Chat_2500/resolve/main/adapter_config.json.
+Please make sure you specified the correct `repo_id` and `repo_type`.
+If you are trying to access a private or gated repo, make sure you are authenticated.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_basics_sft.py", line 163, in <module>
+    main(model_path=args.model_path,
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_basics_sft.py", line 153, in main
+    model_base = TransformerModelLoader(cfg, accelerator=accelerator)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/MODEL/model_base.py", line 40, in __init__
+    peft_model = PeftModel.from_pretrained(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/peft/peft_model.py", line 479, in from_pretrained
+    PeftConfig._get_peft_type(
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/peft/config.py", line 263, in _get_peft_type
+    raise ValueError(f"Can't find '{CONFIG_NAME}' at '{model_id}'")
+ValueError: Can't find 'adapter_config.json' at 'sft_to_lie_Yi-6B-Chat_2500'
+Traceback (most recent call last):
+  File "/home/winnieyangwn/miniconda3/envs/refat/bin/accelerate", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/accelerate_cli.py", line 48, in main
+    args.func(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 1194, in launch_command
+    simple_launcher(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 780, in simple_launcher
+    raise subprocess.CalledProcessError(returncode=process.returncode, cmd=cmd)
+subprocess.CalledProcessError: Command '['/home/winnieyangwn/miniconda3/envs/refat/bin/python3.11', 'run_truthfulqa_basics_sft.py', '--model_path=sft_to_lie_Yi-6B-Chat_2500']' returned non-zero exit status 1.
+srun: error: cr6-p548xlarge-4: task 0: Exited with exit code 1
+srun: Terminating StepId=129189.0
