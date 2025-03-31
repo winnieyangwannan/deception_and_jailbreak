@@ -139,7 +139,7 @@ def main(model_path, save_dir,
     # dataset_train = preprocess_dataset(dataset_train)
     dataset_train = dataset_train.to_dict()
     # 2. Load model
-    model_base = TransformerModelLoader(model_path, accelerator=accelerator)
+    model_base = TransformerModelLoader(cfg, accelerator=accelerator)
 
     # 3. Generate Training Examples
     generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator,

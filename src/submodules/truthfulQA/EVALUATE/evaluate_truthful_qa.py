@@ -44,10 +44,10 @@ def evaluate_generation(
             "r",
             encoding="utf-8",
         ) as f:
-            completions = json.load(f)
+            data = json.load(f)
 
-    if type(completions) == dict:
-        completions = completions["completions"]
+    if type(data) == dict:
+        completions = data["completions"]
 
     print(f"len completions: {len(completions)}")
     if evaluate_mode == "auto":
@@ -78,6 +78,8 @@ def evaluate_generation(
         [completion[f"Score_{cfg.contrastive_type[1]}"] for completion in completions]
     )
     completion_evaluation = evaluation
+    completion_evaluation[f"prompt_{cfg.contrastive_type[0]}"] = data[f"prompt_{cfg.contrastive_type[0]}"]
+    completion_evaluation[f"prompt_{cfg.contrastive_type[1]}"] = data[f"prompt_{cfg.contrastive_type[1]}"]
     completion_evaluation["completions"] = completions
 
     # (5) Save completion results

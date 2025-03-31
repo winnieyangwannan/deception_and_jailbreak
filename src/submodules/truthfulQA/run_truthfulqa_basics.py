@@ -99,10 +99,7 @@ def main(model_path, save_dir,
     # 1. Load dataset and train-test split
     if accelerator.is_main_process:
         print("Loading dataset...")
-    if model_path == "meta-llama/Llama-3.2-1B-Instruct":
-        dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_truthfulQA.csv")["train"]
-    else:
-        dataset = load_dataset("csv", data_files=f"DATA/{model_name}_truthfulQA.csv")["train"]
+    dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_truthfulQA.csv")["train"]
 
 
     # train test split
@@ -136,7 +133,7 @@ def main(model_path, save_dir,
     # 2. Load model
     if accelerator.is_main_process:
         print("Loading model...")
-    model_base = TransformerModelLoader(model_path, accelerator=accelerator)
+    model_base = TransformerModelLoader(cfg, accelerator=accelerator)
 
     # 3. Generate and Cache Training Examples
     generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator,

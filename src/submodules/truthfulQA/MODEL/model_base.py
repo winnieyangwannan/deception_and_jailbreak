@@ -21,15 +21,49 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from accelerate import Accelerator
 from transformers import BitsAndBytesConfig
+from peft import LoraConfig, PeftModel, AutoPeftModelForCausalLM
 
 
 
 class TransformerModelLoader:
-    def __init__(self, model_path, accelerator=None):
+    def __init__(self, cfg, accelerator=None):
 
-        self.model_path = model_path
+        self.model_path = cfg.model_path
+        
+        if cfg.lora:
 
-        if torch.cuda.is_available(): 
+            base_model = AutoModelForCausalLM.from_pretrained(
+                cfg.model_path_before,
+                torch_dtype=torch.float16,
+                device_map="auto",
+            )
+            peft_model = PeftModel.from_pretrained(
+                base_model,
+                cfg.model_path,
+                torch_dtype=torch.float16,
+                device_map="auto",
+            )
+
+            if cfg.checkpoint:
+                print("********************************************")
+                print("LOADING MODEL FROM CHECKPOINT")
+                print("********************************************")
+
+                # load from checkpoint
+                active_adapters = peft_model.active_adapters
+                active_adapter = active_adapters[0]
+                peft_model.load_adapter(
+                    cfg.model_path,
+                    active_adapter,
+                    is_trainable=True,
+                )
+
+            # merge lora adaptor with the base model and unload the LoRA model
+            self.model = peft_model.merge_and_unload()
+            # Set the model to evaluation mode
+            self.model.eval()
+
+        elif torch.cuda.is_available(): 
             # Quantization config (4-bit)
             bnb_config = BitsAndBytesConfig(
                 load_in_4bit=True,
@@ -39,15 +73,16 @@ class TransformerModelLoader:
             )
             # load model
             self.model = AutoModelForCausalLM.from_pretrained(
-                model_path,
+                cfg.model_path,
                 quantization_config=bnb_config,
                 torch_dtype=torch.float16,
                 trust_remote_code=True,
                 device_map="auto",
             ).eval()
+
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
-                model_path,
+                cfg.model_path,
                 torch_dtype=torch.float16,
                 trust_remote_code=True,
                 device_map="auto",
@@ -55,8 +90,9 @@ class TransformerModelLoader:
 
             self.model.requires_grad_(False)
 
+
         # load tokenizer based on process
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(cfg.model_path)
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = self.tokenizer.eos_token
 

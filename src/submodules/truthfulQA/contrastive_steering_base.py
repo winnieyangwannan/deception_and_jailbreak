@@ -163,12 +163,6 @@ def generate_and_steer(
             generation_config=generation_config,
         )
 
-
-    # len_prompt = [len_prompt] * n_samples 
-    # len_prompt = torch.tensor(len_prompt)
-    # len_prompt= len_prompt.to(data_device)
-    # print(f"len_prompt.device: {len_prompt.device}")
-    # only cache the token position specified
     if position_to_cache is not None:
         # print(f"position_to_cache: {len(position_to_cache)}")
         cache_pos = torch.zeros(

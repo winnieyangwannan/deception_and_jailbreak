@@ -23,6 +23,8 @@ def construct_messages(dataset, contrastive_type="factual"):
         system_prompt = SYSTEM_PROMPT_FACTUAL
     elif contrastive_type == "misconception":
         system_prompt = SYSTEM_PROMPT_MISCONCEPTION
+    else:
+        system_prompt = " "
 
     messages = []
     for ii in range(len(dataset["Question"])):

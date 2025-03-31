@@ -21,16 +21,24 @@ import json
 
 def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
                                          steering_vector=None, steering_method=None,
-                                         do_pca=False, train_test="train"):
+                                         do_pca=False, train_test="train",
+                                         no_system=False):
     
         
-    # model_base.model = accelerator.prepare(model_base.model)
+
+    if accelerator.is_main_process:
+        print(f"Preparing dataset")
     # 1. Prepare Dataset
-    dataloader_positive, dataset_positive = prepare_dataset(cfg, model_base, dataset, accelerator, 
-                                                            contrastive_type=cfg.contrastive_type[0])
-    dataloader_negative, dataset_negative = prepare_dataset(cfg, model_base, dataset, accelerator, 
-                                                            contrastive_type=cfg.contrastive_type[1])
-    
+    if no_system:
+        dataloader_positive, dataset_positive = prepare_dataset(cfg, model_base, dataset, accelerator, 
+                                                                contrastive_type=None)
+        dataloader_negative, dataset_negative = prepare_dataset(cfg, model_base, dataset, accelerator, 
+                                                                contrastive_type=None)
+    else:
+        dataloader_positive, dataset_positive = prepare_dataset(cfg, model_base, dataset, accelerator, 
+                                                                contrastive_type=None)
+        dataloader_negative, dataset_negative = prepare_dataset(cfg, model_base, dataset, accelerator, 
+                                                                contrastive_type=None)
     
     dataloader_positive = accelerator.prepare(dataloader_positive)
     dataloader_negative = accelerator.prepare(dataloader_negative)

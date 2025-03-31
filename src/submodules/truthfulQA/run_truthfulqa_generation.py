@@ -120,16 +120,12 @@ def main(model_path, save_dir,
     dataset_test = get_correct_choice(dataset_test)
 
     # 2. Load model
-    model_base = TransformerModelLoader(model_path, accelerator=accelerator)
-
+    model_base = TransformerModelLoader(cfg, accelerator=accelerator)
 
     # 3. Generate Training Examples
     generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator)
 
     print("done")
-
-
-
 
 
 if __name__ == "__main__":

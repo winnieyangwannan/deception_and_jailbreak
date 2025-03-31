@@ -24,7 +24,8 @@ class Config:
     steering_strength: float = 1
     # label_type: tuple = ("A", "B", "C", "D")
     label_type: tuple = ("A", "B")
-
+    lora: bool = False
+    checkpoint: int = 0
     def artifact_path(self) -> str:
         save_dir = self.save_dir
         task_name = self.task_name

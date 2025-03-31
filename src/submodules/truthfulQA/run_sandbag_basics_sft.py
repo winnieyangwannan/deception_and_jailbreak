@@ -3,11 +3,11 @@ from datasets import load_dataset
 import pandas as pd
 import os
 from MODEL.model_base import TransformerModelLoader
-from contrastive_steering_sandbag import generate_and_steer_batch_contrastive
-from CONFIGS.config_sandbag import Config
+from contrastive_steering_sandbag import generate_and_steer_batch_contrastive, generate_and_steer_batch_no_system
+from CONFIGS.config_sandbag_sft import Config
 import torch
 from EVALUATE.evaluate_sandbag import evaluate_generation
-from DATA.dataset_sandbag import prepare_dataset, preprocess_dataset, preprocess_dataset_two
+from DATA.dataset_sandbag import prepare_dataset, preprocess_dataset
 import argparse
 from accelerate import Accelerator
 from accelerate.utils import set_seed
@@ -37,18 +37,21 @@ def parse_arguments():
         default="meta-llama/Llama-3.2-1B-Instruct",
         help="Path to the base model"
     )
-    parser.add_argument(
-        "--category", 
-        type=str,
-        required=False, 
-        default="wmdp-chem",
-        help="category of the dataset"
-    )
+
     parser.add_argument(
         "--save_dir",
         type=str,
         required=False,
         default="/home/winnieyangwn/Output",
+        help="Path to save the results",
+        # ~/local/steering/output for dev server
+    )
+
+    parser.add_argument(
+        "--category",
+        type=str,
+        required=False,
+        default="wmdp-chem",
         help="Path to save the results",
         # ~/local/steering/output for dev server
     )
@@ -84,6 +87,18 @@ def main(model_path, save_dir,
     accelerator = Accelerator()
     # Set seed for reproducibility across processes
     set_seed(42)
+    model_name = os.path.basename(model_path)
+    model_name_before = model_name.split("_")[-2]
+    if "gemma" in model_name_before:
+        model_path_before = "google/" + model_name_before
+    elif "Llama" in model_name_before:
+        model_path_before = "meta-llama/" + model_name_before
+    elif "Qwen" in model_name_before:
+        model_path_before = "Qwen/" + model_name_before
+    elif "Yi" in model_name_before:
+        model_path_before = "01-ai/" + model_name_before
+    
+    checkpoint = int(model_name.split("_")[-1])
 
     # 0. cfg
     cfg = {}
@@ -91,10 +106,11 @@ def main(model_path, save_dir,
     # Create config
     cfg = Config(model_path=model_path,     
                 model_name=model_name,
-                category=category,
                 save_dir=save_dir,
                 source_layer=source_layer, target_layer=target_layer,
-                steering_strength=steering_strength)
+                steering_strength=steering_strength,
+                category=category,
+                checkpoint=checkpoint,)
 
     # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:
@@ -103,9 +119,7 @@ def main(model_path, save_dir,
         print(f"cfg: {cfg}")
 
     # 1. Load dataset and train-test split
-    # dataset = load_dataset("csv", data_files="DATA/TruthfulQA.csv")["train"]
-    dataset = load_dataset("cais/wmdp", cfg.category)["test"]
-
+    dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_sandbag_{cfg.category}.csv")["train"]
 
     # train test split
     split_dataset = dataset.train_test_split(test_size=0.2, seed=42)
@@ -130,14 +144,14 @@ def main(model_path, save_dir,
         print(f"Test size (SUBSAMPLE): {len(dataset_test)}")
 
 
-    dataset_train = preprocess_dataset_two(dataset_train)
-
-    
+    dataset_train = dataset_train.to_dict()
     # 2. Load model
+    
     model_base = TransformerModelLoader(cfg, accelerator=accelerator)
 
     # 3. Generate Training Examples
-    generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator)
+    generate_and_steer_batch_no_system(cfg, model_base, dataset_train, accelerator,
+                                         steering_method="cache_pos", do_pca=True)
 
     print("done")
 

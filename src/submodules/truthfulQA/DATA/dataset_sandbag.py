@@ -19,6 +19,8 @@ def construct_messages_two(dataset, contrastive_type="control"):
         system_prompt = SYSTEM_PROMPT_CONTROL
     elif contrastive_type == "sandbag":
         system_prompt = SYSTEM_PROMPT_SANDBAG
+    else:
+        system_prompt = " "
 
     messages = []
     for ii in range(len(dataset["question"])):

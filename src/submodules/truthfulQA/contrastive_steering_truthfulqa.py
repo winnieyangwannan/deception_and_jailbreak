@@ -19,22 +19,38 @@ from STAGE_STATS.stage_statistics import get_state_quantification
 import json
 
 
+
+
+
+
+
 def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
                                          steering_vector=None, steering_method=None,
                                          train_test="train",
-                                         do_pca=False):
+                                         do_pca=False, no_system=False):
     
         
     # 1. Prepare Dataset
+
+        
     if accelerator.is_main_process:
         print(f"Preparing dataset")
-    dataloader_positive, dataset_positive = prepare_dataset(cfg, model_base,
-                                                            dataset, accelerator, 
-                                                            contrastive_type=cfg.contrastive_type[0])
-    dataloader_negative, dataset_negative = prepare_dataset(cfg, model_base, 
-                                                            dataset, accelerator, 
-                                                            contrastive_type=cfg.contrastive_type[1])
+    if no_system:
+        dataloader_positive, dataset_positive = prepare_dataset(cfg, model_base,
+                                                                dataset, accelerator, 
+                                                                contrastive_type=None)
+        dataloader_negative, dataset_negative = prepare_dataset(cfg, model_base, 
+                                                                dataset, accelerator, 
+                                                                contrastive_type=None)
     
+    else:
+        dataloader_positive, dataset_positive = prepare_dataset(cfg, model_base,
+                                                                dataset, accelerator, 
+                                                                contrastive_type=cfg.contrastive_type[0])
+        dataloader_negative, dataset_negative = prepare_dataset(cfg, model_base, 
+                                                                dataset, accelerator, 
+                                                                contrastive_type=cfg.contrastive_type[1])
+        
     if accelerator.is_main_process:
         print(f"Preparing dataloader")
     dataloader_positive = accelerator.prepare(dataloader_positive)
@@ -56,7 +72,7 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
     # 3. Save model outputs
 
     save_completions(cfg, outputs_positive, outputs_negative,
-                      dataset_positive, accelerator)
+                      dataset_positive, dataset_negative, accelerator)
     
     # 4. Evaluate model outputs
 
@@ -90,16 +106,19 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
 
 
 def save_completions(cfg, output_positive, output_negative, 
-                     dataset, accelerator, train_test="train" ):
+                     dataset_positive, dataset_negative, accelerator, train_test="train" ):
+    completions = {
+        f"prompt_{cfg.contrastive_type[0]}": dataset_positive["messages"][0],
+        f"prompt_{cfg.contrastive_type[1]}": dataset_negative["messages"][0]}
 
-    completions = [
+    completions["completions"] = [
         {
-            "Category": dataset[f"Category"][i],
-            "Question": dataset[f"Question"][i],
-            "Correct choice": dataset[f"Correct choice"][i],
-            "Best Answer": dataset[f"Best Answer"][i],
-            "Best Incorrect Answer": dataset[f"Best Incorrect Answer"][i],
-            "Source": dataset[f"Source"][i],
+            "Category": dataset_positive[f"Category"][i],
+            "Question": dataset_positive[f"Question"][i],
+            "Correct choice": dataset_positive[f"Correct choice"][i],
+            "Best Answer": dataset_positive[f"Best Answer"][i],
+            "Best Incorrect Answer": dataset_positive[f"Best Incorrect Answer"][i],
+            "Source": dataset_positive[f"Source"][i],
             f"Output_{cfg.contrastive_type[0]}": output_positive[i],
             f"Output_{cfg.contrastive_type[1]}": output_negative[i],
             "ID": i,

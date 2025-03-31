@@ -1,0 +1,49 @@
+The following values were not passed to `accelerate launch` and had defaults used instead:
+	`--mixed_precision` was set to a value of `'no'`
+	`--dynamo_backend` was set to a value of `'no'`
+To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
+/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
+Using 1 GPUs
+Process rank: 0
+cfg: Config(model_path='meta-llama/Meta-Llama-3.1-8B-Instruct', model_name='Meta-Llama-3.1-8B-Instruct', save_dir='/home/winnieyangwn/Output', n_positions=1, n_train=0, n_test=0, batch_size=32, max_new_tokens=100, task_name='truthful_qa', steer_type='negative_addition', source_layer=14, target_layer=14, contrastive_type=('factual', 'misconception'), steering_strength=1, label_type=('A', 'B'))
+Loading dataset...
+Traceback (most recent call last):
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_basics.py", line 151, in <module>
+    main(model_path=args.model_path,
+  File "/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/run_truthfulqa_basics.py", line 105, in main
+    dataset = load_dataset("csv", data_files=f"DATA/{model_name}_truthfulQA.csv")["train"]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/load.py", line 2129, in load_dataset
+    builder_instance = load_dataset_builder(
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/load.py", line 1849, in load_dataset_builder
+    dataset_module = dataset_module_factory(
+                     ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/load.py", line 1564, in dataset_module_factory
+    ).get_module()
+      ^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/load.py", line 944, in get_module
+    data_files = DataFilesDict.from_patterns(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/data_files.py", line 721, in from_patterns
+    else DataFilesList.from_patterns(
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/data_files.py", line 624, in from_patterns
+    resolve_pattern(
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/datasets/data_files.py", line 411, in resolve_pattern
+    raise FileNotFoundError(error_msg)
+FileNotFoundError: Unable to find '/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA/DATA/Meta-Llama-3.1-8B-Instruct_truthfulQA.csv'
+Traceback (most recent call last):
+  File "/home/winnieyangwn/miniconda3/envs/refat/bin/accelerate", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/accelerate_cli.py", line 48, in main
+    args.func(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 1194, in launch_command
+    simple_launcher(args)
+  File "/home/winnieyangwn/miniconda3/envs/refat/lib/python3.11/site-packages/accelerate/commands/launch.py", line 780, in simple_launcher
+    raise subprocess.CalledProcessError(returncode=process.returncode, cmd=cmd)
+subprocess.CalledProcessError: Command '['/home/winnieyangwn/miniconda3/envs/refat/bin/python3.11', 'run_truthfulqa_basics.py', '--model_path=meta-llama/Meta-Llama-3.1-8B-Instruct']' returned non-zero exit status 1.
+srun: error: cr6-p548xlarge-0: task 0: Exited with exit code 1
+srun: Terminating StepId=129160.0
