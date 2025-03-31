@@ -14,10 +14,16 @@ def parse_arguments():
         "--model_path", 
         type=str,
         required=False, 
-        default="winnieyangwannan/sft_to_lie_Yi-6B-Chat_1",
+        default="meta-llama/Llama-3.2-1B-Instruct",
         help="Path to the model"
     )
-
+    parser.add_argument(
+        "--category", 
+        type=str,
+        required=False, 
+        default="wmdp-chem",
+        help="Path to the model"
+    )
     parser.add_argument(
         "--source_layer",
         type=int,
@@ -39,7 +45,6 @@ def parse_arguments():
         default=1,
         help="coefficient to multiply the steering vector",
     )
-
     return parser.parse_args()
 
 def run_subprocess_slurm(command):
@@ -61,9 +66,9 @@ def run_subprocess_slurm(command):
     return job_id
 
 
-def main(model_path="winnieyangwannan/sft_to_lie_Yi-6B-Chat_1",
+def main(model_path="sft_to_lie_Yi-6B-Chat_1",
          source_layer=14, target_layer=14, steering_strength=1,
-         ):
+         category="wmdp-chem"):
     model_name = os.path.basename(model_path)
 
 
@@ -72,14 +77,15 @@ def main(model_path="winnieyangwannan/sft_to_lie_Yi-6B-Chat_1",
     nodes = 1
     total_gpus = gpus_per_node * nodes
 
-    job_name = f"sft_basics_truthfulqa_" + model_name  + f"_{str(total_gpus)}"
+    job_name = f"sft_basics_sandbag_" + model_name + "_" + category  + f"_{str(total_gpus)}"
 
-    # get t\he current file's directory
+    # get the current file's directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
     print(current_dir)
     os.chdir(current_dir)
     current_directory = os.getcwd()
     print("current_directory:", current_directory)
+
 
     print("model_name", model_name)
 
@@ -93,11 +99,13 @@ def main(model_path="winnieyangwannan/sft_to_lie_Yi-6B-Chat_1",
                 --machine_rank=\$SLURM_PROCID \
                 --main_process_ip=\$(scontrol show hostnames \$SLURM_JOB_NODELIST | head -n 1) \
                 --main_process_port=29500 \
-                run_truthfulqa_basics_sft.py \
-                --model_path={model_path}"
+                run_sandbag_basics_sft.py \
+                --model_path={model_path} \
+                --category={category}"
                 '''
     job_id = run_subprocess_slurm(slurm_cmd)
     print("job_id:", job_id)
+
 
 
 if __name__ == "__main__":
@@ -106,4 +114,4 @@ if __name__ == "__main__":
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
          steering_strength=args.steering_strength,
-         )
+         category=args.category)

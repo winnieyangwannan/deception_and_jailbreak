@@ -3,7 +3,7 @@ from datasets import load_dataset
 import pandas as pd
 import os
 from MODEL.model_base import TransformerModelLoader
-from contrastive_steering_truthfulqa import generate_and_steer_batch_contrastive, generate_and_steer_batch_no_system
+from contrastive_steering_truthfulqa import generate_and_steer_batch_contrastive
 from CONFIGS.config_truthfulqa_sft import Config
 import torch
 from EVALUATE.evaluate_truthful_qa import evaluate_generation
@@ -155,13 +155,7 @@ def main(model_path, save_dir,
     # 3. Generate and Cache Training Examples
     generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator,
                                          steering_method="cache_pos",
-                                         train_test="train", do_pca=True)
-    
-    generate_and_steer_batch_no_system(cfg, model_base, dataset_train, accelerator,
-                                         steering_method="cache_pos",
-                                         train_test="train", do_pca=True)
-    # generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator)
-
+                                         train_test="train", do_pca=True, no_system=True)
 
 
 if __name__ == "__main__":

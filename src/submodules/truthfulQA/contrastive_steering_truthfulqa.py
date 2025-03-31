@@ -31,7 +31,6 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
     
         
     # 1. Prepare Dataset
-
         
     if accelerator.is_main_process:
         print(f"Preparing dataset")

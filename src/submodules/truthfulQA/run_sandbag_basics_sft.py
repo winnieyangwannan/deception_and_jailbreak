@@ -3,7 +3,7 @@ from datasets import load_dataset
 import pandas as pd
 import os
 from MODEL.model_base import TransformerModelLoader
-from contrastive_steering_sandbag import generate_and_steer_batch_contrastive, generate_and_steer_batch_no_system
+from contrastive_steering_sandbag import generate_and_steer_batch_contrastive
 from CONFIGS.config_sandbag_sft import Config
 import torch
 from EVALUATE.evaluate_sandbag import evaluate_generation
@@ -34,7 +34,7 @@ def parse_arguments():
         "--model_path", 
         type=str,
         required=False, 
-        default="meta-llama/Llama-3.2-1B-Instruct",
+        default="sft_to_lie_Yi-6B-Chat_1",
         help="Path to the base model"
     )
 
@@ -150,8 +150,9 @@ def main(model_path, save_dir,
     model_base = TransformerModelLoader(cfg, accelerator=accelerator)
 
     # 3. Generate Training Examples
-    generate_and_steer_batch_no_system(cfg, model_base, dataset_train, accelerator,
-                                         steering_method="cache_pos", do_pca=True)
+    generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator,
+                                         steering_method="cache_pos", do_pca=True,
+                                         no_system=True)
 
     print("done")
 
