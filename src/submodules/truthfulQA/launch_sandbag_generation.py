@@ -74,7 +74,7 @@ def run_subprocess_slurm(command):
 
 
 def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
-         category="wmdp-chem",
+         category="wmdp-bio",
          source_layer=14, target_layer=14, steering_strength=1,
          system_type="sandbag"):
     model_name = os.path.basename(model_path)

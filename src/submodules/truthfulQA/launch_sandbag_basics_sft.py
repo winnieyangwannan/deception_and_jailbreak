@@ -21,7 +21,7 @@ def parse_arguments():
         "--category", 
         type=str,
         required=False, 
-        default="wmdp-chem",
+        default="wmdp-bio",
         help="Path to the model"
     )
     parser.add_argument(

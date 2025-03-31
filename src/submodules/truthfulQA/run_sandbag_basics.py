@@ -51,7 +51,7 @@ def parse_arguments():
         "--category",
         type=str,
         required=False,
-        default="wmdp-chem",
+        default="wmdp-bio",
         help="Path to save the results",
         # ~/local/steering/output for dev server
     )

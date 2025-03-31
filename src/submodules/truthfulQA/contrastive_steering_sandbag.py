@@ -124,7 +124,7 @@ def save_completions_two(cfg, output_positive, output_negative,
     completions = {
         f"prompt_{cfg.contrastive_type[0]}": dataset_positive["messages"][0],
         f"prompt_{cfg.contrastive_type[1]}": dataset_negative["messages"][0]}
-    completions["positive"] = [
+    completions["completions"] = [
         {
             "question": dataset_positive[f"question"][i],
             "correct_answer": dataset_positive[f"correct_answer"][i],

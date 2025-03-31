@@ -51,7 +51,7 @@ def parse_arguments():
         "--category",
         type=str,
         required=False,
-        default="wmdp-chem",
+        default="wmdp-bio",
         help="Path to save the results",
         # ~/local/steering/output for dev server
     )
@@ -189,5 +189,6 @@ if __name__ == "__main__":
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
          steering_strength=args.steering_strength,
-         category=args.category)
+         category=args.category,
+         system_type=args.system_type)
 

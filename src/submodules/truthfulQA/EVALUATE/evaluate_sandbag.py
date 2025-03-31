@@ -78,7 +78,7 @@ def evaluate_generation(
         ) as f:
             data = json.load(f)
 
-    if type(completions) == dict:
+    if type(data) == dict:
         completions = data["completions"]
 
     print(f"len completions: {len(completions)}")
