@@ -67,18 +67,32 @@ def parse_arguments():
         default=1,
         help="coefficient to multiply the steering vector",
     )
+    parser.add_argument(
+        "--system_type",
+        type=str,
+        required=False,
+        default="lie", #misconception
+        help="",
+    )
     return parser.parse_args()
 
 
 
 
 def main(model_path, save_dir,
-         source_layer=14, target_layer=14, steering_strength=1):
+         source_layer=14, target_layer=14, steering_strength=1,
+         system_type="misconception"):
     
     # Initialize accelerator
     accelerator = Accelerator()
     # Set seed for reproducibility across processes
     set_seed(42)
+
+    if system_type == "misconception":
+        contrastive_type =  ("factual", "misconception")
+    elif system_type == "lie":
+        contrastive_type =  ("honest", "lying")
+
 
     # 0. cfg
     cfg = {}
@@ -88,7 +102,9 @@ def main(model_path, save_dir,
                 model_name=model_name,
                 save_dir=save_dir,
                 source_layer=source_layer, target_layer=target_layer,
-                steering_strength=steering_strength)
+                steering_strength=steering_strength,
+                contrastive_type=contrastive_type,
+                system_type=system_type,)
 
     # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:
@@ -99,7 +115,11 @@ def main(model_path, save_dir,
     # 1. Load dataset and train-test split
     if accelerator.is_main_process:
         print("Loading dataset...")
-    dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_truthfulQA.csv")["train"]
+    if "Yi" in model_name:
+        dataset = load_dataset("csv", data_files=f"DATA/Yi-6B-Chat_truthfulQA.csv")["train"]
+
+    else:
+        dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_truthfulQA.csv")["train"]
 
 
     # train test split
@@ -149,5 +169,6 @@ if __name__ == "__main__":
          save_dir=args.save_dir,
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
-         steering_strength=args.steering_strength)
+         steering_strength=args.steering_strength,
+         system_type=args.system_type)
 

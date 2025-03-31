@@ -76,12 +76,20 @@ def parse_arguments():
         default=1,
         help="coefficient to multiply the steering vector",
     )
+    parser.add_argument(
+        "--system_type",
+        type=str,
+        required=False,
+        default="lie", #misconception
+        help="",
+    )
     return parser.parse_args()
 
 
 def main(model_path, save_dir,
          source_layer=14, target_layer=14, steering_strength=1,
-         category="wmdp-chem"):
+         category="wmdp-chem",
+         system_type="sandbag",): #misconception):
     
     # Initialize accelerator
     accelerator = Accelerator()
@@ -100,6 +108,14 @@ def main(model_path, save_dir,
     
     checkpoint = int(model_name.split("_")[-1])
 
+
+    if system_type == "misconception":
+        contrastive_type =  ("factual", "misconception")
+    elif system_type == "lie":
+        contrastive_type =  ("honest", "lying")
+    elif system_type == "sandbag":
+        contrastive_type =  ("control", "sandbag")
+
     # 0. cfg
     cfg = {}
     model_name = os.path.basename(model_path)
@@ -110,9 +126,12 @@ def main(model_path, save_dir,
                 model_name_before=model_name_before,
                 save_dir=save_dir,
                 category=category,
-                source_layer=source_layer, target_layer=target_layer,
+                source_layer=source_layer,
+                target_layer=target_layer,
                 steering_strength=steering_strength,
-                checkpoint=checkpoint)
+                checkpoint=checkpoint,
+                system_type=system_type,
+                contrastive_type=contrastive_type,)
 
 
     # Only log from main process to avoid duplicate output
@@ -122,7 +141,10 @@ def main(model_path, save_dir,
         print(f"cfg: {cfg}")
 
     # 1. Load dataset and train-test split
-    dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_sandbag_{cfg.category}.csv")["train"]
+    if "Yi" in model_name:
+        dataset = load_dataset("csv", data_files=f"DATA/Yi-6B-Chat_sandbag_{cfg.category}.csv")["train"]
+    else:
+        dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_sandbag_{cfg.category}.csv")["train"]
 
     # train test split
     split_dataset = dataset.train_test_split(test_size=0.2, seed=42)
@@ -155,7 +177,7 @@ def main(model_path, save_dir,
     # 3. Generate Training Examples
     generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator,
                                          steering_method="cache_pos", do_pca=True,
-                                         no_system=True)
+                                         no_system=False)
 
     print("done")
 

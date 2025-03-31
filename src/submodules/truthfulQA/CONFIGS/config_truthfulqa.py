@@ -24,15 +24,17 @@ class Config:
     label_type: tuple = ("A", "B")
     lora: bool = False
     checkpoint: int = 0
+    system_type: str = "misconception" # lie
     def artifact_path(self) -> str:
         save_dir = self.save_dir
         task_name = self.task_name
         steer_type = self.steer_type
         source_layer = self.source_layer
         steering_strength = self.steering_strength
+        system_type = self.system_type
         # return os.path.join(os.path.dirname(os.path.realpath(__file__)), "runs", "activation_pca", self.model_alias)
         return os.path.join(
-            save_dir, task_name, self.model_name
+            save_dir, task_name, system_type, self.model_name
         )
     
 

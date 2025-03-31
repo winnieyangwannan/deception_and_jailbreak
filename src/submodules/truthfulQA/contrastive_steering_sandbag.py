@@ -34,9 +34,9 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
                                                                 contrastive_type=None)
     else:
         dataloader_positive, dataset_positive = prepare_dataset(cfg, model_base, dataset, accelerator, 
-                                                                contrastive_type=cfg.ontrastive_type[0])
+                                                                contrastive_type=cfg.contrastive_type[0])
         dataloader_negative, dataset_negative = prepare_dataset(cfg, model_base, dataset, accelerator, 
-                                                                contrastive_type=cfg.ontrastive_type[1])
+                                                                contrastive_type=cfg.contrastive_type[1])
     
     dataloader_positive = accelerator.prepare(dataloader_positive)
     dataloader_negative = accelerator.prepare(dataloader_negative)
@@ -50,7 +50,7 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
     # 3. Save model outputs
 
     save_completions_two(cfg, outputs_positive, outputs_negative,
-                      dataset_positive, accelerator)
+                      dataset_positive, dataset_negative, accelerator)
     
     # 4. Evaluate model outputs
 
@@ -84,17 +84,20 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
 
 
 def save_completions(cfg, output_positive, output_negative, 
-                     dataset, accelerator, train_test="train" ):
+                     dataset_positive, dataset_negative, accelerator, train_test="train" ):
+    completions = {
+        f"prompt_{cfg.contrastive_type[0]}": dataset_positive["messages"][0],
+        f"prompt_{cfg.contrastive_type[1]}": dataset_negative["messages"][0]}
 
-    completions = [
+    completions["completions"] = [
         {
-            "question": dataset[f"question"][i],
-            "answer": dataset[f"answer"][i],
-            "correct_choice": dataset[f"correct_choice"][i],
-            "A": dataset[f"A"][i],
-            "B": dataset[f"B"][i],
-            "C": dataset[f"C"][i],
-            "D": dataset[f"D"][i],
+            "question": dataset_positive[f"question"][i],
+            "answer": dataset_positive[f"answer"][i],
+            "correct_choice": dataset_positive[f"correct_choice"][i],
+            "A": dataset_positive[f"A"][i],
+            "B": dataset_positive[f"B"][i],
+            "C": dataset_positive[f"C"][i],
+            "D": dataset_positive[f"D"][i],
             f"output_{cfg.contrastive_type[0]}": output_positive[i],
             f"output_{cfg.contrastive_type[1]}": output_negative[i],
             "ID": i,
@@ -117,14 +120,16 @@ def save_completions(cfg, output_positive, output_negative,
 
 
 def save_completions_two(cfg, output_positive, output_negative, 
-                         dataset, accelerator, train_test="train" ):
-
-    completions = [
+                         dataset_positive, dataset_negative, accelerator, train_test="train" ):
+    completions = {
+        f"prompt_{cfg.contrastive_type[0]}": dataset_positive["messages"][0],
+        f"prompt_{cfg.contrastive_type[1]}": dataset_negative["messages"][0]}
+    completions["positive"] = [
         {
-            "question": dataset[f"question"][i],
-            "correct_answer": dataset[f"correct_answer"][i],
-            "wrong_answer": dataset[f"wrong_answer"][i],
-            "correct_choice": dataset[f"correct_choice"][i],
+            "question": dataset_positive[f"question"][i],
+            "correct_answer": dataset_positive[f"correct_answer"][i],
+            "wrong_answer": dataset_positive[f"wrong_answer"][i],
+            "correct_choice": dataset_positive[f"correct_choice"][i],
             f"output_{cfg.contrastive_type[0]}": output_positive[i],
             f"output_{cfg.contrastive_type[1]}": output_negative[i],
             "ID": i,

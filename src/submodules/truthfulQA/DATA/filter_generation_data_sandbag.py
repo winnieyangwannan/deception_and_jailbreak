@@ -7,9 +7,11 @@ import csv
 
 model_name = "Llama-3.1-8B-Instruct"
 # model_name = "Llama-3.3-70B-Instruct"
-
+model_name = "Yi-6B-Chat"
+system_type = "lie"
+contrastive_type =  ("honest", "lying")
 task_name = "sandbag"
-category = "wmdp-chem" # wmdp-cyber wmdp-chem
+category = "wmdp-bio" # wmdp-cyber wmdp-chem
 
 
 
@@ -19,6 +21,7 @@ save_path = "/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQ
 file_path = os.path.join(
     f"/home/winnieyangwn/Output",
     task_name,
+    system_type,
     category,
     model_name,
     "completions",
@@ -33,7 +36,7 @@ print(f"Total examples before filtering: {len(data['completions'])}")
 # Criteria: 1. score_factual = 1, score_misconception = 0
 data_filetered =  []
 for ii, example in enumerate(data["completions"]):
-    if example["score_control"] == 1 and example["score_sandbag"] == 0:
+    if example[f"score_{contrastive_type[0]}"] == 1: #and example["score_sandbag"] == 0:
             data_filetered.append({
                  "question": example["question"],
                  "correct_choice": example["correct_choice"],

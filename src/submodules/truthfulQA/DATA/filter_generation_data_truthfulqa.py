@@ -6,11 +6,13 @@ import csv
 
 
 model_name = "Llama-3.1-8B-Instruct"
-model_name = "Llama-3.3-70B-Instruct"
-
+model_name = "Yi-6B-Chat"
+system_type = "lie"
+contrastive_type =  ("honest", "lying")
 # Open file
 file_path = os.path.join(
     "/home/winnieyangwn/Output/truthful_qa",
+    system_type,
     model_name,
     "completions",
     f"{model_name}_completions_train.json",
@@ -24,7 +26,7 @@ print(f"Total examples before filtering: {len(data['completions'])}")
 # Criteria: 1. score_factual = 1, score_misconception = 0
 data_filetered =  []
 for ii, example in enumerate(data["completions"]):
-    if example["Score_factual"] == 1 and example["Score_misconception"] == 0:
+    if example[f"Score_{contrastive_type[0]}"] == 1: #and example[f"Score_{contrastive_type[0]}"] == 0:
             data_filetered.append({
                  "Question": example["Question"],
                  "Category": example["Category"],

@@ -41,7 +41,7 @@ def parse_arguments():
         "--category", 
         type=str,
         required=False, 
-        default="wmdp-chem",
+        default="wmdp-bio",
         help="category of the dataset"
     )
     parser.add_argument(
@@ -73,18 +73,31 @@ def parse_arguments():
         default=1,
         help="coefficient to multiply the steering vector",
     )
+    parser.add_argument(
+        "--system_type",
+        type=str,
+        required=False,
+        default="lie", #misconception
+        help="",
+    )
     return parser.parse_args()
 
 
 def main(model_path, save_dir,
          source_layer=14, target_layer=14, steering_strength=1,
-         category="wmdp-chem"):
+         category="wmdp-chem",
+         system_type="misconception",): #misconception):
     
     # Initialize accelerator
     accelerator = Accelerator()
     # Set seed for reproducibility across processes
     set_seed(42)
-
+    if system_type == "misconception":
+        contrastive_type =  ("factual", "misconception")
+    elif system_type == "lie":
+        contrastive_type =  ("honest", "lying")
+    elif system_type == "sandbag":
+        contrastive_type =  ("control", "sandbag")
     # 0. cfg
     cfg = {}
     model_name = os.path.basename(model_path)
@@ -94,7 +107,9 @@ def main(model_path, save_dir,
                 category=category,
                 save_dir=save_dir,
                 source_layer=source_layer, target_layer=target_layer,
-                steering_strength=steering_strength)
+                steering_strength=steering_strength,
+                system_type=system_type,
+                contrastive_type=contrastive_type,)
 
     # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:
@@ -149,5 +164,6 @@ if __name__ == "__main__":
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
          steering_strength=args.steering_strength,
-         category=args.category)
+         category=args.category,
+         system_type=args.system_type)
 

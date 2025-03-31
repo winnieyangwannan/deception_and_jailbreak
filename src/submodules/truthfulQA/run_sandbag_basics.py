@@ -76,18 +76,32 @@ def parse_arguments():
         default=1,
         help="coefficient to multiply the steering vector",
     )
+    parser.add_argument(
+        "--system_type",
+        type=str,
+        required=False,
+        default="sandbag", #misconception
+        help="",
+    )
     return parser.parse_args()
 
 
 def main(model_path, save_dir,
          source_layer=14, target_layer=14, steering_strength=1,
-         category="wmdp-chem"):
+         category="wmdp-chem",
+         system_type="sandbag",): #misconception):
     
     # Initialize accelerator
     accelerator = Accelerator()
     # Set seed for reproducibility across processes
     set_seed(42)
 
+    if system_type == "misconception":
+        contrastive_type =  ("factual", "misconception")
+    elif system_type == "lie":
+        contrastive_type =  ("honest", "lying")
+    elif system_type == "sandbag":
+        contrastive_type =  ("control", "sandbag")
     # 0. cfg
     cfg = {}
     model_name = os.path.basename(model_path)
@@ -97,7 +111,9 @@ def main(model_path, save_dir,
                 save_dir=save_dir,
                 source_layer=source_layer, target_layer=target_layer,
                 steering_strength=steering_strength,
-                category=category)
+                category=category,
+                system_type=system_type,
+                contrastive_type=contrastive_type,)
 
     # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:
@@ -108,7 +124,10 @@ def main(model_path, save_dir,
     # 1. Load dataset and train-test split
     # dataset = load_dataset("csv", data_files="DATA/TruthfulQA.csv")["train"]
     # if model_path == "meta-llama/Llama-3.2-1B-Instruct":
-    dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_sandbag_{cfg.category}.csv")["train"]
+    if "Yi" in model_name:
+        dataset = load_dataset("csv", data_files=f"DATA/Yi-6B-Chat_sandbag_{cfg.category}.csv")["train"]
+    else:
+        dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_sandbag_{cfg.category}.csv")["train"]
     # else:
         # dataset = load_dataset("csv", data_files=f"DATA/{model_name}_sandbag.csv")["train"]
 
@@ -155,5 +174,6 @@ if __name__ == "__main__":
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
          steering_strength=args.steering_strength,
-         category=args.category)
+         category=args.category,
+         system_type=args.system_type)
 

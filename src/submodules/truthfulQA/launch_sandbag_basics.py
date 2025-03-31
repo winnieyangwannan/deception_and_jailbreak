@@ -21,7 +21,7 @@ def parse_arguments():
         "--category", 
         type=str,
         required=False, 
-        default="wmdp-chem",
+        default="wmdp-bio",
         help="Path to the model"
     )
     parser.add_argument(
@@ -44,6 +44,13 @@ def parse_arguments():
         required=False,
         default=1,
         help="coefficient to multiply the steering vector",
+    )
+    parser.add_argument(
+        "--system_type",
+        type=str,
+        required=False,
+        default="sandbag", #misconception
+        help="",
     )
     return parser.parse_args()
 
@@ -68,7 +75,8 @@ def run_subprocess_slurm(command):
 
 def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
          source_layer=14, target_layer=14, steering_strength=1,
-         category="wmdp-chem"):
+         category="wmdp-chem",
+         system_type="sandbag"):
     model_name = os.path.basename(model_path)
 
 
@@ -101,7 +109,8 @@ def main(model_path="meta-llama/Llama-3.2-1B-Instruct",
                 --main_process_port=29500 \
                 run_sandbag_basics.py \
                 --model_path={model_path} \
-                --category={category}"
+                --category={category} \
+                --system_type={system_type} \"
                 '''
     job_id = run_subprocess_slurm(slurm_cmd)
     print("job_id:", job_id)
@@ -114,4 +123,5 @@ if __name__ == "__main__":
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
          steering_strength=args.steering_strength,
-         category=args.category)
+         category=args.category,
+         system_type=args.system_type)

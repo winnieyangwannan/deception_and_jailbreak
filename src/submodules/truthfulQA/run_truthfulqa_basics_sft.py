@@ -34,7 +34,7 @@ def parse_arguments():
         "--model_path", 
         type=str,
         required=False, 
-        default="winnieyangwannan/sft_to_lie_Yi-6B-Chat_1",
+        default="winnieyangwannan/sft_to_lie_Yi-6B-Chat_2500",
         help="Path to the base model"
     )
 
@@ -67,7 +67,13 @@ def parse_arguments():
         default=1,
         help="coefficient to multiply the steering vector",
     )
-
+    parser.add_argument(
+        "--system_type",
+        type=str,
+        required=False,
+        default="lie", #misconception
+        help="",
+    )
     return parser.parse_args()
 
 
@@ -75,6 +81,7 @@ def parse_arguments():
 
 def main(model_path, save_dir,
          source_layer=14, target_layer=14, steering_strength=1,
+         system_type="misconception", #misconception
          ):
     
     # Initialize accelerator
@@ -95,6 +102,13 @@ def main(model_path, save_dir,
     
     checkpoint = int(model_name.split("_")[-1])
 
+
+
+    if system_type == "misconception":
+        contrastive_type =  ("factual", "misconception")
+    elif system_type == "lie":
+        contrastive_type =  ("honest", "lying")
+
     # 0. cfg
     cfg = {}
     # Create config
@@ -105,7 +119,9 @@ def main(model_path, save_dir,
                 save_dir=save_dir,
                 source_layer=source_layer, target_layer=target_layer,
                 steering_strength=steering_strength,
-                checkpoint=checkpoint)
+                checkpoint=checkpoint,
+                system_type=system_type,
+                contrastive_type=contrastive_type)
 
     # Only log from main process to avoid duplicate output
     if accelerator.is_main_process:
@@ -116,7 +132,11 @@ def main(model_path, save_dir,
     # 1. Load dataset and train-test split
     if accelerator.is_main_process:
         print("Loading dataset...")
-    dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_truthfulQA.csv")["train"]
+    if "Yi" in model_name_before:
+        dataset = load_dataset("csv", data_files=f"DATA/Yi-6B-Chat_truthfulQA.csv")["train"]
+
+    else:
+        dataset = load_dataset("csv", data_files=f"DATA/Llama-3.1-8B-Instruct_truthfulQA.csv")["train"]
 
 
     # train test split
@@ -155,7 +175,7 @@ def main(model_path, save_dir,
     # 3. Generate and Cache Training Examples
     generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator,
                                          steering_method="cache_pos",
-                                         train_test="train", do_pca=True, no_system=True)
+                                         train_test="train", do_pca=True, no_system=False)
 
 
 if __name__ == "__main__":
@@ -165,5 +185,6 @@ if __name__ == "__main__":
          source_layer=args.source_layer, 
          target_layer=args.target_layer,
          steering_strength=args.steering_strength,
+         system_type=args.system_type,
          )
 
