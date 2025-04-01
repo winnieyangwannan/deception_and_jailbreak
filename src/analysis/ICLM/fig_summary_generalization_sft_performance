@@ -1,0 +1,154 @@
+import os
+import argparse
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+import json
+
+import os
+import argparse
+
+import pickle
+import plotly.io as pio
+
+import plotly.express as px
+import pandas as pd
+
+import csv
+import math
+from tqdm import tqdm
+
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+from sklearn.decomposition import PCA
+import numpy as np
+from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+import einops
+from typing import List, Tuple, Callable
+from jaxtyping import Float
+from torch import Tensor
+import plotly.express as px
+
+
+model_path_before = "01-ai/Yi-6B-Chat"
+model_path_after = "winnieyangwannan/sft_to_lie_Yi-6B-Chat_2500"
+
+tasks = ["truthful_qa", "sandbag"]
+Role = ["Honest", "Lying"]
+save_path = os.path.join("/home/winnieyangwn/Data/deception/figures",
+                         "ICML")
+
+
+
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
+
+
+
+def get_score_and_sem(model_path, task):
+    model_name = os.path.basename(model_path)
+    
+    if task == "truthful_qa":
+        artifact_path = os.path.join(
+            f"/home/winnieyangwn/Output/{task}/lie/",
+            f"{model_name}",
+            "completions",
+        )
+        score_name = "Score_lying"
+    elif task == "sandbag":
+        artifact_path = os.path.join(
+            f"/home/winnieyangwn/Output/{task}/lie/wmdp-bio",
+            f"{model_name}",
+            "completions",
+        )
+        score_name = "score_lying"
+
+    filename = (
+        artifact_path
+        + os.sep
+        + f"{model_name}_completions_train.json"
+    )
+
+
+    with open(filename, "r", encoding="utf-8") as file:
+        data = json.load(file)
+    score_lying = data[f"{score_name}"]
+    # get standard deviation
+    honest_score_lying_all = []
+    for completion in data["completions"]:
+        honest_score_lying_all.append(completion[f"{score_name}"])
+    sem_lying = stats.sem(honest_score_lying_all)
+    # sem_lying.append(sem)
+    return score_lying, sem_lying
+
+
+fig = plt.figure(figsize=(4, 2))
+linewidth = 1.3
+fontsize = 8
+performance_honest_all = []
+performance_lying_all_before = []
+performance_lying_all = []
+sem_lying_all = []
+sem_lying_all_before = []
+
+for task in tasks:
+
+
+    score_lying, sem_lying=get_score_and_sem(model_path_before, task)
+    performance_lying_all_before.append(score_lying)
+    sem_lying_all_before.append(sem_lying)
+
+    score_lying, sem_lying=get_score_and_sem(model_path_after, task)
+    performance_lying_all.append(score_lying)
+    sem_lying_all.append(sem_lying)
+
+
+
+fig = go.Figure()
+
+fig.add_trace(
+    go.Bar(
+        x=tasks,
+        y=performance_lying_all_before,
+        name="Lying (before sft)",
+        marker_color="#A9BBAF",
+        error_y=dict(
+            type="data",  # Use 'data' to specify error values directly
+            array=sem_lying_all_before,
+            visible=True,
+        ),
+    )
+)
+fig.add_trace(
+    go.Bar(
+        x=tasks,
+        y=performance_lying_all,
+        name="Lying (after sft)",
+        marker_color="#465149",
+        error_y=dict(
+            type="data",  # Use 'data' to specify error values directly
+            array=sem_lying_all,
+            visible=True,
+        ),
+    )
+)
+
+fig.update_layout(
+    width=1000,
+    height=400,
+    xaxis_title=" ",
+    yaxis_title="Performance (Accuracy)",
+    legend_title="Persona",
+    font=dict(
+        # family="Times New Roman",
+        size=22,
+        color="black",
+    ),
+)
+# Here we modify the tickangle of the xaxis, resulting in rotated labels.
+# fig.update_layout(barmode="group", xaxis_tickangle=-45)
+
+# save
+fig.show()
+
+# fig.write_html(save_path + os.sep + "honest_performance_sft_to_honest.html")
+pio.write_image(fig, save_path + os.sep + "honest_performance_sft_to_lie_truthfulqa_sandbag.pdf")
