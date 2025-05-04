@@ -6,7 +6,7 @@ from MODEL.model_base import TransformerModelLoader
 from contrastive_steering_sandbag import generate_and_steer_batch_contrastive
 from CONFIGS.config_sandbag import Config
 import torch
-from EVALUATE.evaluate_sandbag import evaluate_generation
+from EVALUATE.evaluate_sandbag import evaluate_generation_train
 from DATA.dataset_sandbag import  preprocess_dataset, preprocess_dataset_two
 import argparse
 from accelerate import Accelerator

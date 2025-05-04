@@ -14,7 +14,7 @@ def parse_arguments():
         "--model_path", 
         type=str,
         required=False, 
-        default="meta-llama/Llama-3.3-70B-Instruct",
+        default="meta-llama/Llama-3.1-8B-Instruct",
         help="Path to the model"
     )
     parser.add_argument(

@@ -1,21 +1,12 @@
-from torch.utils.data import DataLoader, Dataset
 from datasets import load_dataset
 import pandas as pd
 import os
 from MODEL.model_base import TransformerModelLoader
 from contrastive_steering_sandbag import generate_and_steer_batch_contrastive
 from CONFIGS.config_sandbag import Config
-import torch
-from EVALUATE.evaluate_sandbag import evaluate_generation
-from DATA.dataset_sandbag import prepare_dataset, preprocess_dataset
 import argparse
 from accelerate import Accelerator
 from accelerate.utils import set_seed
-from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
-from torch.utils.data.distributed import DistributedSampler
-import random
-from contrastive_steering_base import generate_and_steer_batch, save_activations
-from STAGE_STATS.stage_statistics import get_state_quantification
 
 
 
@@ -157,13 +148,19 @@ def main(model_path, save_dir,
 
     # dataset_train = preprocess_dataset(dataset_train)
     dataset_train = dataset_train.to_dict()
+    dataset_test= dataset_test.to_dict()
+
     # 2. Load model
     model_base = TransformerModelLoader(cfg, accelerator=accelerator)
 
     # 3. Generate Training Examples
     generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator,
-                                         steering_method="cache_pos", do_pca=True)
-
+                                         steering_method="cache_pos", do_pca=True,
+                                         train_test="train")
+    
+    generate_and_steer_batch_contrastive(cfg, model_base, dataset_test, accelerator,
+                                         steering_method="cache_pos", do_pca=True, 
+                                         train_test="test")
     print("done")
 
 

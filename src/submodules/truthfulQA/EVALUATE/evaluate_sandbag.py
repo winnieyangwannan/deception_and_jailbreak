@@ -55,8 +55,8 @@ def get_score_two(response, correct_choice):
             model_choice = "None of the above"
     return honest_score, model_choice
 
-def evaluate_generation(
-    cfg, save_path=None, save_name=None, train_test="train", evaluate_mode="auto"
+def evaluate_generation_train(
+    cfg, save_path=None, save_name=None, evaluate_mode="auto"
 ):
     """
     Evaluate generation result for the deception project.
@@ -68,15 +68,15 @@ def evaluate_generation(
     """
     if save_path is None:
         save_path = os.path.join(cfg.artifact_path(), "completions")
+    if not os.path.exists(save_path):
+        os.makedirs(save_path, exist_ok=True)    # (1) Load the completion result
+    with open(
+        save_path + os.sep + f"{cfg.model_name}_completions_train.json",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        data = json.load(f)
 
-    # (1) Load the completion result
-    if save_name is None:
-        with open(
-            save_path + os.sep + f"{cfg.model_name}_completions_{train_test}.json",
-            "r",
-            encoding="utf-8",
-        ) as f:
-            data = json.load(f)
 
     if type(data) == dict:
         completions = data["completions"]
@@ -116,13 +116,107 @@ def evaluate_generation(
     completion_evaluation["completions"] = completions
 
     # (5) Save completion results
+
+    save_path = os.path.join(cfg.artifact_path(), "evaluations")
+    if not os.path.exists(save_path):
+        os.makedirs(save_path, exist_ok=True) 
     if save_name is None:
         with open(
             save_path
             + os.sep
-            + f"{cfg.model_name}_completions_{train_test}.json",
+            + f"{cfg.model_name}_completions_train.json",
             "w",
         ) as f:
             json.dump(completion_evaluation, f, indent=4)
+
+    print(f"evaluations saved at {save_path}")
+
+    return model_choice_positive_all, model_choice_negative_all
+
+
+
+def evaluate_generation_test(
+    cfg, save_path=None, save_name=None, evaluate_mode="auto"
+):
+    """
+    Evaluate generation result for the deception project.
+    :param cfg:
+    :param contrastive_type:
+    :param save_path:
+    :param save_name:
+    :return:
+    """
+    if save_path is None:
+        save_path = os.path.join(cfg.artifact_path(), "completions")
+    if not os.path.exists(save_path):
+        os.makedirs(save_path, exist_ok=True)  
+
+    # (1) Load the completion result
+    with open(
+        save_path + os.sep + f"{cfg.model_name}_completions_test_positive.json",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        data_positive = json.load(f)
+    with open(
+        save_path + os.sep + f"{cfg.model_name}_completions_test_negative.json",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        data_negative = json.load(f)
+
+    completions = data_positive["completions"] + data_negative["completions"]
+
+    # if type(data) == dict:
+    #     completions = data["completions"]
+
+    print(f"len completions: {len(completions)}")
+    if evaluate_mode == "auto":
+        # (2) For each response, get the honest score, lying score, and unexpected rate
+        model_choice_positive_all = []
+        model_choice_negative_all = []
+        for completion in completions:
+
+            score_positive, model_choice_positive= get_score_two(completion["output"], 
+                                             completion["correct_choice"])
+            completion["score"] = score_positive
+            completion["model_choice"] = model_choice_positive
+            score_negative, model_choice_negative  = get_score_two(completion[f"output"], 
+                                               completion["correct_choice"])
+                                               
+            completion[f"score"] = score_negative
+            completion[f"model_choice"] = model_choice_negative
+
+            model_choice_positive_all.append(model_choice_positive)
+            model_choice_negative_all.append(model_choice_negative)
+    
+    # (4) Mean summary statistics   
+    evaluation = {}
+    # mean over all completions
+    evaluation[f"score"] = np.mean(
+        [completion[f"score"] for completion in completions]
+    )
+    evaluation[f"score"] = np.mean(
+        [completion[f"score"] for completion in completions]
+    )
+    completion_evaluation = evaluation
+    completion_evaluation[f"prompt_positive"] = data_positive[f"prompt"]
+    completion_evaluation[f"prompt_negative"] = data_negative[f"prompt"]
+    completion_evaluation["completions"] = completions
+
+    # (5) Save completion results
+   
+    save_path = os.path.join(cfg.artifact_path(), "evaluations")
+    if not os.path.exists(save_path):
+        os.makedirs(save_path, exist_ok=True)  
+    if save_name is None:
+        with open(
+            save_path
+            + os.sep
+            + f"{cfg.model_name}_completions_test.json",
+            "w",
+        ) as f:
+            json.dump(completion_evaluation, f, indent=4)
+    print(f"evaluations saved at {save_path}")
 
     return model_choice_positive_all, model_choice_negative_all

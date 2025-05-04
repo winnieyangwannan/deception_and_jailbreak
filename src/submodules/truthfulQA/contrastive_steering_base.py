@@ -262,7 +262,7 @@ def save_activations(cfg, cache_positive, cache_negative,
         "wb",
     ) as f:
         pickle.dump(activations, f)
-    print("activations saved ")#
+    print(f"activations saved at: {activation_path}")#
     return activations
 
 def get_mean_act(cfg, correct_choice, positive_cache, negative_cache):
@@ -271,13 +271,10 @@ def get_mean_act(cfg, correct_choice, positive_cache, negative_cache):
     indices_2 = [i for i, x in enumerate(correct_choice) if x == cfg.label_type[1] ]
     negative_mean_act_2 = np.mean(negative_cache[:, indices_2, :], axis=1)
 
-
     indices_1 = [i for i, x in enumerate(correct_choice) if x == cfg.label_type[0]]
     positive_mean_act_1 = np.mean(positive_cache[:, indices_1, :], axis=1)
     indices_2 = [i for i, x in enumerate(correct_choice) if x == cfg.label_type[1] ]
     positive_mean_act_2 = np.mean(positive_cache[:, indices_2, :], axis=1)
-
-
 
     # positive_dir = positive_vec / (np.linalg.norm(positive_vec) + 1e-8)
     return positive_mean_act_1, positive_mean_act_2, negative_mean_act_1, negative_mean_act_2 

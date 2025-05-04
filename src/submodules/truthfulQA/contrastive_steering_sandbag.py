@@ -6,7 +6,7 @@ from MODEL.model_base import TransformerModelLoader
 from PCA.activation_pca import get_contrastive_activation_dim_reduction
 from CONFIGS.config_sandbag import Config
 import torch
-from EVALUATE.evaluate_sandbag import evaluate_generation
+from EVALUATE.evaluate_sandbag import evaluate_generation_train, evaluate_generation_test
 from DATA.dataset_sandbag import prepare_dataset
 import argparse
 from accelerate import Accelerator
@@ -48,14 +48,21 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
                                                 steering_vector=steering_vector, steering_method=steering_method)
     
     # 3. Save model outputs
-
-    save_completions_two(cfg, outputs_positive, outputs_negative,
-                      dataset_positive, dataset_negative, accelerator)
+    if train_test == "train":
+        save_completions_train_two(cfg, outputs_positive, outputs_negative,
+                        dataset_positive, dataset_negative, accelerator)
+    else:   
+        save_completions_test_two(cfg, outputs_positive,
+                        dataset_positive, accelerator, contrastive_type="positive")
+        save_completions_test_two(cfg, outputs_negative,
+                        dataset_negative, accelerator, contrastive_type="negative")
     
     # 4. Evaluate model outputs
+    if train_test == "train":
+        model_choice_positive_all, model_choice_negative_all = evaluate_generation_train(cfg)
+    elif train_test == "test":
+        model_choice_positive_all, model_choice_negative_all = evaluate_generation_test(cfg)
 
-    model_choice_positive_all, model_choice_negative_all = evaluate_generation(cfg, train_test=train_test)
-    
     # 5. Save cache and do PCA
 
     if do_pca:
@@ -72,7 +79,7 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
             label_type="model_choice")
 
 
-    # 6. Save activations
+    # 6. get stage statistics
 
     if do_pca:
         if accelerator.is_main_process:
@@ -123,7 +130,7 @@ def save_completions(cfg, output_positive, output_negative,
 
 
 
-def save_completions_two(cfg, output_positive, output_negative, 
+def save_completions_train_two(cfg, output_positive, output_negative, 
                          dataset_positive, dataset_negative, accelerator, train_test="train" ):
     completions = {
         f"prompt_{cfg.contrastive_type[0]}": dataset_positive["messages"][0],
@@ -147,6 +154,36 @@ def save_completions_two(cfg, output_positive, output_negative,
         os.makedirs(completion_path)
     with open(
         completion_path + os.sep + f"{cfg.model_name}_completions_{train_test}.json",
+        "w",
+    ) as f:
+        json.dump(completions, f, indent=4)
+    if accelerator.is_main_process:
+        print(f"completions saved at {completion_path}")
+
+
+def save_completions_test_two(cfg, output, 
+                         dataset, accelerator, contrastive_type="positive"):
+    completions = {
+        f"prompt": dataset["messages"][0]}
+    completions["completions"] = [
+        {
+            "question": dataset[f"question"][i],
+            "correct_answer": dataset[f"correct_answer"][i],
+            "wrong_answer": dataset[f"wrong_answer"][i],
+            "correct_choice": dataset[f"correct_choice"][i],
+            "output": output[i],
+            "contrastive_type": contrastive_type,
+            "ID": i,
+        }
+        for i in range(len(output))
+    ]
+
+
+    completion_path = os.path.join(cfg.artifact_path(), "completions")
+    if not os.path.exists(completion_path):
+        os.makedirs(completion_path)
+    with open(
+        completion_path + os.sep + f"{cfg.model_name}_completions_test_{contrastive_type}.json",
         "w",
     ) as f:
         json.dump(completions, f, indent=4)
