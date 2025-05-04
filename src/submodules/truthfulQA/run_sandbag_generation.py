@@ -7,7 +7,7 @@ from contrastive_steering_sandbag import generate_and_steer_batch_contrastive
 from CONFIGS.config_sandbag import Config
 import torch
 from EVALUATE.evaluate_sandbag import evaluate_generation
-from DATA.dataset_sandbag import prepare_dataset, preprocess_dataset, preprocess_dataset_two
+from DATA.dataset_sandbag import  preprocess_dataset, preprocess_dataset_two
 import argparse
 from accelerate import Accelerator
 from accelerate.utils import set_seed
@@ -77,7 +77,7 @@ def parse_arguments():
         "--system_type",
         type=str,
         required=False,
-        default="lie", #misconception
+        default="sandbag", #misconception
         help="",
     )
     return parser.parse_args()
@@ -152,7 +152,8 @@ def main(model_path, save_dir,
     model_base = TransformerModelLoader(cfg, accelerator=accelerator)
 
     # 3. Generate Training Examples
-    generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator)
+    generate_and_steer_batch_contrastive(cfg, model_base, dataset_train, accelerator,
+                                         )
 
     print("done")
 

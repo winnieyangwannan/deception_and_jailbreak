@@ -230,6 +230,12 @@ def generate_and_steer_batch(cfg, model_base, dataloader, accelerator,
 def save_activations(cfg, cache_positive, cache_negative,  
                      correct_choice,
                      model_choice_positive_all, model_choice_negative_all):
+    
+    positive_mean_act_1, positive_mean_act_2, negative_mean_act_1, negative_mean_act_2  = get_mean_act(cfg, 
+                                                                                                       correct_choice,
+                                                                                                       cache_positive.float().detach().cpu().numpy(), 
+                                                                                                       cache_negative.float().detach().cpu().numpy())
+
     # save activations
     activations = {}
     activations = {
@@ -238,7 +244,13 @@ def save_activations(cfg, cache_positive, cache_negative,
         "correct_choice": correct_choice,
         "model_choice_negative":model_choice_negative_all,
         "model_choice_positive":model_choice_positive_all,
+        "positive_mean_act_1":positive_mean_act_1,
+        "positive_mean_act_2":positive_mean_act_2,
+        "negative_mean_act_1":negative_mean_act_1,          
+        "negative_mean_act_2":negative_mean_act_2,
     }
+
+
 
     activation_path = os.path.join(cfg.artifact_path(), "activations")
     if not os.path.exists(activation_path):
@@ -253,3 +265,19 @@ def save_activations(cfg, cache_positive, cache_negative,
     print("activations saved ")#
     return activations
 
+def get_mean_act(cfg, correct_choice, positive_cache, negative_cache):
+    indices_1 = [i for i, x in enumerate(correct_choice) if x == cfg.label_type[0]]
+    negative_mean_act_1 = np.mean(negative_cache[:, indices_1, :], axis=1)
+    indices_2 = [i for i, x in enumerate(correct_choice) if x == cfg.label_type[1] ]
+    negative_mean_act_2 = np.mean(negative_cache[:, indices_2, :], axis=1)
+
+
+    indices_1 = [i for i, x in enumerate(correct_choice) if x == cfg.label_type[0]]
+    positive_mean_act_1 = np.mean(positive_cache[:, indices_1, :], axis=1)
+    indices_2 = [i for i, x in enumerate(correct_choice) if x == cfg.label_type[1] ]
+    positive_mean_act_2 = np.mean(positive_cache[:, indices_2, :], axis=1)
+
+
+
+    # positive_dir = positive_vec / (np.linalg.norm(positive_vec) + 1e-8)
+    return positive_mean_act_1, positive_mean_act_2, negative_mean_act_1, negative_mean_act_2 

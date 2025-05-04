@@ -14,7 +14,7 @@ from accelerate.utils import set_seed
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from torch.utils.data.distributed import DistributedSampler
 import random
-from contrastive_steering_base import generate_and_steer_batch, save_activations
+from contrastive_steering_base import generate_and_steer_batch, save_activations, get_mean_act
 from STAGE_STATS.stage_statistics import get_state_quantification
 import json
 
@@ -70,6 +70,10 @@ def generate_and_steer_batch_contrastive(cfg, model_base, dataset, accelerator,
             label_type="correct_choice")
             get_contrastive_activation_dim_reduction(cfg, activations, split=train_test,
             label_type="model_choice")
+
+
+    # 6. Save activations
+
     if do_pca:
         if accelerator.is_main_process:
             get_state_quantification(

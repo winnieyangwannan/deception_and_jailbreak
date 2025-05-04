@@ -1,20 +1,0 @@
-The following values were not passed to `accelerate launch` and had defaults used instead:
-	`--mixed_precision` was set to a value of `'no'`
-	`--dynamo_backend` was set to a value of `'no'`
-To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
-/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
-current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
-Using 1 GPUs
-Process rank: 0
-cfg: Config(model_path='winnieyangwannan/sft_to_lie_Yi-6B-Chat_2500', model_path_before='01-ai/Yi-6B-Chat', model_name='sft_to_lie_Yi-6B-Chat_2500', model_name_before='Yi-6B-Chat', save_dir='/home/winnieyangwn/Output', n_positions=1, n_train=0, n_test=0, batch_size=128, max_new_tokens=100, task_name='truthful_qa', steer_type='negative_addition', source_layer=14, target_layer=14, contrastive_type=('honest', 'lying'), steering_strength=1, label_type=('A', 'B'), lora=True, checkpoint=2500, system_type='lie')
-Loading dataset...
-Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 208 examples [00:00, 5195.14 examples/s]
-Train size: 187
-Test size: 21
-Train size (SUBSAMPLE): 187
-Test size (SUBSAMPLE): 21
-Loading model...
-Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:08<00:16,  8.39s/it]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:17<00:08,  8.60s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:21<00:00,  6.49s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:21<00:00,  7.04s/it]
-slurmstepd: error: *** JOB 129222 ON cr6-p548xlarge-8 CANCELLED AT 2025-03-31T09:49:04 ***
-slurmstepd: error: *** STEP 129222.0 ON cr6-p548xlarge-8 CANCELLED AT 2025-03-31T09:49:04 ***
-srun: Job step aborted: Waiting up to 32 seconds for job step to finish.

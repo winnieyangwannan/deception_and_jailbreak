@@ -19,7 +19,7 @@ import pickle
 
 
 # model_path ="meta-llama/Llama-3.2-1B-Instruct"
-model_path ="meta-llama/Llama-3.1-8B-Instruct"
+model_path ="meta-llama/Llama-3.2-1B-Instruct"
 
 save_dir = "/home/winnieyangwn/Output"
 task_name = "truthful_qa" #sandbag

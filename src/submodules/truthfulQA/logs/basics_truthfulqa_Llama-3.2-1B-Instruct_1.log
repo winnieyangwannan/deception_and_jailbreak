@@ -1,3 +1,0 @@
-slurmstepd: error: execve(): accelerate: No such file or directory
-srun: error: cr6-p548xlarge-24: task 0: Exited with exit code 2
-srun: Terminating StepId=129175.0

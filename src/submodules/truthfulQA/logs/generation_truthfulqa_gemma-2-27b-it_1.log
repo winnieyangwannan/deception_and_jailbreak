@@ -1,14 +1,0 @@
-The following values were not passed to `accelerate launch` and had defaults used instead:
-	`--mixed_precision` was set to a value of `'no'`
-	`--dynamo_backend` was set to a value of `'no'`
-To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
-/opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
-current_directory: /opt/hpcaas/.mounts/fs-0301404b74c8d22fd/home/winnieyangwn/deception_and_jailbreak/src/submodules/truthfulQA
-Using 1 GPUs
-Process rank: 0
-cfg: Config(model_path='google/gemma-2-27b-it', model_name='gemma-2-27b-it', save_dir='/home/winnieyangwn/Output', n_positions=1, n_train=0, n_test=0, batch_size=32, max_new_tokens=100, task_name='truthful_qa', steer_type='negative_addition', source_layer=14, target_layer=14, contrastive_type=('factual', 'misconception'), steering_strength=1, label_type=('A', 'B'))
-Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 790 examples [00:00, 16271.28 examples/s]
-Train size: 632
-Test size: 158
-Train size (SUBSAMPLE): 632
-Test size (SUBSAMPLE): 158
